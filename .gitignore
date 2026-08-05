@@ -1,0 +1,33 @@
+﻿# Dependências
+/node_modules
+/.pnp
+.pnp.js
+
+# Build
+/.next
+/out
+/.vercel
+/.cache
+
+# Variáveis de ambiente
+.env*
+!.env.example
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Sistema de arquivos
+.DS_Store
+Thumbs.db
+
+# IDE / Editor
+.vscode
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
