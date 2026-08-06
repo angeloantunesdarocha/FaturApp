@@ -32,6 +32,9 @@ export type DailyEntry = {
   gross_amount: number | null;
   fee_percent: number | null;
   net_fare: number | null;
+  description?: string;
+  category?: string;
+  payment_type?: string;
   gas_expense: number;
   alcohol_expense: number;
   maintenance_expense: number;
