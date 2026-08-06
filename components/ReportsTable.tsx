@@ -17,9 +17,6 @@ import {
   flexRender,
   createColumnHelper,
 } from "@tanstack/react-table";
-import * as XLSX from "xlsx";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 type Props = {
   entries: DailyEntry[];
@@ -186,7 +183,8 @@ export default function ReportsTable({
     URL.revokeObjectURL(url);
   }
 
-  function downloadXLSX() {
+  async function downloadXLSX() {
+    const XLSX = await import("xlsx");
     const header = [
       "Data",
       "Descrição",
@@ -247,7 +245,9 @@ export default function ReportsTable({
     XLSX.writeFile(wb, `relatorio-faturapp-${from}_${to}.xlsx`);
   }
 
-  function downloadPDF() {
+  async function downloadPDF() {
+    const jsPDF = (await import("jspdf")).default;
+    await import("jspdf-autotable");
     const doc = new jsPDF();
     
     // Título
@@ -296,7 +296,7 @@ export default function ReportsTable({
       ];
     });
 
-    autoTable(doc, {
+    (doc as any).autoTable({
       head: [tableColumn],
       body: tableRows,
       startY: 40,
@@ -653,4 +653,3 @@ export default function ReportsTable({
     </div>
   );
 }
-
