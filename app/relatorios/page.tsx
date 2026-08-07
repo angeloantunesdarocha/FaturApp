@@ -1,5 +1,6 @@
 import { getEntriesInRange } from "@/app/actions";
 import ReportsTable from "@/components/ReportsTable";
+import FuelMetricsReport from "@/components/FuelMetricsReport";
 import { todayISO } from "@/lib/utils";
 import { requireUser } from "@/lib/auth";
 import LogoutButton from "@/components/LogoutButton";
@@ -25,6 +26,7 @@ export default async function ReportsPage() {
         <LogoutButton />
       </div>
       <p className="text-sm text-slate-600">Filtre pelo período e categorias, envie por WhatsApp, e-mail ou baixe em CSV.</p>
+      <FuelMetricsReport entries={entries} initialFrom={from} initialTo={to} />
       <ReportsTable entries={entries} initialFrom={from} initialTo={to} />
     </div>
   );
