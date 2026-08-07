@@ -20,7 +20,7 @@ export default function RootLayout({
           {children}
         </main>
         <footer className="text-center text-xs text-slate-500 py-4 border-t border-slate-200">
-          FaturApp © {new Date().getFullYear()} — Uso pessoal
+          FaturApp — Desenvolvido por: Ângelo Antunes
         </footer>
       </body>
     </html>
