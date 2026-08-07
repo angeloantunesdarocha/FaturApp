@@ -9,12 +9,18 @@ create table if not exists public.daily_entries (
   net_fare numeric,
   gas_expense numeric default 0 not null,
   alcohol_expense numeric default 0 not null,
+  gasoline_liters numeric default 0 not null,
+  alcohol_liters numeric default 0 not null,
+  km_driven numeric default 0 not null,
   maintenance_expense numeric default 0 not null,
   maintenance_details jsonb default '[]'::jsonb not null,
   extra_expenses jsonb default '[]'::jsonb not null
 );
 
 alter table public.daily_entries add column if not exists maintenance_details jsonb default '[]'::jsonb not null;
+alter table public.daily_entries add column if not exists gasoline_liters numeric default 0 not null;
+alter table public.daily_entries add column if not exists alcohol_liters numeric default 0 not null;
+alter table public.daily_entries add column if not exists km_driven numeric default 0 not null;
 create index if not exists idx_daily_entries_date on public.daily_entries (date);
 create index if not exists idx_daily_entries_user_id on public.daily_entries (user_id);
 create index if not exists daily_entries_user_id_date_created_idx on public.daily_entries(user_id, date, created_at);
