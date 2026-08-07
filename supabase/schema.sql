@@ -11,8 +11,7 @@ create table if not exists public.daily_entries (
   alcohol_expense numeric default 0 not null,
   maintenance_expense numeric default 0 not null,
   maintenance_details jsonb default '[]'::jsonb not null,
-  extra_expenses jsonb default '[]'::jsonb not null,
-  unique (user_id, date)
+  extra_expenses jsonb default '[]'::jsonb not null
 );
 
 -- Mantém instalações existentes sincronizadas com o código atual
