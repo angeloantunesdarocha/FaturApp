@@ -10,9 +10,14 @@ create table if not exists public.daily_entries (
   gas_expense numeric default 0 not null,
   alcohol_expense numeric default 0 not null,
   maintenance_expense numeric default 0 not null,
+  maintenance_details jsonb default '[]'::jsonb not null,
   extra_expenses jsonb default '[]'::jsonb not null,
   unique (user_id, date)
 );
+
+-- Mantém instalações existentes sincronizadas com o código atual
+alter table public.daily_entries
+  add column if not exists maintenance_details jsonb default '[]'::jsonb not null;
 
 -- Índices úteis
 create index if not exists idx_daily_entries_date
