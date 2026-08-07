@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 import {
+  computeFeeAmount,
   computeNetFare,
   formatBRL,
   formatDateBR,
@@ -31,9 +32,6 @@ function getMaintenanceTotal(entry: DailyEntry): number {
     (sum, item) => sum + toNumber(item.value),
     0
   );
-
-  // Os detalhes são a fonte de verdade quando existirem. O fallback cobre
-  // lançamentos antigos que tenham apenas maintenance_expense salvo.
   return details > 0 ? details : stored;
 }
 
@@ -60,6 +58,9 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
   );
 
   const calculateValues = (e: DailyEntry) => {
+    const gross = Number(e.gross_amount ?? 0) || 0;
+    const feePercent = Number(e.fee_percent ?? 0) || 0;
+    const feeAmount = computeFeeAmount(e);
     const gas = cats.gas ? Number(e.gas_expense || 0) : 0;
     const alcohol = cats.alcohol ? Number(e.alcohol_expense || 0) : 0;
     const maintenance = cats.maintenance ? getMaintenanceTotal(e) : 0;
@@ -67,13 +68,15 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
     const net = computeNetFare(e);
     const profit = net - gas - alcohol - maintenance - extras;
 
-    return { net, gas, alcohol, maintenance, extras, profit };
+    return { gross, feePercent, feeAmount, net, gas, alcohol, maintenance, extras, profit };
   };
 
   const totals = useMemo(() => {
     return filtered.reduce(
       (acc, e) => {
         const v = calculateValues(e);
+        acc.gross += v.gross;
+        acc.feeAmount += v.feeAmount;
         acc.net += v.net;
         acc.gas += v.gas;
         acc.alcohol += v.alcohol;
@@ -82,13 +85,15 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
         acc.profit += v.profit;
         return acc;
       },
-      { net: 0, gas: 0, alcohol: 0, maintenance: 0, extras: 0, profit: 0 }
+      { gross: 0, feeAmount: 0, net: 0, gas: 0, alcohol: 0, maintenance: 0, extras: 0, profit: 0 }
     );
   }, [filtered, cats]);
 
   const summaryText = useMemo(() => {
     const lines = [
       `Relatório de ${formatDateBR(from)} a ${formatDateBR(to)}`,
+      `Receita bruta: ${formatBRL(totals.gross)}`,
+      `Taxas descontadas: ${formatBRL(totals.feeAmount)}`,
       `Receita líquida: ${formatBRL(totals.net)}`,
     ];
     if (cats.gas) lines.push(`Gasolina: ${formatBRL(totals.gas)}`);
@@ -100,10 +105,7 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
   }, [from, to, totals, cats]);
 
   function openWhatsApp() {
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(summaryText)}`,
-      "_blank"
-    );
+    window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`, "_blank");
   }
 
   function openEmail() {
@@ -120,8 +122,11 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
     doc.text("FaturApp - Relatório Financeiro", 14, 15);
     doc.setFontSize(10);
     doc.text(`Período: ${formatDateBR(from)} até ${formatDateBR(to)}`, 14, 22);
+    doc.text(`Receita bruta: ${formatBRL(totals.gross)}`, 14, 27);
+    doc.text(`Taxas descontadas: ${formatBRL(totals.feeAmount)}`, 90, 27);
+    doc.text(`Receita líquida: ${formatBRL(totals.net)}`, 175, 27);
 
-    const head = ["Data", "Receita Líquida"];
+    const head = ["Data", "Bruto", "Taxa", "Desconto da taxa", "Receita líquida"];
     if (cats.gas) head.push("Gasolina");
     if (cats.alcohol) head.push("Álcool");
     if (cats.maintenance) head.push("Manutenção");
@@ -130,7 +135,13 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
 
     const body = filtered.map((e) => {
       const v = calculateValues(e);
-      const row: string[] = [formatDateBR(e.date), formatBRL(v.net)];
+      const row: string[] = [
+        formatDateBR(e.date),
+        formatBRL(v.gross),
+        v.gross > 0 ? `${v.feePercent.toFixed(2)}%` : "—",
+        v.gross > 0 ? `− ${formatBRL(v.feeAmount)}` : "—",
+        formatBRL(v.net),
+      ];
       if (cats.gas) row.push(formatBRL(v.gas));
       if (cats.alcohol) row.push(formatBRL(v.alcohol));
       if (cats.maintenance) {
@@ -149,7 +160,13 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
       return row;
     });
 
-    const totalRow: string[] = ["TOTAL", formatBRL(totals.net)];
+    const totalRow: string[] = [
+      "TOTAL",
+      formatBRL(totals.gross),
+      "",
+      `− ${formatBRL(totals.feeAmount)}`,
+      formatBRL(totals.net),
+    ];
     if (cats.gas) totalRow.push(formatBRL(totals.gas));
     if (cats.alcohol) totalRow.push(formatBRL(totals.alcohol));
     if (cats.maintenance) totalRow.push(formatBRL(totals.maintenance));
@@ -160,77 +177,37 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
     autoTable(doc, {
       head: [head],
       body,
-      startY: 30,
+      startY: 33,
       theme: "grid",
-      styles: {
-        fontSize: 7,
-        cellPadding: 2,
-        valign: "middle",
-      },
-      headStyles: {
-        fontSize: 7,
-        fontStyle: "bold",
-      },
-      footStyles: {
-        fontStyle: "bold",
-      },
-      columnStyles: {
-        0: { cellWidth: 22 },
-      },
+      styles: { fontSize: 6.5, cellPadding: 1.8, valign: "middle" },
+      headStyles: { fontSize: 6.5, fontStyle: "bold" },
+      columnStyles: { 0: { cellWidth: 19 } },
       didParseCell: (data) => {
-        if (data.row.index === body.length - 1) {
-          data.cell.styles.fontStyle = "bold";
-        }
+        if (data.row.index === body.length - 1) data.cell.styles.fontStyle = "bold";
       },
-      margin: { left: 10, right: 10 },
+      margin: { left: 8, right: 8 },
     });
 
     doc.save(`FaturApp_Relatorio_${from}_${to}.pdf`);
   }
+
+  const columnCount = 5 + Number(cats.gas) + Number(cats.alcohol) + Number(cats.maintenance) + Number(cats.extras) + 1;
 
   return (
     <div className="space-y-4">
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
         <h3 className="text-sm font-semibold text-slate-700">Período</h3>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="label">Data inicial</label>
-            <input
-              type="date"
-              className="input"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label">Data final</label>
-            <input
-              type="date"
-              className="input"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-            />
-          </div>
+          <div><label className="label">Data inicial</label><input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+          <div><label className="label">Data final</label><input type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} /></div>
         </div>
 
         <h3 className="text-sm font-semibold text-slate-700 pt-2">Categorias de gastos</h3>
         <div className="flex flex-wrap gap-4 text-sm">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={cats.gas} onChange={(e) => setCats({ ...cats, gas: e.target.checked })} />
-            Gasolina
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={cats.alcohol} onChange={(e) => setCats({ ...cats, alcohol: e.target.checked })} />
-            Álcool
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={cats.maintenance} onChange={(e) => setCats({ ...cats, maintenance: e.target.checked })} />
-            Manutenção
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={cats.extras} onChange={(e) => setCats({ ...cats, extras: e.target.checked })} />
-            Gastos extras
-          </label>
+          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={cats.gas} onChange={(e) => setCats({ ...cats, gas: e.target.checked })} />Gasolina</label>
+          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={cats.alcohol} onChange={(e) => setCats({ ...cats, alcohol: e.target.checked })} />Álcool</label>
+          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={cats.maintenance} onChange={(e) => setCats({ ...cats, maintenance: e.target.checked })} />Manutenção</label>
+          <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={cats.extras} onChange={(e) => setCats({ ...cats, extras: e.target.checked })} />Gastos extras</label>
         </div>
       </div>
 
@@ -239,6 +216,9 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
           <thead className="bg-slate-100 text-slate-700">
             <tr>
               <th className="border border-slate-200 px-3 py-2 text-left">Data</th>
+              <th className="border border-slate-200 px-3 py-2 text-right">Bruto</th>
+              <th className="border border-slate-200 px-3 py-2 text-right">Taxa</th>
+              <th className="border border-slate-200 px-3 py-2 text-right">Desconto da taxa</th>
               <th className="border border-slate-200 px-3 py-2 text-right">Receita líquida</th>
               {cats.gas && <th className="border border-slate-200 px-3 py-2 text-right">Gasolina</th>}
               {cats.alcohol && <th className="border border-slate-200 px-3 py-2 text-right">Álcool</th>}
@@ -249,51 +229,31 @@ export default function ReportsTable({ entries, initialFrom, initialTo }: Props)
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={2 + Number(cats.gas) + Number(cats.alcohol) + Number(cats.maintenance) + Number(cats.extras) + 1} className="border border-slate-200 px-3 py-6 text-center text-slate-500">
-                  Nenhum lançamento no período.
-                </td>
-              </tr>
-            ) : (
-              filtered.map((e) => {
-                const v = calculateValues(e);
-                return (
-                  <tr key={e.id} className="hover:bg-slate-50">
-                    <td className="border border-slate-200 px-3 py-2">{formatDateBR(e.date)}</td>
-                    <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.net)}</td>
-                    {cats.gas && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.gas)}</td>}
-                    {cats.alcohol && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.alcohol)}</td>}
-                    {cats.maintenance && (
-                      <td className="border border-slate-200 px-3 py-2 text-right">
-                        <div className="font-medium">{formatBRL(v.maintenance)}</div>
-                        {(e.maintenance_details || []).map((m, i) => (
-                          <div key={i} className="text-xs text-slate-500 whitespace-nowrap">
-                            {formatBRL(toNumber(m.value))} - {m.description}
-                          </div>
-                        ))}
-                      </td>
-                    )}
-                    {cats.extras && (
-                      <td className="border border-slate-200 px-3 py-2 text-right">
-                        <div className="font-medium">{formatBRL(v.extras)}</div>
-                        {(e.extra_expenses || []).map((x, i) => (
-                          <div key={i} className="text-xs text-slate-500 whitespace-nowrap">
-                            {formatBRL(toNumber(x.value))} - {x.name}
-                          </div>
-                        ))}
-                      </td>
-                    )}
-                    <td className={`border border-slate-200 px-3 py-2 text-right font-semibold ${v.profit >= 0 ? "text-brand-700" : "text-red-600"}`}>
-                      {formatBRL(v.profit)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+              <tr><td colSpan={columnCount} className="border border-slate-200 px-3 py-6 text-center text-slate-500">Nenhum lançamento no período.</td></tr>
+            ) : filtered.map((e) => {
+              const v = calculateValues(e);
+              return (
+                <tr key={e.id} className="hover:bg-slate-50">
+                  <td className="border border-slate-200 px-3 py-2">{formatDateBR(e.date)}</td>
+                  <td className="border border-slate-200 px-3 py-2 text-right">{v.gross > 0 ? formatBRL(v.gross) : "—"}</td>
+                  <td className="border border-slate-200 px-3 py-2 text-right">{v.gross > 0 ? `${v.feePercent.toFixed(2)}%` : "—"}</td>
+                  <td className="border border-slate-200 px-3 py-2 text-right text-red-600">{v.gross > 0 ? `− ${formatBRL(v.feeAmount)}` : "—"}</td>
+                  <td className="border border-slate-200 px-3 py-2 text-right font-medium">{formatBRL(v.net)}</td>
+                  {cats.gas && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.gas)}</td>}
+                  {cats.alcohol && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.alcohol)}</td>}
+                  {cats.maintenance && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.maintenance)}</td>}
+                  {cats.extras && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(v.extras)}</td>}
+                  <td className={`border border-slate-200 px-3 py-2 text-right font-semibold ${v.profit >= 0 ? "text-brand-700" : "text-red-600"}`}>{formatBRL(v.profit)}</td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot className="bg-slate-100 font-semibold">
             <tr>
               <td className="border border-slate-200 px-3 py-2">TOTAIS</td>
+              <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.gross)}</td>
+              <td className="border border-slate-200 px-3 py-2 text-right">—</td>
+              <td className="border border-slate-200 px-3 py-2 text-right text-red-600">− {formatBRL(totals.feeAmount)}</td>
               <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.net)}</td>
               {cats.gas && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.gas)}</td>}
               {cats.alcohol && <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.alcohol)}</td>}
