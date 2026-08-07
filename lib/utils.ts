@@ -1,8 +1,5 @@
 export function formatBRL(value: number): string {
-  return value.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 export function toNumber(v: string | number | null | undefined): number {
@@ -45,12 +42,16 @@ export function computeNetFare(entry: {
   fee_percent: number | null;
   net_fare: number | null;
 }): number {
-  if (entry.net_fare !== null && entry.net_fare !== undefined) {
-    return Number(entry.net_fare);
+  // Quando bruto e taxa existem, eles são a fonte de verdade.
+  // Assim um net_fare antigo/incorreto não interfere no cálculo.
+  if (entry.gross_amount !== null && entry.gross_amount !== undefined) {
+    const gross = Number(entry.gross_amount) || 0;
+    const fee = Number(entry.fee_percent ?? 0) || 0;
+    return gross * (1 - fee / 100);
   }
-  const gross = Number(entry.gross_amount ?? 0);
-  const fee = Number(entry.fee_percent ?? 0);
-  return gross * (1 - fee / 100);
+
+  // No modo "valor já líquido", usa o valor informado diretamente.
+  return Number(entry.net_fare ?? 0) || 0;
 }
 
 export function computeDayProfit(entry: DailyEntry): number {
