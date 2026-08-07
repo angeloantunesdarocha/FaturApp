@@ -14,20 +14,41 @@ create table if not exists public.daily_entries (
   extra_expenses jsonb default '[]'::jsonb not null
 );
 
--- Mantém instalações existentes sincronizadas com o código atual
-alter table public.daily_entries
-  add column if not exists maintenance_details jsonb default '[]'::jsonb not null;
+alter table public.daily_entries add column if not exists maintenance_details jsonb default '[]'::jsonb not null;
+create index if not exists idx_daily_entries_date on public.daily_entries (date);
+create index if not exists idx_daily_entries_user_id on public.daily_entries (user_id);
+create index if not exists daily_entries_user_id_date_created_idx on public.daily_entries(user_id, date, created_at);
 
--- Índices úteis
-create index if not exists idx_daily_entries_date
-  on public.daily_entries (date);
-create index if not exists idx_daily_entries_user_id
-  on public.daily_entries (user_id);
+-- O sistema de autenticação do aplicativo usa app_users/app_sessions e cookies HTTP-only.
+-- As contas e sessões são criadas pelas funções SQL de autenticação.
+create extension if not exists pgcrypto;
 
--- Desabilita RLS para uso pessoal (um único usuário fixo 'default')
+create table if not exists public.app_users (
+  id uuid primary key default gen_random_uuid(),
+  login text not null,
+  password_hash text not null,
+  role text not null default 'user' check (role in ('admin','user')),
+  created_at timestamptz not null default now()
+);
+create unique index if not exists app_users_login_lower_idx on public.app_users(lower(login));
+
+create table if not exists public.app_sessions (
+  token uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.app_users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '30 days')
+);
+create index if not exists app_sessions_user_id_idx on public.app_sessions(user_id);
+create index if not exists app_sessions_expires_at_idx on public.app_sessions(expires_at);
+
+-- As funções abaixo devem ser executadas como SECURITY DEFINER e expostas apenas via RPC.
+-- A implementação de autenticação fica no banco para que senhas nunca sejam armazenadas em texto puro.
+
+-- IMPORTANTE: o cadastro do primeiro usuário com o login "Angelo Antunes" recebe role admin
+-- e assume os lançamentos antigos que ainda estiverem com user_id = 'default'.
+
+-- RLS da tabela legada permanece desabilitado para compatibilidade com a arquitetura atual.
+-- A aplicação filtra todos os lançamentos pelo usuário autenticado antes de consultar/gravar.
 alter table public.daily_entries disable row level security;
-
--- Política permissiva (apenas por precaução, caso ative o RLS depois)
--- drop policy if exists "all_access" on public.daily_entries;
--- create policy "all_access" on public.daily_entries
---   for all using (true) with check (true);
+alter table public.app_users disable row level security;
+alter table public.app_sessions disable row level security;
