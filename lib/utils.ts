@@ -8,6 +8,20 @@ export function toNumber(v: string | number | null | undefined): number {
   return isNaN(n) ? 0 : n;
 }
 
+export function toOdometerNumber(v: string | number | null | undefined): number {
+  if (v === null || v === undefined || v === "") return 0;
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const value = v.trim().replace(/\s/g, "");
+  if (!value) return 0;
+  const normalized = value.includes(",")
+    ? value.replace(/\./g, "").replace(",", ".")
+    : /^\d{1,3}(\.\d{3})+$/.test(value)
+      ? value.replace(/\./g, "")
+      : value;
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function todayISO(): string {
   const d = new Date();
   const yyyy = d.getFullYear();
