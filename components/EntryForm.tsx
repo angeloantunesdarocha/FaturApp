@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { computeFeeAmount, formatBRL, toNumber, todayISO, type ExtraExpense } from "@/lib/utils";
+import { computeFeeAmount, computeFuelCost, computeFuelLiters, computeKmPerLiter, formatBRL, toNumber, todayISO, type ExtraExpense } from "@/lib/utils";
 import ExtraExpenses from "./ExtraExpenses";
 import MaintenanceExpenses, { type MaintenanceItem } from "./MaintenanceExpenses";
 import { saveEntry } from "@/app/actions";
@@ -13,35 +13,49 @@ type Props = {
   initialMonthProfit?: number;
 };
 
+function formatKm(value: number): string {
+  return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+}
+
+function formatKmPerLiter(value: number | null): string {
+  return value === null ? "—" : `${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km/L`;
+}
+
 export default function EntryForm({
   initialDate = todayISO(),
   initialMonthProfit = 0,
 }: Props) {
   const [mode, setMode] = useState<Mode>("withFee");
   const [date, setDate] = useState<string>(initialDate);
-
   const [gross, setGross] = useState<number>(0);
   const [fee, setFee] = useState<number>(0);
   const [netFare, setNetFare] = useState<number>(0);
-
   const [gas, setGas] = useState<number>(0);
   const [alcohol, setAlcohol] = useState<number>(0);
+  const [gasolineLiters, setGasolineLiters] = useState<number>(0);
+  const [alcoholLiters, setAlcoholLiters] = useState<number>(0);
+  const [kmDriven, setKmDriven] = useState<number>(0);
   const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
   const [extras, setExtras] = useState<ExtraExpense[]>([]);
-
   const [monthProfit, setMonthProfit] = useState<number>(initialMonthProfit);
   const [status, setStatus] = useState<string>("");
 
   const fareNet = mode === "withFee" ? gross * (1 - fee / 100) : netFare;
   const feeAmount = mode === "withFee" ? computeFeeAmount({ gross_amount: gross, fee_percent: fee }) : 0;
-
   const extrasSum = extras.reduce((acc, e) => acc + toNumber(e.value), 0);
   const maintenanceTotal = maintenanceItems.reduce((acc, m) => acc + toNumber(m.value), 0);
   const totalExpenses = gas + alcohol + maintenanceTotal + extrasSum;
   const dayProfit = fareNet - totalExpenses;
+  const fuelCost = computeFuelCost({ gas_expense: gas, alcohol_expense: alcohol });
+  const fuelLiters = computeFuelLiters({ gasoline_liters: gasolineLiters, alcohol_liters: alcoholLiters });
+  const kmPerLiter = computeKmPerLiter({ km_driven: kmDriven, gasoline_liters: gasolineLiters, alcohol_liters: alcoholLiters });
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (kmDriven < 0 || gasolineLiters < 0 || alcoholLiters < 0) {
+      setStatus("❌ Quilometragem e litros não podem ser negativos.");
+      return;
+    }
     setStatus("Salvando...");
 
     const payload = {
@@ -51,6 +65,9 @@ export default function EntryForm({
       net_fare: mode === "net" ? netFare : null,
       gas_expense: gas,
       alcohol_expense: alcohol,
+      gasoline_liters: gasolineLiters,
+      alcohol_liters: alcoholLiters,
+      km_driven: kmDriven,
       maintenance_expense: maintenanceTotal,
       maintenance_details: maintenanceItems.filter((m) => m.description.trim() !== ""),
       extra_expenses: extras.filter((e) => e.name.trim() !== ""),
@@ -61,7 +78,8 @@ export default function EntryForm({
       setStatus("✅ Lançamento salvo com sucesso!");
       if (typeof res.monthProfit === "number") setMonthProfit(res.monthProfit);
       setGross(0); setFee(0); setNetFare(0);
-      setGas(0); setAlcohol(0); setMaintenanceItems([]); setExtras([]);
+      setGas(0); setAlcohol(0); setGasolineLiters(0); setAlcoholLiters(0); setKmDriven(0);
+      setMaintenanceItems([]); setExtras([]);
     } else {
       setStatus(`❌ Erro: ${res.error}`);
     }
@@ -78,29 +96,15 @@ export default function EntryForm({
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
           <h3 className="text-sm font-semibold text-slate-700">Receita</h3>
           <div className="flex gap-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" checked={mode === "withFee"} onChange={() => setMode("withFee")} />
-              Valor com taxa
-            </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" checked={mode === "net"} onChange={() => setMode("net")} />
-              Valor já líquido
-            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={mode === "withFee"} onChange={() => setMode("withFee")} />Valor com taxa</label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={mode === "net"} onChange={() => setMode("net")} />Valor já líquido</label>
           </div>
-
           {mode === "withFee" ? (
             <>
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Valor bruto (R$)</label>
-                  <input type="number" step="0.01" min="0" className="input" value={gross || ""} onChange={(e) => setGross(toNumber(e.target.value))} />
-                </div>
-                <div>
-                  <label className="label">Taxa do app (%)</label>
-                  <input type="number" step="0.01" min="0" max="100" className="input" value={fee || ""} onChange={(e) => setFee(toNumber(e.target.value))} />
-                </div>
+                <div><label className="label">Valor bruto (R$)</label><input type="number" step="0.01" min="0" className="input" value={gross || ""} onChange={(e) => setGross(toNumber(e.target.value))} /></div>
+                <div><label className="label">Taxa do app (%)</label><input type="number" step="0.01" min="0" max="100" className="input" value={fee || ""} onChange={(e) => setFee(toNumber(e.target.value))} /></div>
               </div>
-
               <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-1 text-sm">
                 <div className="flex justify-between"><span>Valor bruto</span><strong>{formatBRL(gross)}</strong></div>
                 <div className="flex justify-between text-red-600"><span>Desconto da taxa ({fee.toFixed(2)}%)</span><strong>− {formatBRL(feeAmount)}</strong></div>
@@ -108,35 +112,29 @@ export default function EntryForm({
               </div>
             </>
           ) : (
-            <div>
-              <label className="label">Valor líquido recebido (R$)</label>
-              <input type="number" step="0.01" min="0" className="input max-w-sm" value={netFare || ""} onChange={(e) => setNetFare(toNumber(e.target.value))} />
-            </div>
+            <div><label className="label">Valor líquido recebido (R$)</label><input type="number" step="0.01" min="0" className="input max-w-sm" value={netFare || ""} onChange={(e) => setNetFare(toNumber(e.target.value))} /></div>
           )}
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-          <h3 className="text-sm font-semibold text-slate-700">Despesas</h3>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-slate-700">Quilometragem e combustível</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="label">Gasolina (R$)</label>
-              <input type="number" step="0.01" min="0" className="input" value={gas || ""} onChange={(e) => setGas(toNumber(e.target.value))} />
-            </div>
-            <div>
-              <label className="label">Álcool (R$)</label>
-              <input type="number" step="0.01" min="0" className="input" value={alcohol || ""} onChange={(e) => setAlcohol(toNumber(e.target.value))} />
-            </div>
+            <div><label className="label">Km rodados</label><input type="number" step="0.1" min="0" className="input" value={kmDriven || ""} onChange={(e) => setKmDriven(toNumber(e.target.value))} placeholder="Ex.: 180" /></div>
+            <div><label className="label">Gasolina (R$)</label><input type="number" step="0.01" min="0" className="input" value={gas || ""} onChange={(e) => setGas(toNumber(e.target.value))} /></div>
+            <div><label className="label">Gasolina (litros)</label><input type="number" step="0.01" min="0" className="input" value={gasolineLiters || ""} onChange={(e) => setGasolineLiters(toNumber(e.target.value))} placeholder="Ex.: 15,5" /></div>
+            <div><label className="label">Álcool (R$)</label><input type="number" step="0.01" min="0" className="input" value={alcohol || ""} onChange={(e) => setAlcohol(toNumber(e.target.value))} /></div>
+            <div><label className="label">Álcool (litros)</label><input type="number" step="0.01" min="0" className="input" value={alcoholLiters || ""} onChange={(e) => setAlcoholLiters(toNumber(e.target.value))} placeholder="Ex.: 0" /></div>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Combustível gasto</p><p className="text-xl font-bold text-slate-800">{formatBRL(fuelCost)}</p></div>
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Combustível abastecido</p><p className="text-xl font-bold text-slate-800">{fuelLiters.toLocaleString("pt-BR", { maximumFractionDigits: 2 })} L</p></div>
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Consumo</p><p className="text-xl font-bold text-slate-800">{formatKmPerLiter(kmPerLiter)}</p></div>
+          </div>
+          <p className="text-xs text-slate-500">O km/L é calculado como km rodados ÷ litros abastecidos. No relatório mensal, o cálculo usa o total de km ÷ total de litros, e não a média simples dos km/L diários.</p>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems} />
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <ExtraExpenses extras={extras} onChange={setExtras} />
-        </div>
-
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems} /></div>
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><ExtraExpenses extras={extras} onChange={setExtras} /></div>
         <button type="submit" className="btn btn-primary w-full">Salvar lançamento</button>
         {status && <p className="text-sm text-center text-slate-600">{status}</p>}
       </form>
