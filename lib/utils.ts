@@ -34,6 +34,8 @@ export type DailyEntry = {
   alcohol_expense: number;
   gasoline_liters: number;
   alcohol_liters: number;
+  km_initial: number;
+  km_final: number;
   km_driven: number;
   maintenance_expense: number;
   maintenance_details?: MaintenanceItem[];
