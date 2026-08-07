@@ -45,22 +45,36 @@ export default function ReportsTable({
     return entries.filter((e) => e.date >= from && e.date <= to);
   }, [entries, from, to]);
 
-  // Totais do período
+  // Calcula valores considerando apenas categorias selecionadas
+  const calculateFilteredValues = (e: DailyEntry) => {
+    const gasValue = cats.gas ? Number(e.gas_expense || 0) : 0;
+    const alcoholValue = cats.alcohol ? Number(e.alcohol_expense || 0) : 0;
+    const maintenanceValue = cats.maintenance ? Number(e.maintenance_expense || 0) : 0;
+    const extrasValue = cats.extras 
+      ? (e.extra_expenses || []).reduce((acc, x) => acc + toNumber(x.value), 0)
+      : 0;
+    
+    const totalExpenses = gasValue + alcoholValue + maintenanceValue + extrasValue;
+    const netFare = computeNetFare(e);
+    const profit = netFare - totalExpenses;
+    
+    return { gasValue, alcoholValue, maintenanceValue, extrasValue, profit };
+  };
+
+  // Totais do período (considerando apenas categorias selecionadas)
   const totals = useMemo(() => {
     let net = 0, gas = 0, alcohol = 0, maintenance = 0, extras = 0, profit = 0;
     filtered.forEach((e) => {
+      const values = calculateFilteredValues(e);
       net += computeNetFare(e);
-      gas += Number(e.gas_expense || 0);
-      alcohol += Number(e.alcohol_expense || 0);
-      maintenance += Number(e.maintenance_expense || 0);
-      extras += (e.extra_expenses || []).reduce(
-        (acc, x) => acc + toNumber(x.value),
-        0
-      );
-      profit += computeDayProfit(e);
+      gas += values.gasValue;
+      alcohol += values.alcoholValue;
+      maintenance += values.maintenanceValue;
+      extras += values.extrasValue;
+      profit += values.profit;
     });
     return { net, gas, alcohol, maintenance, extras, profit };
-  }, [filtered]);
+  }, [filtered, cats]);
 
   // Monta texto do resumo
   const summaryText = useMemo(() => {
@@ -87,116 +101,63 @@ export default function ReportsTable({
     window.location.href = mailto;
   }
 
-function downloadPDF() {
-  const doc = new jsPDF("landscape");
+  function downloadPDF() {
+    const doc = new jsPDF("landscape");
 
-  doc.setFontSize(16);
-  doc.text("FaturApp - Relatório Financeiro", 14, 15);
+    doc.setFontSize(16);
+    doc.text("FaturApp - Relatório Financeiro", 14, 15);
 
-  doc.setFontSize(10);
-  doc.text(
-    `Período: ${formatDateBR(from)} até ${formatDateBR(to)}`,
-    14,
-    22
-  );
-
-  const rows = filtered.map((e) => {
-    const extrasSum = (e.extra_expenses || []).reduce(
-      (acc, x) => acc + toNumber(x.value),
-      0
+    doc.setFontSize(10);
+    doc.text(
+      `Período: ${formatDateBR(from)} até ${formatDateBR(to)}`,
+      14,
+      22
     );
 
-    return [
-      formatDateBR(e.date),
-      formatBRL(computeNetFare(e)),
-      formatBRL(Number(e.gas_expense || 0)),
-      formatBRL(Number(e.alcohol_expense || 0)),
-      formatBRL(Number(e.maintenance_expense || 0)),
-      formatBRL(extrasSum),
-      formatBRL(computeDayProfit(e)),
-    ];
-  });
-
-  rows.push([
-    "TOTAL",
-    formatBRL(totals.net),
-    formatBRL(totals.gas),
-    formatBRL(totals.alcohol),
-    formatBRL(totals.maintenance),
-    formatBRL(totals.extras),
-    formatBRL(totals.profit),
-  ]);
-
-  autoTable(doc, {
-    head: [[
-      "Data",
-      "Receita Líquida",
-      "Gasolina",
-      "Álcool",
-      "Manutenção",
-      "Extras",
-      "Lucro do Dia",
-    ]],
-    body: rows,
-    startY: 30,
-  });
-
-  doc.save(`FaturApp_Relatorio_${from}_${to}.pdf`);
-}
-  function downloadCSV() {
-    const header = [
-      "Data",
-      "Receita líquida",
-      "Gasolina",
-      "Álcool",
-      "Manutenção",
-      "Extras",
-      "Lucro do dia",
-    ];
     const rows = filtered.map((e) => {
-      const netFare = computeNetFare(e);
-      const extrasSum = (e.extra_expenses || []).reduce(
-        (acc, x) => acc + toNumber(x.value),
-        0
-      );
+      const values = calculateFilteredValues(e);
+      const extraExpensesList = e.extra_expenses || [];
+      const extrasText = cats.extras && extraExpensesList.length > 0
+        ? `${formatBRL(values.extrasValue)} (${extraExpensesList.map(x => x.name).join(", ")})`
+        : formatBRL(values.extrasValue);
+
       return [
         formatDateBR(e.date),
-        netFare.toFixed(2),
-        Number(e.gas_expense || 0).toFixed(2),
-        Number(e.alcohol_expense || 0).toFixed(2),
-        Number(e.maintenance_expense || 0).toFixed(2),
-        extrasSum.toFixed(2),
-        computeDayProfit(e).toFixed(2),
+        formatBRL(computeNetFare(e)),
+        cats.gas ? formatBRL(values.gasValue) : "",
+        cats.alcohol ? formatBRL(values.alcoholValue) : "",
+        cats.maintenance ? formatBRL(values.maintenanceValue) : "",
+        cats.extras ? extrasText : "",
+        formatBRL(values.profit),
       ];
     });
 
-    const csvLines = [
-      header.join(";"),
-      ...rows.map((r) => r.join(";")),
-      // Linha de totais
-      [
-        "TOTAIS",
-        totals.net.toFixed(2),
-        totals.gas.toFixed(2),
-        totals.alcohol.toFixed(2),
-        totals.maintenance.toFixed(2),
-        totals.extras.toFixed(2),
-        totals.profit.toFixed(2),
-      ].join(";"),
-    ];
+    rows.push([
+      "TOTAL",
+      formatBRL(totals.net),
+      cats.gas ? formatBRL(totals.gas) : "",
+      cats.alcohol ? formatBRL(totals.alcohol) : "",
+      cats.maintenance ? formatBRL(totals.maintenance) : "",
+      cats.extras ? formatBRL(totals.extras) : "",
+      formatBRL(totals.profit),
+    ]);
 
-    // BOM UTF-8 para abrir corretamente no Excel
-    const blob = new Blob(["\uFEFF" + csvLines.join("\n")], {
-      type: "text/csv;charset=utf-8;",
+    autoTable(doc, {
+      head: [[
+        "Data",
+        "Receita Líquida",
+        ...cats.gas ? ["Gasolina"] : [],
+        ...cats.alcohol ? ["Álcool"] : [],
+        ...cats.maintenance ? ["Manutenção"] : [],
+        ...cats.extras ? ["Extras"] : [],
+        "Lucro do Dia",
+      ]],
+      body: rows,
+      startY: 30,
     });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `relatorio-faturapp-${from}_${to}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
+    doc.save(`FaturApp_Relatorio_${from}_${to}.pdf`);
+  }
   return (
     <div className="space-y-4">
       {/* Filtros */}
@@ -264,41 +225,65 @@ function downloadPDF() {
 
       {/* Tabela */}
       <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-x-auto">
-        <table className="min-w-full text-sm">
+        <table className="min-w-full text-sm border-collapse border border-slate-300">
           <thead className="bg-slate-100 text-slate-700">
             <tr>
-              <th className="px-3 py-2 text-left">Data</th>
-              <th className="px-3 py-2 text-right">Receita líquida</th>
-              <th className="px-3 py-2 text-right">Gasolina</th>
-              <th className="px-3 py-2 text-right">Álcool</th>
-              <th className="px-3 py-2 text-right">Manutenção</th>
-              <th className="px-3 py-2 text-right">Extras</th>
-              <th className="px-3 py-2 text-right">Lucro do dia</th>
+              <th className="border border-slate-200 px-3 py-2 text-left font-semibold">Data</th>
+              <th className="border border-slate-200 px-3 py-2 text-right font-semibold">Receita líquida</th>
+              {cats.gas && (
+                <th className="border border-slate-200 px-3 py-2 text-right font-semibold">Gasolina</th>
+              )}
+              {cats.alcohol && (
+                <th className="border border-slate-200 px-3 py-2 text-right font-semibold">Álcool</th>
+              )}
+              {cats.maintenance && (
+                <th className="border border-slate-200 px-3 py-2 text-right font-semibold">Manutenção</th>
+              )}
+              {cats.extras && (
+                <th className="border border-slate-200 px-3 py-2 text-right font-semibold">Extras</th>
+              )}
+              <th className="border border-slate-200 px-3 py-2 text-right font-semibold">Lucro do dia</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-slate-500">
+                <td colSpan={7} className="border border-slate-200 px-3 py-6 text-center text-slate-500">
                   Nenhum lançamento no período.
                 </td>
               </tr>
             ) : (
               filtered.map((e) => {
-                const extrasSum = (e.extra_expenses || []).reduce(
-                  (acc, x) => acc + toNumber(x.value),
-                  0
-                );
-                const profit = computeDayProfit(e);
+                const { gasValue, alcoholValue, maintenanceValue, extrasValue, profit } = calculateFilteredValues(e);
+                const extraExpensesList = e.extra_expenses || [];
+                const hasExtraDescription = cats.extras && extraExpensesList.length > 0;
+                
                 return (
-                  <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50">
-                    <td className="px-3 py-2">{formatDateBR(e.date)}</td>
-                    <td className="px-3 py-2 text-right">{formatBRL(computeNetFare(e))}</td>
-                    <td className="px-3 py-2 text-right">{formatBRL(Number(e.gas_expense || 0))}</td>
-                    <td className="px-3 py-2 text-right">{formatBRL(Number(e.alcohol_expense || 0))}</td>
-                    <td className="px-3 py-2 text-right">{formatBRL(Number(e.maintenance_expense || 0))}</td>
-                    <td className="px-3 py-2 text-right">{formatBRL(extrasSum)}</td>
-                    <td className={`px-3 py-2 text-right font-semibold ${profit >= 0 ? "text-brand-700" : "text-red-600"}`}>
+                  <tr key={e.id} className="hover:bg-slate-50">
+                    <td className="border border-slate-200 px-3 py-2">{formatDateBR(e.date)}</td>
+                    <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(computeNetFare(e))}</td>
+                    {cats.gas && (
+                      <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(gasValue)}</td>
+                    )}
+                    {cats.alcohol && (
+                      <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(alcoholValue)}</td>
+                    )}
+                    {cats.maintenance && (
+                      <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(maintenanceValue)}</td>
+                    )}
+                    {cats.extras && (
+                      <td className="border border-slate-200 px-3 py-2 text-right">
+                        <div className="flex flex-col items-end">
+                          <span className="font-medium">{formatBRL(extrasValue)}</span>
+                          {hasExtraDescription && (
+                            <span className="text-xs text-slate-500">
+                              {extraExpensesList.map((x) => x.name).join(", ")}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                    <td className={`border border-slate-200 px-3 py-2 text-right font-semibold ${profit >= 0 ? "text-brand-700" : "text-red-600"}`}>
                       {formatBRL(profit)}
                     </td>
                   </tr>
@@ -308,13 +293,21 @@ function downloadPDF() {
           </tbody>
           <tfoot className="bg-slate-100 font-semibold">
             <tr className="border-t-2 border-slate-300">
-              <td className="px-3 py-2">TOTAIS</td>
-              <td className="px-3 py-2 text-right">{formatBRL(totals.net)}</td>
-              <td className="px-3 py-2 text-right">{formatBRL(totals.gas)}</td>
-              <td className="px-3 py-2 text-right">{formatBRL(totals.alcohol)}</td>
-              <td className="px-3 py-2 text-right">{formatBRL(totals.maintenance)}</td>
-              <td className="px-3 py-2 text-right">{formatBRL(totals.extras)}</td>
-              <td className="px-3 py-2 text-right text-brand-700">
+              <td className="border border-slate-200 px-3 py-2">TOTAIS</td>
+              <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.net)}</td>
+              {cats.gas && (
+                <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.gas)}</td>
+              )}
+              {cats.alcohol && (
+                <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.alcohol)}</td>
+              )}
+              {cats.maintenance && (
+                <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.maintenance)}</td>
+              )}
+              {cats.extras && (
+                <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(totals.extras)}</td>
+              )}
+              <td className="border border-slate-200 px-3 py-2 text-right text-brand-700">
                 {formatBRL(totals.profit)}
               </td>
             </tr>
@@ -323,7 +316,7 @@ function downloadPDF() {
       </div>
 
       {/* Botões de ação */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button onClick={openWhatsApp} className="btn bg-[#25D366] text-white hover:bg-[#1ebe57]">
           💬 Enviar por WhatsApp
         </button>
@@ -331,12 +324,8 @@ function downloadPDF() {
           ✉️ Enviar por E-mail
         </button>
         <button onClick={downloadPDF} className="btn btn-secondary">
-  📄 Baixar relatório (PDF)
-</button>
-
-<button onClick={downloadCSV} className="btn btn-secondary">
-  📊 Baixar relatório (CSV)
-</button>
+          📄 Baixar relatório (PDF)
+        </button>
       </div>
     </div>
   );

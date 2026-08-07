@@ -9,15 +9,20 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.45.4",
+<<<<<<< HEAD
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
+=======
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2",
+>>>>>>> 7709c44 (fix(relatorios): adiciona reatividade nos filtros, bordas na tabela, descricao nos extras e remove exportacao CSV)
     "next": "14.2.15",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.7.5",
