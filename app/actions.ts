@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { createClientServer } from "@/lib/supabase";
 import { clearSessionCookie, requireUser, setSessionCookie } from "@/lib/auth";
 import { computeDayProfit, type ExtraExpense, type MaintenanceItem } from "@/lib/utils";
@@ -18,6 +19,10 @@ export type SaveEntryInput = {
   extra_expenses: ExtraExpense[];
 };
 
+function sessionToken() {
+  return cookies().get("faturapp_session")?.value ?? null;
+}
+
 function validatePassword(password: string) {
   return password.length >= 4 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
@@ -35,9 +40,7 @@ export async function registerUser(login: string, password: string) {
   const normalized = login.trim();
   if (!normalized) return { success: false, error: "Informe um login." };
   if (normalized.length > 120) return { success: false, error: "O login deve ter no máximo 120 caracteres." };
-  if (!validatePassword(password)) {
-    return { success: false, error: "A senha deve ter no mínimo 4 caracteres, uma letra maiúscula, um número e um caractere especial." };
-  }
+  if (!validatePassword(password)) return { success: false, error: "A senha deve ter no mínimo 4 caracteres, uma letra maiúscula, um número e um caractere especial." };
 
   const supabase = createClientServer();
   const { data, error } = await supabase.rpc("app_register", { p_login: normalized, p_password: password });
@@ -49,26 +52,19 @@ export async function registerUser(login: string, password: string) {
 }
 
 export async function logoutUser() {
-  const { cookies } = await import("next/headers");
-  const token = cookies().get("faturapp_session")?.value;
-  if (token) {
-    const supabase = createClientServer();
-    await supabase.rpc("app_logout", { p_token: token });
-  }
+  const token = sessionToken();
+  if (token) await createClientServer().rpc("app_logout", { p_token: token });
   clearSessionCookie();
   redirect("/login");
 }
 
 export async function saveEntry(input: SaveEntryInput) {
-  const user = await requireUser();
-  const supabase = createClientServer();
+  await requireUser();
+  const token = sessionToken();
+  if (!token) return { success: false, error: "Sessão inválida." };
 
-  const maintenanceDetails = (input.maintenance_details ?? [])
-    .filter((item) => item.description.trim() !== "")
-    .map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
-
+  const maintenanceDetails = (input.maintenance_details ?? []).filter((item) => item.description.trim() !== "").map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
   const row = {
-    user_id: user.user_id,
     date: input.date,
     gross_amount: input.gross_amount,
     fee_percent: input.fee_percent,
@@ -80,7 +76,8 @@ export async function saveEntry(input: SaveEntryInput) {
     extra_expenses: input.extra_expenses ?? [],
   };
 
-  const { error } = await supabase.from("daily_entries").insert(row);
+  const supabase = createClientServer();
+  const { error } = await supabase.rpc("app_save_entry", { p_token: token, p_entry: row });
   if (error) return { success: false, error: error.message };
 
   const monthProfit = await getMonthProfit(input.date);
@@ -90,22 +87,23 @@ export async function saveEntry(input: SaveEntryInput) {
 }
 
 export async function getMonthProfit(dateISO: string): Promise<number> {
-  const user = await requireUser();
-  const supabase = createClientServer();
+  await requireUser();
+  const token = sessionToken();
+  if (!token) return 0;
   const [y, m] = dateISO.split("-");
   const from = `${y}-${m}-01`;
   const last = new Date(Number(y), Number(m), 0).getDate();
   const to = `${y}-${m}-${String(last).padStart(2, "0")}`;
-
-  const { data, error } = await supabase.from("daily_entries").select("*").eq("user_id", user.user_id).gte("date", from).lte("date", to);
-  if (error || !data) return 0;
-  return data.reduce((acc, entry) => acc + computeDayProfit(entry as any), 0);
+  const { data, error } = await createClientServer().rpc("app_get_month_profit", { p_token: token, p_from: from, p_to: to });
+  if (error || data == null) return 0;
+  return Number(data) || 0;
 }
 
 export async function getEntriesInRange(from: string, to: string) {
-  const user = await requireUser();
-  const supabase = createClientServer();
-  const { data, error } = await supabase.from("daily_entries").select("*").eq("user_id", user.user_id).gte("date", from).lte("date", to).order("date", { ascending: true }).order("created_at", { ascending: true });
+  await requireUser();
+  const token = sessionToken();
+  if (!token) return [];
+  const { data, error } = await createClientServer().rpc("app_get_entries", { p_token: token, p_from: from, p_to: to });
   if (error) throw new Error(error.message);
   return (data ?? []) as any[];
 }
