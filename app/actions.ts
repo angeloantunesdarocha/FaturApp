@@ -41,9 +41,11 @@ export async function saveEntry(input: SaveEntryInput) {
     extra_expenses: input.extra_expenses ?? [],
   };
 
+  // Cada clique em "Salvar Lançamento" cria um novo lançamento.
+  // Lançamentos feitos na mesma data devem permanecer separados.
   const { error } = await supabase
     .from("daily_entries")
-    .upsert(row, { onConflict: "user_id,date" });
+    .insert(row);
 
   if (error) {
     return { success: false, error: error.message };
@@ -82,7 +84,8 @@ export async function getEntriesInRange(from: string, to: string) {
     .eq("user_id", DEFAULT_USER_ID)
     .gte("date", from)
     .lte("date", to)
-    .order("date", { ascending: true });
+    .order("date", { ascending: true })
+    .order("created_at", { ascending: true });
 
   if (error) throw new Error(error.message);
   return (data ?? []) as any[];
