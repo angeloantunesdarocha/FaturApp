@@ -14,6 +14,9 @@ export type SaveEntryInput = {
   net_fare: number | null;
   gas_expense: number;
   alcohol_expense: number;
+  gasoline_liters: number;
+  alcohol_liters: number;
+  km_driven: number;
   maintenance_expense: number;
   maintenance_details: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
@@ -31,7 +34,11 @@ export async function loginUser(login: string, password: string) {
   if (!login.trim() || !password) return { success: false, error: "Informe login e senha." };
   const supabase = createClientServer();
   const { data, error } = await supabase.rpc("app_login", { p_login: login, p_password: password });
-  if (error || !data?.[0]) return { success: false, error: "Login ou senha incorretos." };
+  if (error) {
+    console.error("Erro Supabase login:", error);
+    return { success: false, error: "Erro ao validar acesso. Tente novamente." };
+  }
+  if (!data?.[0]) return { success: false, error: "Login ou senha incorretos." };
   setSessionCookie(data[0].session_token);
   return { success: true };
 }
@@ -64,6 +71,9 @@ export async function saveEntry(input: SaveEntryInput) {
   if (!token) return { success: false, error: "Sessão inválida." };
 
   const maintenanceDetails = (input.maintenance_details ?? []).filter((item) => item.description.trim() !== "").map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
+  const kmDriven = Math.max(0, Number(input.km_driven) || 0);
+  const gasolineLiters = Math.max(0, Number(input.gasoline_liters) || 0);
+  const alcoholLiters = Math.max(0, Number(input.alcohol_liters) || 0);
   const row = {
     date: input.date,
     gross_amount: input.gross_amount,
@@ -71,6 +81,9 @@ export async function saveEntry(input: SaveEntryInput) {
     net_fare: input.net_fare,
     gas_expense: input.gas_expense ?? 0,
     alcohol_expense: input.alcohol_expense ?? 0,
+    gasoline_liters: gasolineLiters,
+    alcohol_liters: alcoholLiters,
+    km_driven: kmDriven,
     maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
     maintenance_details: maintenanceDetails,
     extra_expenses: input.extra_expenses ?? [],
