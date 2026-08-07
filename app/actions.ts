@@ -16,6 +16,8 @@ export type SaveEntryInput = {
   alcohol_expense: number;
   gasoline_liters: number;
   alcohol_liters: number;
+  km_initial: number;
+  km_final: number;
   km_driven: number;
   maintenance_expense: number;
   maintenance_details: MaintenanceItem[];
@@ -70,8 +72,12 @@ export async function saveEntry(input: SaveEntryInput) {
   const token = sessionToken();
   if (!token) return { success: false, error: "Sessão inválida." };
 
+  const kmInitial = Math.max(0, Number(input.km_initial) || 0);
+  const kmFinal = Math.max(0, Number(input.km_final) || 0);
+  if (kmFinal < kmInitial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
+
   const maintenanceDetails = (input.maintenance_details ?? []).filter((item) => item.description.trim() !== "").map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
-  const kmDriven = Math.max(0, Number(input.km_driven) || 0);
+  const kmDriven = kmFinal - kmInitial;
   const gasolineLiters = Math.max(0, Number(input.gasoline_liters) || 0);
   const alcoholLiters = Math.max(0, Number(input.alcohol_liters) || 0);
   const row = {
@@ -83,6 +89,8 @@ export async function saveEntry(input: SaveEntryInput) {
     alcohol_expense: input.alcohol_expense ?? 0,
     gasoline_liters: gasolineLiters,
     alcohol_liters: alcoholLiters,
+    km_initial: kmInitial,
+    km_final: kmFinal,
     km_driven: kmDriven,
     maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
     maintenance_details: maintenanceDetails,
