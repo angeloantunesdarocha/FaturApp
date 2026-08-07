@@ -120,7 +120,7 @@ export default function EntryForm({ initialDate = todayISO(), initialMonthProfit
             <div><label className="label">Km inicial</label><input type="number" step="0.1" min="0" className="input" value={kmInitial || ""} onChange={(e) => setKmInitial(toNumber(e.target.value))} placeholder="Ex.: 52.340" /></div>
             <div><label className="label">Km final</label><input type="number" step="0.1" min="0" className="input" value={kmFinal || ""} onChange={(e) => setKmFinal(toNumber(e.target.value))} placeholder="Ex.: 52.520" /></div>
           </div>
-          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 flex items-center justify-between"><div><p className="text-xs text-slate-500">Quantidade de km rodados</p><p className="text-2xl font-bold text-slate-800">{formatKm(kmDriven)} km</p></div><p className="text-xs text-slate-500 text-right">Km final − km inicial</p></div>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 flex items-center"><div><p className="text-xs text-slate-500">Quantidade de km rodados</p><p className="text-2xl font-bold text-slate-800">{formatKm(kmDriven)} km</p></div></div>
 
           <div className="border-t border-slate-200 pt-4 space-y-3">
             <h4 className="font-semibold text-slate-700">Gasolina</h4>
