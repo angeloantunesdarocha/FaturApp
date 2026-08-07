@@ -46,7 +46,6 @@ export default function EntryForm({ initialDate = todayISO(), initialMonthProfit
   const gasCostPerKm = computeFuelCostPerKm(gas, kmDriven);
   const alcoholCostPerKm = computeFuelCostPerKm(alcohol, kmDriven);
   const totalFuelCost = computeFuelCost({ gas_expense: gas, alcohol_expense: alcohol });
-  const totalFuelLiters = gasLiters + alcoholLiters;
   const totalFuelCostPerKm = computeFuelCostPerKm(totalFuelCost, kmDriven);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -115,7 +114,7 @@ export default function EntryForm({ initialDate = todayISO(), initialMonthProfit
         </div>
 
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
-          <div><h3 className="text-base font-bold text-slate-800">Quilometragem e combustível</h3><p className="text-xs text-slate-500 mt-1">Informe o hodômetro e o valor abastecido. O sistema calcula automaticamente os quilômetros e o custo do combustível por km.</p></div>
+          <div><h3 className="text-base font-bold text-slate-800">Quilometragem e combustível</h3><p className="text-xs text-slate-500 mt-1">Informe o hodômetro e o valor abastecido. O sistema calcula automaticamente os quilômetros rodados e quanto o combustível custou no total e por quilômetro.</p></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className="label">Km inicial</label><input type="number" step="0.1" min="0" className="input" value={kmInitial || ""} onChange={(e) => setKmInitial(toNumber(e.target.value))} placeholder="Ex.: 52.340" /></div>
             <div><label className="label">Km final</label><input type="number" step="0.1" min="0" className="input" value={kmFinal || ""} onChange={(e) => setKmFinal(toNumber(e.target.value))} placeholder="Ex.: 52.520" /></div>
@@ -130,8 +129,8 @@ export default function EntryForm({ initialDate = todayISO(), initialMonthProfit
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Litros calculados</p><p className="text-lg font-bold text-slate-800">{gasLiters.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} L</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Gasto por km</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(gasCostPerKm)}</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Total gasto</p><p className="text-lg font-bold text-slate-800">{formatBRL(gas)}</p></div>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo de cada km rodado</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(gasCostPerKm)}</p></div>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Gasto total para rodar os {formatKm(kmDriven)} km</p><p className="text-lg font-bold text-slate-800">{formatBRL(gas)}</p></div>
             </div>
           </div>
 
@@ -143,8 +142,8 @@ export default function EntryForm({ initialDate = todayISO(), initialMonthProfit
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Litros calculados</p><p className="text-lg font-bold text-slate-800">{alcoholLiters.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} L</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Gasto por km</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(alcoholCostPerKm)}</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Total gasto</p><p className="text-lg font-bold text-slate-800">{formatBRL(alcohol)}</p></div>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo de cada km rodado</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(alcoholCostPerKm)}</p></div>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Gasto total para rodar os {formatKm(kmDriven)} km</p><p className="text-lg font-bold text-slate-800">{formatBRL(alcohol)}</p></div>
             </div>
           </div>
 
