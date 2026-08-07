@@ -76,7 +76,7 @@ export default function ReportsTable({
     return { net, gas, alcohol, maintenance, extras, profit };
   }, [filtered, cats]);
 
-  // Monta texto do resumo
+  // Monta texto do resumo com detalhamento dos extras
   const summaryText = useMemo(() => {
     const lines = [
       `Relatório de ${formatDateBR(from)} a ${formatDateBR(to)}`,
@@ -85,10 +85,23 @@ export default function ReportsTable({
     if (cats.gas) lines.push(`Gasolina: ${formatBRL(totals.gas)}`);
     if (cats.alcohol) lines.push(`Álcool: ${formatBRL(totals.alcohol)}`);
     if (cats.maintenance) lines.push(`Manutenção: ${formatBRL(totals.maintenance)}`);
-    if (cats.extras) lines.push(`Extras: ${formatBRL(totals.extras)}`);
+    
+    if (cats.extras) {
+      lines.push(`Extras: ${formatBRL(totals.extras)}`);
+      // Adiciona detalhamento item por item de todos os dias filtrados
+      filtered.forEach((e) => {
+        const extraExpensesList = e.extra_expenses || [];
+        if (extraExpensesList.length > 0) {
+          extraExpensesList.forEach((x) => {
+            lines.push(`  - ${formatDateBR(e.date)}: ${formatBRL(toNumber(x.value))} ${x.name}`);
+          });
+        }
+      });
+    }
+    
     lines.push(`Lucro total: ${formatBRL(totals.profit)}`);
     return lines.join("\n");
-  }, [from, to, totals, cats]);
+  }, [from, to, totals, cats, filtered]);
 
   function openWhatsApp() {
     const url = `https://wa.me/?text=${encodeURIComponent(summaryText)}`;
@@ -117,9 +130,14 @@ export default function ReportsTable({
     const rows = filtered.map((e) => {
       const values = calculateFilteredValues(e);
       const extraExpensesList = e.extra_expenses || [];
-      const extrasText = cats.extras && extraExpensesList.length > 0
-        ? `${formatBRL(values.extrasValue)} (${extraExpensesList.map(x => x.name).join(", ")})`
-        : formatBRL(values.extrasValue);
+      
+      let extrasText = formatBRL(values.extrasValue);
+      if (cats.extras && extraExpensesList.length > 0) {
+        const itemsDetail = extraExpensesList
+          .map((x) => `${formatBRL(toNumber(x.value))} ${x.name}`)
+          .join("\\n");
+        extrasText = `${formatBRL(values.extrasValue)}\\n${itemsDetail}`;
+      }
 
       return [
         formatDateBR(e.date),
@@ -273,12 +291,16 @@ export default function ReportsTable({
                     )}
                     {cats.extras && (
                       <td className="border border-slate-200 px-3 py-2 text-right">
-                        <div className="flex flex-col items-end">
+                        <div className="flex flex-col items-end gap-1">
                           <span className="font-medium">{formatBRL(extrasValue)}</span>
                           {hasExtraDescription && (
-                            <span className="text-xs text-slate-500">
-                              {extraExpensesList.map((x) => x.name).join(", ")}
-                            </span>
+                            <div className="text-xs text-slate-500 space-y-0.5">
+                              {extraExpensesList.map((x, idx) => (
+                                <div key={idx} className="whitespace-nowrap">
+                                  {formatBRL(toNumber(x.value))} {x.name}
+                                </div>
+                              ))}
+                            </div>
                           )}
                         </div>
                       </td>
