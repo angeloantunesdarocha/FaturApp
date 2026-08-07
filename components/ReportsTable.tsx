@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+
 import {
   computeDayProfit,
   computeNetFare,
@@ -84,6 +87,62 @@ export default function ReportsTable({
     window.location.href = mailto;
   }
 
+function downloadPDF() {
+  const doc = new jsPDF("landscape");
+
+  doc.setFontSize(16);
+  doc.text("FaturApp - Relatório Financeiro", 14, 15);
+
+  doc.setFontSize(10);
+  doc.text(
+    `Período: ${formatDateBR(from)} até ${formatDateBR(to)}`,
+    14,
+    22
+  );
+
+  const rows = filtered.map((e) => {
+    const extrasSum = (e.extra_expenses || []).reduce(
+      (acc, x) => acc + toNumber(x.value),
+      0
+    );
+
+    return [
+      formatDateBR(e.date),
+      formatBRL(computeNetFare(e)),
+      formatBRL(Number(e.gas_expense || 0)),
+      formatBRL(Number(e.alcohol_expense || 0)),
+      formatBRL(Number(e.maintenance_expense || 0)),
+      formatBRL(extrasSum),
+      formatBRL(computeDayProfit(e)),
+    ];
+  });
+
+  rows.push([
+    "TOTAL",
+    formatBRL(totals.net),
+    formatBRL(totals.gas),
+    formatBRL(totals.alcohol),
+    formatBRL(totals.maintenance),
+    formatBRL(totals.extras),
+    formatBRL(totals.profit),
+  ]);
+
+  autoTable(doc, {
+    head: [[
+      "Data",
+      "Receita Líquida",
+      "Gasolina",
+      "Álcool",
+      "Manutenção",
+      "Extras",
+      "Lucro do Dia",
+    ]],
+    body: rows,
+    startY: 30,
+  });
+
+  doc.save(`FaturApp_Relatorio_${from}_${to}.pdf`);
+}
   function downloadCSV() {
     const header = [
       "Data",
@@ -271,9 +330,13 @@ export default function ReportsTable({
         <button onClick={openEmail} className="btn bg-sky-600 text-white hover:bg-sky-700">
           ✉️ Enviar por E-mail
         </button>
-        <button onClick={downloadCSV} className="btn btn-secondary">
-          ⬇️ Baixar relatório (CSV)
-        </button>
+        <button onClick={downloadPDF} className="btn btn-secondary">
+  📄 Baixar relatório (PDF)
+</button>
+
+<button onClick={downloadCSV} className="btn btn-secondary">
+  📊 Baixar relatório (CSV)
+</button>
       </div>
     </div>
   );
