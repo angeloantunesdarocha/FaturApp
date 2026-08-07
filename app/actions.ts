@@ -14,24 +14,27 @@ export type SaveEntryInput = {
   net_fare: number | null;
   gas_expense: number;
   alcohol_expense: number;
+  gasoline_price_per_liter: number;
+  alcohol_price_per_liter: number;
+  gasoline_liters: number;
+  alcohol_liters: number;
+  km_initial: number;
+  km_final: number;
+  km_driven: number;
   maintenance_expense: number;
   maintenance_details: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
 };
 
-function sessionToken() {
-  return cookies().get("faturapp_session")?.value ?? null;
-}
-
-function validatePassword(password: string) {
-  return password.length >= 4 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
-}
+function sessionToken() { return cookies().get("faturapp_session")?.value ?? null; }
+function validatePassword(password: string) { return password.length >= 4 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password); }
 
 export async function loginUser(login: string, password: string) {
   if (!login.trim() || !password) return { success: false, error: "Informe login e senha." };
   const supabase = createClientServer();
   const { data, error } = await supabase.rpc("app_login", { p_login: login, p_password: password });
-  if (error || !data?.[0]) return { success: false, error: "Login ou senha incorretos." };
+  if (error) { console.error("Erro Supabase login:", error); return { success: false, error: "Erro ao validar acesso. Tente novamente." }; }
+  if (!data?.[0]) return { success: false, error: "Login ou senha incorretos." };
   setSessionCookie(data[0].session_token);
   return { success: true };
 }
@@ -41,13 +44,11 @@ export async function registerUser(login: string, password: string) {
   if (!normalized) return { success: false, error: "Informe um login." };
   if (normalized.length > 120) return { success: false, error: "O login deve ter no máximo 120 caracteres." };
   if (!validatePassword(password)) return { success: false, error: "A senha deve ter no mínimo 4 caracteres, uma letra maiúscula, um número e um caractere especial." };
-
   const supabase = createClientServer();
   const { data, error } = await supabase.rpc("app_register", { p_login: normalized, p_password: password });
   if (error || !data?.[0]) return { success: false, error: error?.message || "Não foi possível cadastrar." };
   setSessionCookie(data[0].session_token);
-  revalidatePath("/");
-  revalidatePath("/relatorios");
+  revalidatePath("/"); revalidatePath("/relatorios");
   return { success: true, role: data[0].role };
 }
 
@@ -63,14 +64,35 @@ export async function saveEntry(input: SaveEntryInput) {
   const token = sessionToken();
   if (!token) return { success: false, error: "Sessão inválida." };
 
+  const kmInitial = Math.max(0, Number(input.km_initial) || 0);
+  const kmFinal = Math.max(0, Number(input.km_final) || 0);
+  if (kmFinal < kmInitial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
+
+  const gasCost = Math.max(0, Number(input.gas_expense) || 0);
+  const alcoholCost = Math.max(0, Number(input.alcohol_expense) || 0);
+  const gasPrice = Math.max(0, Number(input.gasoline_price_per_liter) || 0);
+  const alcoholPrice = Math.max(0, Number(input.alcohol_price_per_liter) || 0);
+  if (gasCost > 0 && gasPrice <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
+  if (alcoholCost > 0 && alcoholPrice <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
+
   const maintenanceDetails = (input.maintenance_details ?? []).filter((item) => item.description.trim() !== "").map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
+  const kmDriven = kmFinal - kmInitial;
+  const gasolineLiters = gasPrice > 0 ? gasCost / gasPrice : 0;
+  const alcoholLiters = alcoholPrice > 0 ? alcoholCost / alcoholPrice : 0;
   const row = {
     date: input.date,
     gross_amount: input.gross_amount,
     fee_percent: input.fee_percent,
     net_fare: input.net_fare,
-    gas_expense: input.gas_expense ?? 0,
-    alcohol_expense: input.alcohol_expense ?? 0,
+    gas_expense: gasCost,
+    alcohol_expense: alcoholCost,
+    gasoline_price_per_liter: gasPrice,
+    alcohol_price_per_liter: alcoholPrice,
+    gasoline_liters: gasolineLiters,
+    alcohol_liters: alcoholLiters,
+    km_initial: kmInitial,
+    km_final: kmFinal,
+    km_driven: kmDriven,
     maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
     maintenance_details: maintenanceDetails,
     extra_expenses: input.extra_expenses ?? [],
@@ -79,10 +101,8 @@ export async function saveEntry(input: SaveEntryInput) {
   const supabase = createClientServer();
   const { error } = await supabase.rpc("app_save_entry", { p_token: token, p_entry: row });
   if (error) return { success: false, error: error.message };
-
   const monthProfit = await getMonthProfit(input.date);
-  revalidatePath("/");
-  revalidatePath("/relatorios");
+  revalidatePath("/"); revalidatePath("/relatorios");
   return { success: true, monthProfit };
 }
 

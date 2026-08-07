@@ -16,7 +16,7 @@ export default async function ReportsPage() {
   const entries = await getEntriesInRange(yearStart, yearEnd);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Relatórios</h1>
@@ -24,7 +24,11 @@ export default async function ReportsPage() {
         </div>
         <LogoutButton />
       </div>
-      <p className="text-sm text-slate-600">Filtre pelo período e categorias, envie por WhatsApp, e-mail ou baixe em CSV.</p>
+
+      <p className="text-sm text-slate-600">
+        Consulte quilometragem, combustível, receitas, despesas e lucro em uma visão organizada. Envie por WhatsApp, e-mail ou baixe em PDF/CSV.
+      </p>
+
       <ReportsTable entries={entries} initialFrom={from} initialTo={to} />
     </div>
   );
