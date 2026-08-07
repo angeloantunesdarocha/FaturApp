@@ -32,6 +32,9 @@ export type DailyEntry = {
   net_fare: number | null;
   gas_expense: number;
   alcohol_expense: number;
+  gasoline_liters: number;
+  alcohol_liters: number;
+  km_driven: number;
   maintenance_expense: number;
   maintenance_details?: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
@@ -59,6 +62,21 @@ export function computeNetFare(entry: {
   }
 
   return Number(entry.net_fare ?? 0) || 0;
+}
+
+export function computeFuelCost(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense">): number {
+  return Math.max(0, Number(entry.gas_expense) || 0) + Math.max(0, Number(entry.alcohol_expense) || 0);
+}
+
+export function computeFuelLiters(entry: Pick<DailyEntry, "gasoline_liters" | "alcohol_liters">): number {
+  return Math.max(0, Number(entry.gasoline_liters) || 0) + Math.max(0, Number(entry.alcohol_liters) || 0);
+}
+
+export function computeKmPerLiter(entry: Pick<DailyEntry, "km_driven" | "gasoline_liters" | "alcohol_liters">): number | null {
+  const km = Math.max(0, Number(entry.km_driven) || 0);
+  const liters = computeFuelLiters(entry);
+  if (liters <= 0) return null;
+  return km / liters;
 }
 
 export function computeDayProfit(entry: DailyEntry): number {
