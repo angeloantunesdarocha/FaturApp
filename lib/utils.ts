@@ -4,15 +4,11 @@ export function formatBRL(value: number): string {
 
 export function toNumber(v: string | number | null | undefined): number {
   if (v === null || v === undefined || v === "") return 0;
-  const n = typeof v === "string" ? parseFloat(v.replace(",", ".")) : Number(v);
-  return isNaN(n) ? 0 : n;
-}
-
-export function toOdometerNumber(v: string | number | null | undefined): number {
-  if (v === null || v === undefined || v === "") return 0;
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   const value = v.trim().replace(/\s/g, "");
   if (!value) return 0;
+  // In Brazilian notation, 52.520 represents an odometer reading of 52,520 km.
+  // Decimal monetary values normally use a comma (e.g. 6,19) or two decimals (6.19).
   const normalized = value.includes(",")
     ? value.replace(/\./g, "").replace(",", ".")
     : /^\d{1,3}(\.\d{3})+$/.test(value)
@@ -20,6 +16,10 @@ export function toOdometerNumber(v: string | number | null | undefined): number 
       : value;
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
+}
+
+export function toOdometerNumber(v: string | number | null | undefined): number {
+  return toNumber(v);
 }
 
 export function todayISO(): string {
