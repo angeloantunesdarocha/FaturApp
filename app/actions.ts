@@ -1,7 +1,7 @@
 "use server";
 
 import { createClientServer } from "@/lib/supabase";
-import { computeDayProfit, type ExtraExpense } from "@/lib/utils";
+import { computeDayProfit, type ExtraExpense, type MaintenanceItem } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 
 const DEFAULT_USER_ID = "default";
@@ -14,13 +14,20 @@ export type SaveEntryInput = {
   gas_expense: number;
   alcohol_expense: number;
   maintenance_expense: number;
+  maintenance_details: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
 };
 
 export async function saveEntry(input: SaveEntryInput) {
   const supabase = createClientServer();
 
-  // Monta row a ser inserida
+  const maintenanceDetails = (input.maintenance_details ?? [])
+    .filter((item) => item.description.trim() !== "")
+    .map((item) => ({
+      description: item.description.trim(),
+      value: Number(item.value) || 0,
+    }));
+
   const row = {
     user_id: DEFAULT_USER_ID,
     date: input.date,
@@ -29,11 +36,11 @@ export async function saveEntry(input: SaveEntryInput) {
     net_fare: input.net_fare,
     gas_expense: input.gas_expense ?? 0,
     alcohol_expense: input.alcohol_expense ?? 0,
-    maintenance_expense: input.maintenance_expense ?? 0,
+    maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
+    maintenance_details: maintenanceDetails,
     extra_expenses: input.extra_expenses ?? [],
   };
 
-  // UPSERT por (user_id, date) — atualiza se já existir lançamento naquele dia
   const { error } = await supabase
     .from("daily_entries")
     .upsert(row, { onConflict: "user_id,date" });
@@ -42,18 +49,16 @@ export async function saveEntry(input: SaveEntryInput) {
     return { success: false, error: error.message };
   }
 
-  // Calcula lucro total do mês da data salva
   const monthProfit = await getMonthProfit(input.date);
   revalidatePath("/");
+  revalidatePath("/relatorios");
   return { success: true, monthProfit };
 }
 
-// Retorna lucro total do mês ao qual a data pertence
 export async function getMonthProfit(dateISO: string): Promise<number> {
   const supabase = createClientServer();
   const [y, m] = dateISO.split("-");
   const from = `${y}-${m}-01`;
-  // último dia do mês
   const last = new Date(Number(y), Number(m), 0).getDate();
   const to = `${y}-${m}-${String(last).padStart(2, "0")}`;
 
@@ -66,12 +71,9 @@ export async function getMonthProfit(dateISO: string): Promise<number> {
 
   if (error || !data) return 0;
 
-  return data.reduce((acc, entry) => {
-    return acc + computeDayProfit(entry as any);
-  }, 0);
+  return data.reduce((acc, entry) => acc + computeDayProfit(entry as any), 0);
 }
 
-// Busca registros em intervalo de datas
 export async function getEntriesInRange(from: string, to: string) {
   const supabase = createClientServer();
   const { data, error } = await supabase
