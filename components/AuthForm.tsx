@@ -10,6 +10,7 @@ export default function AuthForm({ mode }: Props) {
   const router = useRouter();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("");
   const isRegister = mode === "register";
 
@@ -40,7 +41,25 @@ export default function AuthForm({ mode }: Props) {
         </div>
         <div>
           <label className="label">Senha</label>
-          <input type="password" className="input" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              className="input pr-12"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete={isRegister ? "new-password" : "current-password"}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className="absolute right-0 top-0 h-full px-3 text-slate-500 hover:text-slate-800"
+              aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              title={showPassword ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </button>
+          </div>
           {isRegister && <p className="text-xs text-slate-500 mt-1">A senha deve ter no mínimo 4 caracteres, incluindo pelo menos 1 letra maiúscula, 1 número e 1 caractere especial.</p>}
         </div>
         <button type="submit" className="btn btn-primary w-full">{isRegister ? "Criar conta" : "Entrar"}</button>
