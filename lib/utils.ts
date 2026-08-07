@@ -25,6 +25,7 @@ export function formatDateBR(iso: string): string {
 }
 
 export type ExtraExpense = { name: string; value: number };
+export type MaintenanceItem = { description: string; value: number };
 
 export type DailyEntry = {
   id: string;
@@ -35,6 +36,7 @@ export type DailyEntry = {
   gas_expense: number;
   alcohol_expense: number;
   maintenance_expense: number;
+  maintenance_details?: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
 };
 

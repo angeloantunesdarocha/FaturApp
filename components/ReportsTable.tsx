@@ -84,11 +84,21 @@ export default function ReportsTable({
     ];
     if (cats.gas) lines.push(`Gasolina: ${formatBRL(totals.gas)}`);
     if (cats.alcohol) lines.push(`Álcool: ${formatBRL(totals.alcohol)}`);
-    if (cats.maintenance) lines.push(`Manutenção: ${formatBRL(totals.maintenance)}`);
     
+    if (cats.maintenance) {
+      lines.push(`Manutenção: ${formatBRL(totals.maintenance)}`);
+      filtered.forEach((e) => {
+        const maintList = e.maintenance_details || [];
+        if (maintList.length > 0) {
+          maintList.forEach((m) => {
+            lines.push(`  - ${formatDateBR(e.date)}: ${formatBRL(toNumber(m.value))} ${m.description}`);
+          });
+        }
+      });
+    }
+
     if (cats.extras) {
       lines.push(`Extras: ${formatBRL(totals.extras)}`);
-      // Adiciona detalhamento item por item de todos os dias filtrados
       filtered.forEach((e) => {
         const extraExpensesList = e.extra_expenses || [];
         if (extraExpensesList.length > 0) {
@@ -98,11 +108,10 @@ export default function ReportsTable({
         }
       });
     }
-    
+
     lines.push(`Lucro total: ${formatBRL(totals.profit)}`);
     return lines.join("\n");
   }, [from, to, totals, cats, filtered]);
-
   function openWhatsApp() {
     const url = `https://wa.me/?text=${encodeURIComponent(summaryText)}`;
     window.open(url, "_blank");
@@ -130,7 +139,8 @@ export default function ReportsTable({
     const rows = filtered.map((e) => {
       const values = calculateFilteredValues(e);
       const extraExpensesList = e.extra_expenses || [];
-      
+      const maintenanceDetailsList = e.maintenance_details || [];
+
       let extrasText = formatBRL(values.extrasValue);
       if (cats.extras && extraExpensesList.length > 0) {
         const itemsDetail = extraExpensesList
@@ -139,12 +149,20 @@ export default function ReportsTable({
         extrasText = `${formatBRL(values.extrasValue)}\\n${itemsDetail}`;
       }
 
+      let maintenanceText = formatBRL(values.maintenanceValue);
+      if (cats.maintenance && maintenanceDetailsList.length > 0) {
+        const maintDetail = maintenanceDetailsList
+          .map((m) => `${formatBRL(toNumber(m.value))} ${m.description}`)
+          .join("\\n");
+        maintenanceText = `${formatBRL(values.maintenanceValue)}\\n${maintDetail}`;
+      }
+
       return [
         formatDateBR(e.date),
         formatBRL(computeNetFare(e)),
         cats.gas ? formatBRL(values.gasValue) : "",
         cats.alcohol ? formatBRL(values.alcoholValue) : "",
-        cats.maintenance ? formatBRL(values.maintenanceValue) : "",
+        cats.maintenance ? maintenanceText : "",
         cats.extras ? extrasText : "",
         formatBRL(values.profit),
       ];
@@ -287,7 +305,20 @@ export default function ReportsTable({
                       <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(alcoholValue)}</td>
                     )}
                     {cats.maintenance && (
-                      <td className="border border-slate-200 px-3 py-2 text-right">{formatBRL(maintenanceValue)}</td>
+                      <td className="border border-slate-200 px-3 py-2 text-right">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-medium">{formatBRL(maintenanceValue)}</span>
+                          {e.maintenance_details && e.maintenance_details.length > 0 && (
+                            <div className="text-xs text-slate-500 space-y-0.5">
+                              {e.maintenance_details.map((m, idx) => (
+                                <div key={idx} className="whitespace-nowrap">
+                                  {formatBRL(toNumber(m.value))} {m.description}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     )}
                     {cats.extras && (
                       <td className="border border-slate-200 px-3 py-2 text-right">

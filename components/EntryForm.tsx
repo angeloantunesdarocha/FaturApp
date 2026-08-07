@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { toNumber, todayISO, type ExtraExpense } from "@/lib/utils";
 import ExtraExpenses from "./ExtraExpenses";
+import MaintenanceExpenses, { type MaintenanceItem } from "./MaintenanceExpenses";
 import { saveEntry } from "@/app/actions";
 
 type Mode = "withFee" | "net";
@@ -25,7 +26,7 @@ export default function EntryForm({
 
   const [gas, setGas] = useState<number>(0);
   const [alcohol, setAlcohol] = useState<number>(0);
-  const [maintenance, setMaintenance] = useState<number>(0);
+  const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
   const [extras, setExtras] = useState<ExtraExpense[]>([]);
 
   const [monthProfit, setMonthProfit] = useState<number>(initialMonthProfit);
@@ -36,7 +37,8 @@ export default function EntryForm({
     mode === "withFee" ? gross * (1 - fee / 100) : netFare;
 
   const extrasSum = extras.reduce((acc, e) => acc + toNumber(e.value), 0);
-  const totalExpenses = gas + alcohol + maintenance + extrasSum;
+  const maintenanceTotal = maintenanceItems.reduce((acc, m) => acc + toNumber(m.value), 0);
+  const totalExpenses = gas + alcohol + maintenanceTotal + extrasSum;
   const dayProfit = fareNet - totalExpenses;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -50,7 +52,8 @@ export default function EntryForm({
       net_fare: mode === "net" ? netFare : null,
       gas_expense: gas,
       alcohol_expense: alcohol,
-      maintenance_expense: maintenance,
+      maintenance_expense: maintenanceTotal,
+      maintenance_details: maintenanceItems.filter((m) => m.description.trim() !== ""),
       extra_expenses: extras.filter((e) => e.name.trim() !== ""),
     };
 
@@ -63,7 +66,7 @@ export default function EntryForm({
       }
       // Reseta alguns campos mantendo a data
       setGross(0); setFee(0); setNetFare(0);
-      setGas(0); setAlcohol(0); setMaintenance(0);
+      setGas(0); setAlcohol(0); setMaintenanceItems([]);
       setExtras([]);
     } else {
       setStatus(`❌ Erro: ${res.error}`);
@@ -174,18 +177,12 @@ export default function EntryForm({
                 onChange={(e) => setAlcohol(toNumber(e.target.value))}
               />
             </div>
-            <div>
-              <label className="label">Manutenção (R$)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                className="input"
-                value={maintenance || ""}
-                onChange={(e) => setMaintenance(toNumber(e.target.value))}
-              />
-            </div>
           </div>
+        </div>
+
+        {/* Manutenções */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+          <MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems} />
         </div>
 
         {/* Gastos extras */}
