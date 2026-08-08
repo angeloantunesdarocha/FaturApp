@@ -8,6 +8,7 @@ export type AppUser = {
   user_id: string;
   login: string;
   role: "admin" | "user";
+  recovery_email: string | null;
 };
 
 export async function getCurrentUser(): Promise<AppUser | null> {
@@ -15,7 +16,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   if (!token) return null;
 
   const supabase = createClientServer();
-  const { data, error } = await supabase.rpc("app_get_session", {
+  const { data, error } = await supabase.rpc("app_get_session_with_email", {
     p_token: token,
   });
 
