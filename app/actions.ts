@@ -29,6 +29,7 @@ export type SaveEntryInput = {
 
 function sessionToken() { return cookies().get("faturapp_session")?.value ?? null; }
 function validatePassword(password: string) { return password.length >= 4 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password); }
+function validateEmail(email: string) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()); }
 
 export async function loginUser(login: string, password: string) {
   if (!login.trim() || !password) return { success: false, error: "Informe login e senha." };
@@ -40,17 +41,31 @@ export async function loginUser(login: string, password: string) {
   return { success: true };
 }
 
-export async function registerUser(login: string, password: string) {
+export async function registerUser(login: string, password: string, email: string) {
   const normalized = login.trim();
+  const normalizedEmail = email.trim().toLowerCase();
   if (!normalized) return { success: false, error: "Informe um login." };
   if (normalized.length > 120) return { success: false, error: "O login deve ter no máximo 120 caracteres." };
+  if (!validateEmail(normalizedEmail)) return { success: false, error: "Informe um e-mail válido para recuperação." };
   if (!validatePassword(password)) return { success: false, error: "A senha deve ter no mínimo 4 caracteres, uma letra maiúscula, um número e um caractere especial." };
   const supabase = createClientServer();
-  const { data, error } = await supabase.rpc("app_register", { p_login: normalized, p_password: password });
+  const { data, error } = await supabase.rpc("app_register_with_email", { p_login: normalized, p_password: password, p_email: normalizedEmail });
   if (error || !data?.[0]) return { success: false, error: error?.message || "Não foi possível cadastrar." };
   setSessionCookie(data[0].session_token);
   revalidatePath("/"); revalidatePath("/relatorios");
   return { success: true, role: data[0].role };
+}
+
+export async function saveRecoveryEmail(email: string) {
+  const user = await requireUser();
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!validateEmail(normalizedEmail)) return { success: false, error: "Informe um e-mail válido." };
+  const token = sessionToken();
+  if (!token) return { success: false, error: "Sessão inválida." };
+  const { error } = await createClientServer().rpc("app_update_recovery_email", { p_token: token, p_email: normalizedEmail });
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/");
+  return { success: true, email: normalizedEmail, login: user.login };
 }
 
 export async function logoutUser() {
