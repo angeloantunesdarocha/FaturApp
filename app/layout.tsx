@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">{children}</main>
-        <footer className="text-center text-xs text-slate-500 py-4 border-t border-slate-200"><p>FaturApp — descubra se você está lucrando ou pagando pra trabalhar.</p><p className="mt-1">FaturApp — Desenvolvido por: Ângelo Antunes</p></footer>
+        <footer className="text-center text-xs text-slate-500 py-4 border-t border-slate-200"><p>FaturApp — descubra se você está lucrando ou pagando pra trabalhar.</p><p className="mt-1">Desenvolvido por: Ângelo Antunes</p></footer>
       </body>
     </html>
   );
