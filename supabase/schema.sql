@@ -16,6 +16,7 @@ create table if not exists public.daily_entries (
   km_initial numeric default 0 not null,
   km_final numeric default 0 not null,
   km_driven numeric default 0 not null,
+  hours_worked numeric default 0 not null,
   maintenance_expense numeric default 0 not null,
   maintenance_details jsonb default '[]'::jsonb not null,
   extra_expenses jsonb default '[]'::jsonb not null
@@ -29,11 +30,11 @@ alter table public.daily_entries add column if not exists alcohol_liters numeric
 alter table public.daily_entries add column if not exists km_initial numeric default 0 not null;
 alter table public.daily_entries add column if not exists km_final numeric default 0 not null;
 alter table public.daily_entries add column if not exists km_driven numeric default 0 not null;
+alter table public.daily_entries add column if not exists hours_worked numeric default 0 not null;
 create index if not exists idx_daily_entries_date on public.daily_entries (date);
 create index if not exists idx_daily_entries_user_id on public.daily_entries (user_id);
 create index if not exists daily_entries_user_id_date_created_idx on public.daily_entries(user_id, date, created_at);
 
--- O sistema de autenticação do aplicativo usa app_users/app_sessions e cookies HTTP-only.
 create extension if not exists pgcrypto;
 
 create table if not exists public.app_users (
@@ -60,8 +61,6 @@ create index if not exists app_sessions_expires_at_idx on public.app_sessions(ex
 -- IMPORTANTE: o cadastro do primeiro usuário com o login "Angelo Antunes" recebe role admin
 -- e assume os lançamentos antigos que ainda estiverem com user_id = 'default'.
 
--- RLS da tabela legada permanece desabilitado para compatibilidade com a arquitetura atual.
--- A aplicação filtra todos os lançamentos pelo usuário autenticado antes de consultar/gravar.
 alter table public.daily_entries disable row level security;
 alter table public.app_users disable row level security;
 alter table public.app_sessions disable row level security;
