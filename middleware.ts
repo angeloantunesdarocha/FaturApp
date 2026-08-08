@@ -1,14 +1,27 @@
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { createClientMiddleware } from '@/lib/supabase'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
-  const supabase = createClientMiddleware(request, response)
 
-  // O getUser() valida a sessão no servidor e permite ao @supabase/ssr
-  // renovar o token e persistir os cookies atualizados na resposta.
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
   await supabase.auth.getUser()
-
   return response
 }
 
