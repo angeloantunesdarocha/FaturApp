@@ -13,8 +13,17 @@ function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigi
 function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} / km`;}
 function verdict(profit:number,km:number,profitPerKm:number|null,costPerKm:number|null,hasLaunch:boolean){
  if(!hasLaunch)return {tone:"neutral",text:"Lance o dia e descubra se sobrou dinheiro de verdade."};
- if(profit<=0){if(profit===0)return {tone:"amber",text:"🟡 Hoje você ficou no zero a zero: trabalhou pra pagar o carro."};return {tone:"red",text:`🔴 Hoje você PAGOU PRA TRABALHAR: faltaram ${formatBRL(Math.abs(profit))}.${km>0&&profitPerKm!==null&&costPerKm!==null?` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`:""}`};
- if(km===0||profitPerKm===null||costPerKm===null||profitPerKm>=costPerKm)return {tone:"green",text:`🟢 Hoje você LUCROU ${formatBRL(profit)}.${km>0&&profitPerKm!==null&&costPerKm!==null?` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`:""}`};
+ if(profit<=0){
+  if(profit===0)return {tone:"amber",text:"🟡 Hoje você ficou no zero a zero: trabalhou pra pagar o carro."};
+  let text=`🔴 Hoje você PAGOU PRA TRABALHAR: faltaram ${formatBRL(Math.abs(profit))}.`;
+  if(km>0&&profitPerKm!==null&&costPerKm!==null)text+=` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`;
+  return {tone:"red",text};
+ }
+ if(km===0||profitPerKm===null||costPerKm===null||profitPerKm>=costPerKm){
+  let text=`🟢 Hoje você LUCROU ${formatBRL(profit)}.`;
+  if(km>0&&profitPerKm!==null&&costPerKm!==null)text+=` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`;
+  return {tone:"green",text};
+ }
  return {tone:"amber",text:`🟡 Hoje você LUCROU ${formatBRL(profit)}, mas atenção: ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km. Cuidado para não virar prejuízo.`};
 }
 export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:Props){
