@@ -1,168 +1,47 @@
 "use client";
-
 import { useState } from "react";
 import { computeFeeAmount, computeFuelCost, computeFuelCostPerKm, computeLitersFromPurchase, formatBRL, toNumber, todayISO, type ExtraExpense } from "@/lib/utils";
 import ExtraExpenses from "./ExtraExpenses";
 import MaintenanceExpenses, { type MaintenanceItem } from "./MaintenanceExpenses";
+import CardDeLucro from "./CardDeLucro";
 import { saveEntry } from "@/app/actions";
 
 type Mode = "withFee" | "net";
-
 type Props = { initialDate?: string; initialMonthProfit?: number };
-
-function formatKm(value: number): string {
-  return value.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null };
+function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigits:1});}
+function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} / km`;}
+function verdict(profit:number,km:number,profitPerKm:number|null,costPerKm:number|null,hasLaunch:boolean){
+ if(!hasLaunch)return {tone:"neutral",text:"Lance o dia e descubra se sobrou dinheiro de verdade."};
+ if(profit<=0){
+  if(profit===0)return {tone:"amber",text:"🟡 Hoje você ficou no zero a zero: trabalhou pra pagar o carro."};
+  let text=`🔴 Hoje você PAGOU PRA TRABALHAR: faltaram ${formatBRL(Math.abs(profit))}.`;
+  if(km>0&&profitPerKm!==null&&costPerKm!==null)text+=` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`;
+  return {tone:"red",text};
+ }
+ if(km===0||profitPerKm===null||costPerKm===null||profitPerKm>=costPerKm){
+  let text=`🟢 Hoje você LUCROU ${formatBRL(profit)}.`;
+  if(km>0&&profitPerKm!==null&&costPerKm!==null)text+=` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`;
+  return {tone:"green",text};
+ }
+ return {tone:"amber",text:`🟡 Hoje você LUCROU ${formatBRL(profit)}, mas atenção: ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km. Cuidado para não virar prejuízo.`};
 }
-function formatCostPerKm(value: number | null): string {
-  return value === null ? "—" : `${formatBRL(value)} / km`;
-}
-
-export default function EntryForm({ initialDate = todayISO(), initialMonthProfit = 0 }: Props) {
-  const [mode, setMode] = useState<Mode>("withFee");
-  const [date, setDate] = useState(initialDate);
-  const [gross, setGross] = useState(0);
-  const [fee, setFee] = useState(0);
-  const [netFare, setNetFare] = useState(0);
-  const [gas, setGas] = useState(0);
-  const [alcohol, setAlcohol] = useState(0);
-  const [gasPrice, setGasPrice] = useState(0);
-  const [alcoholPrice, setAlcoholPrice] = useState(0);
-  const [kmInitial, setKmInitial] = useState(0);
-  const [kmFinal, setKmFinal] = useState(0);
-  const [maintenanceItems, setMaintenanceItems] = useState<MaintenanceItem[]>([]);
-  const [extras, setExtras] = useState<ExtraExpense[]>([]);
-  const [monthProfit, setMonthProfit] = useState(initialMonthProfit);
-  const [status, setStatus] = useState("");
-
-  const fareNet = mode === "withFee" ? gross * (1 - fee / 100) : netFare;
-  const feeAmount = mode === "withFee" ? computeFeeAmount({ gross_amount: gross, fee_percent: fee }) : 0;
-  const extrasSum = extras.reduce((acc, e) => acc + toNumber(e.value), 0);
-  const maintenanceTotal = maintenanceItems.reduce((acc, m) => acc + toNumber(m.value), 0);
-  const totalExpenses = gas + alcohol + maintenanceTotal + extrasSum;
-  const dayProfit = fareNet - totalExpenses;
-  const kmDriven = Math.max(0, kmFinal - kmInitial);
-  const gasLiters = computeLitersFromPurchase(gas, gasPrice);
-  const alcoholLiters = computeLitersFromPurchase(alcohol, alcoholPrice);
-  const gasCostPerKm = computeFuelCostPerKm(gas, kmDriven);
-  const alcoholCostPerKm = computeFuelCostPerKm(alcohol, kmDriven);
-  const totalFuelCost = computeFuelCost({ gas_expense: gas, alcohol_expense: alcohol });
-  const totalFuelCostPerKm = computeFuelCostPerKm(totalFuelCost, kmDriven);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (kmInitial < 0 || kmFinal < 0 || kmFinal < kmInitial || gas < 0 || alcohol < 0 || gasPrice < 0 || alcoholPrice < 0) {
-      setStatus("❌ Confira os quilômetros e os valores de combustível. Nenhum valor pode ser negativo e o km final deve ser maior ou igual ao inicial.");
-      return;
-    }
-    if (gas > 0 && gasPrice <= 0) { setStatus("❌ Informe o preço por litro da gasolina."); return; }
-    if (alcohol > 0 && alcoholPrice <= 0) { setStatus("❌ Informe o preço por litro do álcool."); return; }
-    setStatus("Salvando...");
-
-    const payload = {
-      date,
-      gross_amount: mode === "withFee" ? gross : null,
-      fee_percent: mode === "withFee" ? fee : null,
-      net_fare: mode === "net" ? netFare : null,
-      gas_expense: gas,
-      alcohol_expense: alcohol,
-      gasoline_price_per_liter: gasPrice,
-      alcohol_price_per_liter: alcoholPrice,
-      gasoline_liters: gasLiters,
-      alcohol_liters: alcoholLiters,
-      km_initial: kmInitial,
-      km_final: kmFinal,
-      km_driven: kmDriven,
-      maintenance_expense: maintenanceTotal,
-      maintenance_details: maintenanceItems.filter((m) => m.description.trim() !== ""),
-      extra_expenses: extras.filter((e) => e.name.trim() !== ""),
-    };
-
-    const res = await saveEntry(payload);
-    if (res.success) {
-      setStatus("✅ Lançamento salvo com sucesso!");
-      if (typeof res.monthProfit === "number") setMonthProfit(res.monthProfit);
-      setGross(0); setFee(0); setNetFare(0); setGas(0); setAlcohol(0); setGasPrice(0); setAlcoholPrice(0); setKmInitial(0); setKmFinal(0);
-      setMaintenanceItems([]); setExtras([]);
-    } else setStatus(`❌ Erro: ${res.error}`);
-  }
-
-  return (
-    <div className="space-y-5">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
-          <label className="label">Data do lançamento</label>
-          <input type="date" className="input max-w-xs" value={date} onChange={(e) => setDate(e.target.value)} required />
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
-          <h3 className="text-sm font-semibold text-slate-700">Receita</h3>
-          <div className="flex gap-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={mode === "withFee"} onChange={() => setMode("withFee")} />Valor com taxa</label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={mode === "net"} onChange={() => setMode("net")} />Valor já líquido</label>
-          </div>
-          {mode === "withFee" ? <>
-            <div className="grid grid-cols-2 gap-3">
-              <div><label className="label">Valor bruto (R$)</label><input type="number" step="0.01" min="0" className="input" value={gross || ""} onChange={(e) => setGross(toNumber(e.target.value))} /></div>
-              <div><label className="label">Taxa do app (%)</label><input type="number" step="0.01" min="0" max="100" className="input" value={fee || ""} onChange={(e) => setFee(toNumber(e.target.value))} /></div>
-            </div>
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-1 text-sm">
-              <div className="flex justify-between"><span>Valor bruto</span><strong>{formatBRL(gross)}</strong></div>
-              <div className="flex justify-between text-red-600"><span>Desconto da taxa ({fee.toFixed(2)}%)</span><strong>− {formatBRL(feeAmount)}</strong></div>
-              <div className="border-t border-slate-200 pt-1 flex justify-between font-semibold"><span>Receita líquida</span><strong>{formatBRL(fareNet)}</strong></div>
-            </div>
-          </> : <div><label className="label">Valor líquido recebido (R$)</label><input type="number" step="0.01" min="0" className="input max-w-sm" value={netFare || ""} onChange={(e) => setNetFare(toNumber(e.target.value))} /></div>}
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4">
-          <div><h3 className="text-base font-bold text-slate-800">Quilometragem e combustível</h3><p className="text-xs text-slate-500 mt-1">Informe o hodômetro e o valor abastecido. O sistema calcula automaticamente os quilômetros rodados e quanto o combustível custou no total e por quilômetro.</p></div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div><label className="label">Km inicial</label><input type="number" step="0.1" min="0" className="input" value={kmInitial || ""} onChange={(e) => setKmInitial(toNumber(e.target.value))} placeholder="Ex.: 52.340" /></div>
-            <div><label className="label">Km final</label><input type="number" step="0.1" min="0" className="input" value={kmFinal || ""} onChange={(e) => setKmFinal(toNumber(e.target.value))} placeholder="Ex.: 52.520" /></div>
-          </div>
-          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 flex items-center"><div><p className="text-xs text-slate-500">Quantidade de km rodados</p><p className="text-2xl font-bold text-slate-800">{formatKm(kmDriven)} km</p></div></div>
-
-          <div className="border-t border-slate-200 pt-4 space-y-3">
-            <h4 className="font-semibold text-slate-700">Gasolina</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="label">Preço da gasolina por litro (R$)</label><input type="number" step="0.001" min="0" className="input" value={gasPrice || ""} onChange={(e) => setGasPrice(toNumber(e.target.value))} placeholder="Ex.: 6,19" /></div>
-              <div><label className="label">Quanto colocou de gasolina (R$)</label><input type="number" step="0.01" min="0" className="input" value={gas || ""} onChange={(e) => setGas(toNumber(e.target.value))} placeholder="Ex.: 100,00" /></div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Litros calculados</p><p className="text-lg font-bold text-slate-800">{gasLiters.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} L</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo de cada km rodado</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(gasCostPerKm)}</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Gasto total para rodar os {formatKm(kmDriven)} km</p><p className="text-lg font-bold text-slate-800">{formatBRL(gas)}</p></div>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 pt-4 space-y-3">
-            <h4 className="font-semibold text-slate-700">Álcool</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><label className="label">Preço do álcool por litro (R$)</label><input type="number" step="0.001" min="0" className="input" value={alcoholPrice || ""} onChange={(e) => setAlcoholPrice(toNumber(e.target.value))} placeholder="Ex.: 4,39" /></div>
-              <div><label className="label">Quanto colocou de álcool (R$)</label><input type="number" step="0.01" min="0" className="input" value={alcohol || ""} onChange={(e) => setAlcohol(toNumber(e.target.value))} placeholder="Ex.: 80,00" /></div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Litros calculados</p><p className="text-lg font-bold text-slate-800">{alcoholLiters.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 3 })} L</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo de cada km rodado</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(alcoholCostPerKm)}</p></div>
-              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Gasto total para rodar os {formatKm(kmDriven)} km</p><p className="text-lg font-bold text-slate-800">{formatBRL(alcohol)}</p></div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-200 pt-4">
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Total de combustível</p><p className="text-xl font-bold text-slate-800">{formatBRL(totalFuelCost)}</p></div>
-            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo total de combustível por km</p><p className="text-xl font-bold text-slate-800">{formatCostPerKm(totalFuelCostPerKm)}</p></div>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems} /></div>
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><ExtraExpenses extras={extras} onChange={setExtras} /></div>
-        <button type="submit" className="btn btn-primary w-full">Salvar lançamento</button>
-        {status && <p className="text-sm text-center text-slate-600">{status}</p>}
-      </form>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-xl p-5 shadow-md"><p className="text-xs uppercase tracking-wide opacity-80">Lucro líquido do dia</p><p className="text-3xl font-bold mt-1">{formatBRL(dayProfit)}</p><div className="text-xs opacity-90 mt-2 space-y-1"><p>Receita líquida: <strong>{formatBRL(fareNet)}</strong></p>{mode === "withFee" && <p>Taxa descontada: <strong>{formatBRL(feeAmount)}</strong> ({fee.toFixed(2)}%)</p>}<p>Despesas: <strong>{formatBRL(totalExpenses)}</strong></p></div></div>
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Lucro líquido do mês</p><p className="text-3xl font-bold mt-1 text-slate-800">{formatBRL(monthProfit)}</p><p className="text-xs text-slate-500 mt-2">Soma dos lançamentos do mês selecionado</p></div>
-      </div>
-    </div>
-  );
+export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:Props){
+ const [mode,setMode]=useState<Mode>("withFee"),[date,setDate]=useState(initialDate),[gross,setGross]=useState(0),[fee,setFee]=useState(0),[netFare,setNetFare]=useState(0),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[hours,setHours]=useState(0),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<ExtraExpense[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null);
+ const fareNet=mode==="withFee"?gross*(1-fee/100):netFare,feeAmount=mode==="withFee"?computeFeeAmount({gross_amount:gross,fee_percent:fee}):0,extrasSum=extras.reduce((a,e)=>a+toNumber(e.value),0),maintenanceTotal=maintenanceItems.reduce((a,m)=>a+toNumber(m.value),0),totalExpenses=gas+alcohol+maintenanceTotal+extrasSum,dayProfit=fareNet-totalExpenses,kmDriven=Math.max(0,kmFinal-kmInitial),gasLiters=computeLitersFromPurchase(gas,gasPrice),alcoholLiters=computeLitersFromPurchase(alcohol,alcoholPrice),gasCostPerKm=computeFuelCostPerKm(gas,kmDriven),alcoholCostPerKm=computeFuelCostPerKm(alcohol,kmDriven),totalFuelCost=computeFuelCost({gas_expense:gas,alcohol_expense:alcohol}),totalFuelCostPerKm=computeFuelCostPerKm(totalFuelCost,kmDriven),totalCostPerKm=kmDriven>0?totalExpenses/kmDriven:null,profitPerKm=kmDriven>0?dayProfit/kmDriven:null,profitPerHour=hours>0?dayProfit/hours:null,hasCurrentLaunch=fareNet!==0||totalExpenses!==0||kmDriven>0;
+ const visibleProfit=savedCard&&!hasCurrentLaunch?savedCard.profit:dayProfit,visibleKm=savedCard&&!hasCurrentLaunch?savedCard.km:kmDriven,visibleProfitPerKm=savedCard&&!hasCurrentLaunch?savedCard.profitPerKm:profitPerKm,visibleCostPerKm=savedCard&&!hasCurrentLaunch?savedCard.costPerKm:totalCostPerKm,visibleHours=savedCard&&!hasCurrentLaunch?savedCard.hours:hours;
+ const currentVerdict=verdict(visibleProfit,visibleKm,visibleProfitPerKm,visibleCostPerKm,Boolean(savedCard)||hasCurrentLaunch);
+ async function handleSubmit(e:React.FormEvent){e.preventDefault();if(kmInitial<0||kmFinal<0||kmFinal<kmInitial||gas<0||alcohol<0||gasPrice<0||alcoholPrice<0||hours<0){setStatus("❌ Confira os quilômetros, as horas e os valores de combustível. Nenhum valor pode ser negativo e o km final deve ser maior ou igual ao inicial.");return;}if(gas>0&&gasPrice<=0){setStatus("❌ Informe o preço por litro da gasolina.");return;}if(alcohol>0&&alcoholPrice<=0){setStatus("❌ Informe o preço por litro do álcool.");return;}setStatus("Salvando...");const payload={date,gross_amount:mode==="withFee"?gross:null,fee_percent:mode==="withFee"?fee:null,net_fare:mode==="net"?netFare:null,gas_expense:gas,alcohol_expense:alcohol,gasoline_price_per_liter:gasPrice,alcohol_price_per_liter:alcoholPrice,gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,maintenance_expense:maintenanceTotal,maintenance_details:maintenanceItems.filter(m=>m.description.trim()!==""),extra_expenses:extras.filter(e=>e.name.trim()!=="")};const res=await saveEntry(payload);if(res.success){setStatus("✅ Lançamento salvo com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,costPerKm:totalCostPerKm});setGross(0);setFee(0);setNetFare(0);setGas(0);setAlcohol(0);setGasPrice(0);setAlcoholPrice(0);setKmInitial(0);setKmFinal(0);setHours(0);setMaintenanceItems([]);setExtras([]);}else setStatus(`❌ Erro: ${res.error}`);}
+ return <div className="space-y-5"><form onSubmit={handleSubmit} className="space-y-5">
+  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><label className="label">Data do lançamento</label><input type="date" className="input max-w-xs" value={date} onChange={e=>setDate(e.target.value)} required/></div>
+  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3"><h3 className="text-sm font-semibold text-slate-700">Receita</h3><div className="flex gap-2"><label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={mode==="withFee"} onChange={()=>setMode("withFee")}/>Valor com taxa</label><label className="flex items-center gap-2 text-sm cursor-pointer"><input type="radio" checked={mode==="net"} onChange={()=>setMode("net")}/>Valor já líquido</label></div>{mode==="withFee"?<><div className="grid grid-cols-2 gap-3"><div><label className="label">Valor bruto (R$)</label><input type="number" step="0.01" min="0" className="input" value={gross||""} onChange={e=>setGross(toNumber(e.target.value))}/></div><div><label className="label">Taxa do app (%)</label><input type="number" step="0.01" min="0" max="100" className="input" value={fee||""} onChange={e=>setFee(toNumber(e.target.value))}/></div></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3 space-y-1 text-sm"><div className="flex justify-between"><span>Valor bruto</span><strong>{formatBRL(gross)}</strong></div><div className="flex justify-between text-red-600"><span>Desconto da taxa ({fee.toFixed(2)}%)</span><strong>− {formatBRL(feeAmount)}</strong></div><div className="border-t border-slate-200 pt-1 flex justify-between font-semibold"><span>Receita líquida</span><strong>{formatBRL(fareNet)}</strong></div></div></>:<div><label className="label">Valor líquido recebido (R$)</label><input type="number" step="0.01" min="0" className="input max-w-sm" value={netFare||""} onChange={e=>setNetFare(toNumber(e.target.value))}/></div>}<div className="rounded-lg border border-brand-200 bg-brand-50 p-3"><label className="label">Horas trabalhadas (opcional)</label><input type="number" inputMode="decimal" step="0.1" min="0" className="input max-w-sm" value={hours||""} onChange={e=>setHours(toNumber(e.target.value))} placeholder="Ex: 9"/><p className="mt-1 text-xs text-slate-500">Use para descobrir quanto sobrou por hora. Não é obrigatório.</p></div></div>
+  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4"><div><h3 className="text-base font-bold text-slate-800">Quilometragem e combustível</h3><p className="text-xs text-slate-500 mt-1">Informe o hodômetro e o valor abastecido. O sistema calcula automaticamente os quilômetros rodados e quanto o combustível custou no total e por quilômetro.</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Km inicial</label><input type="number" step="0.1" min="0" className="input" value={kmInitial||""} onChange={e=>setKmInitial(toNumber(e.target.value))} placeholder="Ex.: 52.340"/></div><div><label className="label">Km final</label><input type="number" step="0.1" min="0" className="input" value={kmFinal||""} onChange={e=>setKmFinal(toNumber(e.target.value))} placeholder="Ex.: 52.520"/></div></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3 flex items-center"><div><p className="text-xs text-slate-500">Quantidade de km rodados</p><p className="text-2xl font-bold text-slate-800">{formatKm(kmDriven)} km</p></div></div>
+   <div className="border-t border-slate-200 pt-4 space-y-3"><h4 className="font-semibold text-slate-700">Gasolina</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Preço da gasolina por litro (R$)</label><input type="number" step="0.001" min="0" className="input" value={gasPrice||""} onChange={e=>setGasPrice(toNumber(e.target.value))} placeholder="Ex.: 6,19"/></div><div><label className="label">Quanto colocou de gasolina (R$)</label><input type="number" step="0.01" min="0" className="input" value={gas||""} onChange={e=>setGas(toNumber(e.target.value))} placeholder="Ex.: 100,00"/></div></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Litros calculados</p><p className="text-lg font-bold text-slate-800">{gasLiters.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3})} L</p></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo de cada km rodado</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(gasCostPerKm)}</p></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">{kmDriven>0?`Gasto total para rodar ${formatKm(kmDriven)} km`:"Gasto total do dia"}</p><p className="text-lg font-bold text-slate-800">{formatBRL(gas)}</p></div></div></div>
+   <div className="border-t border-slate-200 pt-4 space-y-3"><h4 className="font-semibold text-slate-700">Álcool</h4><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Preço do álcool por litro (R$)</label><input type="number" step="0.001" min="0" className="input" value={alcoholPrice||""} onChange={e=>setAlcoholPrice(toNumber(e.target.value))} placeholder="Ex.: 4,39"/></div><div><label className="label">Quanto colocou de álcool (R$)</label><input type="number" step="0.01" min="0" className="input" value={alcohol||""} onChange={e=>setAlcohol(toNumber(e.target.value))} placeholder="Ex.: 80,00"/></div></div><div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Litros calculados</p><p className="text-lg font-bold text-slate-800">{alcoholLiters.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3})} L</p></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo de cada km rodado</p><p className="text-lg font-bold text-slate-800">{formatCostPerKm(alcoholCostPerKm)}</p></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">{kmDriven>0?`Gasto total para rodar ${formatKm(kmDriven)} km`:"Gasto total do dia"}</p><p className="text-lg font-bold text-slate-800">{formatBRL(alcohol)}</p></div></div></div>
+   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-200 pt-4"><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Total de combustível</p><p className="text-xl font-bold text-slate-800">{formatBRL(totalFuelCost)}</p></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3"><p className="text-xs text-slate-500">Custo total de combustível por km</p><p className="text-xl font-bold text-slate-800">{formatCostPerKm(totalFuelCostPerKm)}</p></div></div></div>
+  <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems}/></div><div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><ExtraExpenses extras={extras} onChange={setExtras}/></div><button type="submit" className="btn btn-primary w-full">Salvar e ver meu lucro</button>{status&&<p className="text-sm text-center text-slate-600">{status}</p>}
+ </form>
+ <div className="space-y-4"><section className={`rounded-xl border p-5 shadow-sm ${currentVerdict.tone==="green"?"border-brand-200 bg-brand-50":currentVerdict.tone==="red"?"border-red-200 bg-red-50":currentVerdict.tone==="amber"?"border-amber-200 bg-amber-50":"border-slate-200 bg-slate-50"}`} aria-live="polite"><p className="text-xs font-bold uppercase tracking-wide text-slate-600">VEREDITO DO DIA</p><p className="mt-2 text-base font-semibold text-slate-800">{currentVerdict.text}</p></section>
+ <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-xl p-5 shadow-md"><p className="text-xs uppercase tracking-wide opacity-80">Lucro líquido do dia</p><p className="text-3xl font-bold mt-1">{formatBRL(visibleProfit)}</p><div className="text-xs opacity-90 mt-2 space-y-1">{visibleKm>0&&visibleProfitPerKm!==null&&<p><strong>{formatBRL(visibleProfitPerKm)}</strong> por km rodado</p>}{visibleHours>0&&<p><strong>{formatBRL(visibleProfit/visibleHours)}</strong> por hora trabalhada</p>}</div></div><div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Lucro líquido do mês</p><p className="text-3xl font-bold mt-1 text-slate-800">{formatBRL(monthProfit)}</p><p className="text-xs text-slate-500 mt-2">Soma dos lançamentos do mês selecionado</p></div></div></div>
+ {savedCard&&<CardDeLucro profit={savedCard.profit} km={savedCard.km} profitPerHour={savedCard.hours>0?savedCard.profit/savedCard.hours:null} profitPerKm={savedCard.profitPerKm} costPerKm={savedCard.costPerKm} onClose={()=>setSavedCard(null)}/>}</div>;
 }
