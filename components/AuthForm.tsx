@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { loginUser, registerUser } from "@/app/actions";
+import { loginUser, registerUser, saveRecoveryEmail } from "@/app/actions";
 import { useRouter } from "next/navigation";
 
 type Props = { mode: "login" | "register" };
+
+type LoginResult = { success: boolean; error?: string; needsRecoveryEmail?: boolean };
 
 export default function AuthForm({ mode }: Props) {
   const router = useRouter();
@@ -13,6 +15,7 @@ export default function AuthForm({ mode }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("");
+  const [needsRecoveryEmail, setNeedsRecoveryEmail] = useState(false);
   const isRegister = mode === "register";
 
   useEffect(() => {
@@ -21,9 +24,33 @@ export default function AuthForm({ mode }: Props) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setStatus("Processando...");
-    const result = isRegister ? await registerUser(login, password, email) : await loginUser(login, password);
+    const result = (isRegister ? await registerUser(login, password, email) : await loginUser(login, password)) as LoginResult;
+    if (!result.success) { setStatus(`❌ ${result.error}`); return; }
+    if (!isRegister && result.needsRecoveryEmail) {
+      setNeedsRecoveryEmail(true);
+      setStatus("");
+      return;
+    }
+    router.push("/"); router.refresh();
+  }
+
+  async function saveEmailAfterLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus("Salvando...");
+    const result = await saveRecoveryEmail(email);
     if (!result.success) { setStatus(`❌ ${result.error}`); return; }
     router.push("/"); router.refresh();
+  }
+
+  if (!isRegister && needsRecoveryEmail) {
+    return <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+      <div><h1 className="text-2xl font-bold text-slate-900">Proteja seu acesso</h1><p className="text-sm text-slate-600 mt-2">Para sua segurança, cadastre seu e-mail pessoal para conseguir recuperar seu login ou senha futuramente caso perca o acesso à plataforma.</p></div>
+      <form onSubmit={saveEmailAfterLogin} className="space-y-4">
+        <div><label className="label">E-mail pessoal para recuperação</label><input type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Ex: seuemail@gmail.com" required maxLength={254} autoComplete="email" /><p className="text-xs text-slate-500 mt-1">Seu e-mail será usado somente para recuperar seu login ou criar uma nova senha.</p></div>
+        <button type="submit" className="btn btn-primary w-full">Cadastrar e continuar</button>
+      </form>
+      {status && <p className="text-sm text-center text-slate-600" role="status">{status}</p>}
+    </div>;
   }
 
   return <div className="max-w-md mx-auto bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
