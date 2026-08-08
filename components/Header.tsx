@@ -9,8 +9,13 @@ function FaturAppMark() {
 export default function Header() {
   const pathname = usePathname();
   const isActive = (href: string) => pathname === href;
+  const launchIsBrandActive = isActive("/") || pathname === "/login" || pathname === "/cadastro";
+
   return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:flex-nowrap sm:px-4">
     <Link href="/" aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
-    <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3"><Link href="/" aria-current={isActive("/") ? "page" : undefined} className={`rounded-full px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${isActive("/") ? "bg-[#168A4A] text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:border-[#168A4A] hover:text-[#123B63]"}`}>Lançar dia</Link><Link href="/relatorios" aria-current={isActive("/relatorios") ? "page" : undefined} className={`rounded-full px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${isActive("/relatorios") ? "bg-[#168A4A] text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:border-[#168A4A] hover:text-[#123B63]"}`}>Relatórios</Link></nav>
+    <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
+      <Link href="/" aria-current={isActive("/") ? "page" : undefined} className={`rounded-full border px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${launchIsBrandActive ? "border-[#168A4A] bg-[#168A4A] text-white shadow-sm" : "border-slate-200 bg-white text-[#123B63] hover:border-[#168A4A] hover:text-[#123B63]"}`}>Lançar dia</Link>
+      <Link href="/relatorios" aria-current={isActive("/relatorios") ? "page" : undefined} className={`rounded-full border px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${isActive("/relatorios") ? "border-[#168A4A] bg-[#168A4A] text-white shadow-sm" : "border-slate-200 bg-white text-[#123B63] hover:border-[#168A4A] hover:text-[#123B63]"}`}>Relatórios</Link>
+    </nav>
   </div></header>;
 }
