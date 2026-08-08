@@ -38,7 +38,8 @@ export async function loginUser(login: string, password: string) {
   if (error) { console.error("Erro Supabase login:", error); return { success: false, error: "Erro ao validar acesso. Tente novamente." }; }
   if (!data?.[0]) return { success: false, error: "Login ou senha incorretos." };
   setSessionCookie(data[0].session_token);
-  return { success: true };
+  const { data: sessionData } = await supabase.rpc("app_get_session_with_email", { p_token: data[0].session_token });
+  return { success: true, needsRecoveryEmail: !sessionData?.[0]?.recovery_email };
 }
 
 export async function registerUser(login: string, password: string, email: string) {
@@ -53,7 +54,7 @@ export async function registerUser(login: string, password: string, email: strin
   if (error || !data?.[0]) return { success: false, error: error?.message || "Não foi possível cadastrar." };
   setSessionCookie(data[0].session_token);
   revalidatePath("/"); revalidatePath("/relatorios");
-  return { success: true, role: data[0].role };
+  return { success: true, role: data[0].role, needsRecoveryEmail: false };
 }
 
 export async function saveRecoveryEmail(email: string) {
