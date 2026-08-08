@@ -8,6 +8,10 @@ export function createClientBrowser() {
   )
 }
 
+// Cliente compartilhado para Client Components que precisam de uma instância
+// estável do Supabase Auth (por exemplo, o callback OAuth).
+export const supabase = createClientBrowser()
+
 // Cliente para Server Components / Server Actions
 export function createClientServer() {
   return createClient(
