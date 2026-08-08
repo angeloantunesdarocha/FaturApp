@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { createClientBrowser } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase/client'
 import { loginWithGoogle } from '@/app/actions'
 
 function AuthCallbackContent() {
@@ -12,61 +12,47 @@ function AuthCallbackContent() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const supabase = createClientBrowser()
-
+      const supabase = createClient()
       try {
-        // Verificar se há erro na URL
         const errorParam = searchParams.get('error')
         const errorDescription = searchParams.get('error_description')
-
         if (errorParam) {
           console.error('OAuth error:', errorParam, errorDescription)
           setError(errorDescription || 'Erro na autenticação')
           return
         }
 
-        // Tentar exchange code for session (PKCE flow)
         const code = searchParams.get('code')
-
         if (code) {
           console.log('Trocando código por sessão...')
           const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-
           if (exchangeError) {
             console.error('Erro ao trocar código:', exchangeError)
             setError('Erro ao completar login: ' + exchangeError.message)
             return
           }
-
           console.log('Login Supabase bem-sucedido:', data)
         } else {
-          // Se não tem code, verificar se há hash com access_token (implicit flow)
           const hashParams = new URLSearchParams(window.location.hash.substring(1))
           const accessToken = hashParams.get('access_token')
-
-          if (accessToken) {
-            console.log('Processando access_token do hash...')
-            const { data, error: sessionError } = await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: hashParams.get('refresh_token') || '',
-            })
-
-            if (sessionError) {
-              console.error('Erro ao setar sessão:', sessionError)
-              setError('Erro ao completar login: ' + sessionError.message)
-              return
-            }
-
-            console.log('Login Supabase bem-sucedido via hash:', data)
-          } else {
+          if (!accessToken) {
             console.error('Nenhum code ou access_token encontrado na URL')
             setError('Parâmetros de autenticação não encontrados')
             return
           }
+          console.log('Processando access_token do hash...')
+          const { data, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: hashParams.get('refresh_token') || '',
+          })
+          if (sessionError) {
+            console.error('Erro ao setar sessão:', sessionError)
+            setError('Erro ao completar login: ' + sessionError.message)
+            return
+          }
+          console.log('Login Supabase bem-sucedido via hash:', data)
         }
 
-        // Recuperar a sessão criada pelo OAuth para autenticar o usuário
-        // também no sistema interno do FaturApp.
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
         if (sessionError || !sessionData.session?.access_token) {
           console.error('Erro ao recuperar sessão OAuth:', sessionError)
@@ -74,10 +60,8 @@ function AuthCallbackContent() {
           return
         }
 
-        const accessToken = sessionData.session.access_token
         console.log('Validando usuário Google no FaturApp...')
-        const result = await loginWithGoogle(accessToken)
-
+        const result = await loginWithGoogle(sessionData.session.access_token)
         if (!result.success) {
           console.error('Erro ao criar sessão do FaturApp:', result.error)
           setError(result.error || 'Não foi possível criar sua conta com Google.')
@@ -94,7 +78,6 @@ function AuthCallbackContent() {
         setError('Erro inesperado: ' + (err instanceof Error ? err.message : String(err)))
       }
     }
-
     handleCallback()
   }, [searchParams, router])
 
@@ -104,12 +87,7 @@ function AuthCallbackContent() {
         <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Não foi possível entrar</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => router.push('/login')}
-            className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
-          >
-            Voltar para o login
-          </button>
+          <button onClick={() => router.push('/login')} className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">Voltar para o login</button>
         </div>
       </div>
     )
@@ -127,13 +105,7 @@ function AuthCallbackContent() {
 
 export default function AuthCallbackPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div></div>}>
       <AuthCallbackContent />
     </Suspense>
   )
