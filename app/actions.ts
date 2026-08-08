@@ -3,7 +3,7 @@
 import { cookies } from "next/headers";
 import { createClientServer } from "@/lib/supabase";
 import { clearSessionCookie, requireUser, setSessionCookie } from "@/lib/auth";
-import { computeDayProfit, type ExtraExpense, type MaintenanceItem } from "@/lib/utils";
+import { type ExtraExpense, type MaintenanceItem } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -21,6 +21,7 @@ export type SaveEntryInput = {
   km_initial: number;
   km_final: number;
   km_driven: number;
+  hours_worked: number;
   maintenance_expense: number;
   maintenance_details: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
@@ -68,6 +69,7 @@ export async function saveEntry(input: SaveEntryInput) {
   const kmFinal = Math.max(0, Number(input.km_final) || 0);
   if (kmFinal < kmInitial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
 
+  const hoursWorked = Math.max(0, Number(input.hours_worked) || 0);
   const gasCost = Math.max(0, Number(input.gas_expense) || 0);
   const alcoholCost = Math.max(0, Number(input.alcohol_expense) || 0);
   const gasPrice = Math.max(0, Number(input.gasoline_price_per_liter) || 0);
@@ -93,6 +95,7 @@ export async function saveEntry(input: SaveEntryInput) {
     km_initial: kmInitial,
     km_final: kmFinal,
     km_driven: kmDriven,
+    hours_worked: hoursWorked,
     maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
     maintenance_details: maintenanceDetails,
     extra_expenses: input.extra_expenses ?? [],
