@@ -7,12 +7,7 @@ export function toNumber(v: string | number | null | undefined): number {
   if (typeof v === "number") return Number.isFinite(v) ? v : 0;
   const value = String(v).trim();
   if (!value) return 0;
-
-  // Valores como "50.000" representam 50 mil no hodômetro brasileiro.
-  // Mantemos "6.19" como decimal para preços e valores monetários.
-  const normalized = /^\d{1,3}(\.\d{3})+$/.test(value)
-    ? value.replace(/\./g, "")
-    : value.replace(/,/g, ".");
+  const normalized = /^\d{1,3}(\.\d{3})+$/.test(value) ? value.replace(/\./g, "") : value.replace(/,/g, ".");
   const n = Number(normalized);
   return Number.isFinite(n) ? n : 0;
 }
@@ -48,6 +43,7 @@ export type DailyEntry = {
   km_initial: number;
   km_final: number;
   km_driven: number;
+  hours_worked: number;
   maintenance_expense: number;
   maintenance_details?: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
@@ -78,27 +74,17 @@ export function computeFuelLiters(entry: Pick<DailyEntry, "gasoline_liters" | "a
 }
 
 export function computeLitersFromPurchase(amount: number, pricePerLiter: number): number {
-  const value = Math.max(0, Number(amount) || 0);
-  const price = Math.max(0, Number(pricePerLiter) || 0);
-  return price > 0 ? value / price : 0;
+  if (amount <= 0 || pricePerLiter <= 0) return 0;
+  return amount / pricePerLiter;
 }
 
-export function computeFuelCostPerKm(cost: number, km: number): number | null {
-  const totalCost = Math.max(0, Number(cost) || 0);
-  const distance = Math.max(0, Number(km) || 0);
-  return distance > 0 ? totalCost / distance : null;
+export function computeFuelCostPerKm(expense: number, km: number): number | null {
+  return km > 0 ? expense / km : null;
 }
 
-export function computeKmPerLiter(entry: Pick<DailyEntry, "km_driven" | "gasoline_liters" | "alcohol_liters">): number | null {
-  const km = Math.max(0, Number(entry.km_driven) || 0);
-  const liters = computeFuelLiters(entry);
-  if (liters <= 0) return null;
-  return km / liters;
-}
-
-export function computeDayProfit(entry: DailyEntry): number {
-  const netFare = computeNetFare(entry);
-  const extrasSum = (entry.extra_expenses || []).reduce((acc, e) => acc + toNumber(e.value), 0);
-  const totalExpenses = Number(entry.gas_expense || 0) + Number(entry.alcohol_expense || 0) + Number(entry.maintenance_expense || 0) + extrasSum;
-  return netFare - totalExpenses;
+export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses">): number {
+  const net = computeNetFare(entry);
+  const maintenance = (entry.maintenance_details || []).reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
+  const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
+  return net - Math.max(0, Number(entry.gas_expense) || 0) - Math.max(0, Number(entry.alcohol_expense) || 0) - maintenance - extras;
 }
