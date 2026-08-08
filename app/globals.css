@@ -2,14 +2,39 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body {
+html {
+  @apply bg-slate-50;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
   @apply bg-slate-50 text-slate-900 antialiased;
+  overflow-x: hidden;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+/* Área de toque confortável em telas móveis. */
+button, a {
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Estilos base para inputs */
 .input, .select {
   @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm
          shadow-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20;
+  min-height: 44px;
 }
 
 .label {
@@ -19,7 +44,36 @@ html, body {
 .btn {
   @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5
          text-sm font-medium shadow-sm transition disabled:opacity-60 disabled:cursor-not-allowed;
+  min-height: 44px;
 }
 .btn-primary { @apply bg-brand-600 text-white hover:bg-brand-700; }
 .btn-secondary { @apply bg-white border border-slate-300 text-slate-700 hover:bg-slate-50; }
 .btn-danger { @apply bg-red-600 text-white hover:bg-red-700; }
+
+/* Tabelas e blocos largos podem rolar horizontalmente sem quebrar a página. */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Em celulares muito estreitos, os cards de duas colunas passam para uma coluna. */
+@media (max-width: 479px) {
+  .grid-cols-2 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .px-4 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* Evita que textos longos criem overflow em cards pequenos. */
+.break-safe {
+  overflow-wrap: anywhere;
+}
