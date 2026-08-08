@@ -42,6 +42,29 @@ export async function loginUser(login: string, password: string) {
   return { success: true, needsRecoveryEmail: !sessionData?.[0]?.recovery_email };
 }
 
+export async function loginWithGoogle(accessToken: string) {
+  if (!accessToken || accessToken.length > 4096) return { success: false, error: "Não foi possível validar sua conta Google." };
+  const supabase = createClientServer();
+  const { data: authData, error: authError } = await supabase.auth.getUser(accessToken);
+  if (authError || !authData.user) return { success: false, error: "Não foi possível validar sua conta Google." };
+  const email = authData.user.email?.trim().toLowerCase();
+  if (!email || !validateEmail(email)) return { success: false, error: "Sua conta Google não disponibilizou um e-mail válido." };
+
+  const { data, error } = await supabase.rpc("app_register_google", {
+    p_email: email,
+    p_google_user_id: authData.user.id,
+  });
+  if (error || !data?.[0]) {
+    const message = error?.message || "Não foi possível criar sua conta com o Google.";
+    return { success: false, error: message };
+  }
+
+  setSessionCookie(data[0].session_token);
+  revalidatePath("/");
+  revalidatePath("/relatorios");
+  return { success: true, role: data[0].role, login: data[0].login };
+}
+
 export async function registerUser(login: string, password: string, email: string) {
   const normalized = login.trim();
   const normalizedEmail = email.trim().toLowerCase();
