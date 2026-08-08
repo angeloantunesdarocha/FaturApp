@@ -37,6 +37,7 @@ export default function AuthForm({ mode }: Props) {
       options: { redirectTo },
     });
     if (error) {
+      console.error("Google OAuth error:", error);
       setGoogleLoading(false);
       setStatus("❌ Não foi possível iniciar o acesso com Google. Tente novamente.");
     }
