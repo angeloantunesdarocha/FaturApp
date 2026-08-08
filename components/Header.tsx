@@ -8,9 +8,12 @@ function FaturAppMark() {
 
 export default function Header() {
   const pathname = usePathname();
-  const isActive = (href: string) => pathname === href;
+  const isReports = pathname === "/relatorios";
   return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:flex-nowrap sm:px-4">
     <Link href="/" aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
-    <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3"><Link href="/" aria-current={isActive("/") ? "page" : undefined} className={`rounded-full px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${isActive("/") ? "bg-[#168A4A] text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:border-[#168A4A] hover:text-[#123B63]"}`}>Lançar dia</Link><Link href="/relatorios" aria-current={isActive("/relatorios") ? "page" : undefined} className={`rounded-full px-3 py-2.5 text-sm font-semibold transition-colors sm:px-4 ${isActive("/relatorios") ? "bg-[#168A4A] text-white shadow-sm" : "border border-slate-200 bg-white text-slate-700 hover:border-[#168A4A] hover:text-[#123B63]"}`}>Relatórios</Link></nav>
+    <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
+      <Link href="/" aria-current={!isReports ? "page" : undefined} className="rounded-full bg-[#168A4A] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#11763F] focus:outline-none focus:ring-2 focus:ring-[#168A4A]/30">Lançar dia</Link>
+      <Link href="/relatorios" aria-current={isReports ? "page" : undefined} className="rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#123B63] shadow-sm transition-colors hover:border-[#123B63] hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#123B63]/20">Relatórios</Link>
+    </nav>
   </div></header>;
 }
