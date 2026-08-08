@@ -31,11 +31,16 @@ export default function AuthForm({ mode }: Props) {
     setGoogleLoading(true);
     setStatus("Redirecionando para o Google...");
     const supabase = createClientBrowser();
+
+    // Sempre usa a origem real da página atual. Assim, um login iniciado
+    // na Vercel nunca pode enviar o usuário de volta para localhost:3000.
     const redirectTo = `${window.location.origin}/auth/callback`;
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
     });
+
     if (error) {
       console.error("Google OAuth error:", error);
       setGoogleLoading(false);
