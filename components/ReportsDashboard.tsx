@@ -4,8 +4,6 @@ import { useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
-  computeDayProfit,
-  computeFuelCost,
   computeFuelLiters,
   computeNetFare,
   formatBRL,
@@ -17,6 +15,8 @@ import {
 type Props = { entries: DailyEntry[]; initialFrom: string; initialTo: string };
 type CategoryKey = "gas" | "alcohol" | "maintenance" | "extras";
 type Categories = Record<CategoryKey, boolean>;
+type DetailCategory = "maintenance" | "extras";
+type DetailItem = { date: string; description: string; value: number };
 const DEFAULT_CATEGORIES: Categories = { gas: true, alcohol: true, maintenance: true, extras: true };
 
 const money = (n: number | null) => n === null ? "—" : formatBRL(n);
@@ -36,7 +36,7 @@ function endOfMonth(dateISO: string) {
   return `${y}-${String(m).padStart(2, "0")}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
 }
 
-function Icon({ name, size = 20 }: { name: "trend" | "km" | "clock" | "money" | "fuel" | "wrench" | "plus" | "filter" | "download" | "share" | "mail" | "close" | "chevron" | "target"; size?: number }) {
+function Icon({ name, size = 20 }: { name: "trend" | "km" | "clock" | "money" | "fuel" | "wrench" | "plus" | "filter" | "download" | "share" | "mail" | "close" | "chevron" | "target" | "list"; size?: number }) {
   const common = { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   const paths: Record<string, React.ReactNode> = {
     trend: <><path d="M3 17l6-6 4 4 7-8"/><path d="M15 7h5v5"/></>,
@@ -53,6 +53,7 @@ function Icon({ name, size = 20 }: { name: "trend" | "km" | "clock" | "money" | 
     close: <><path d="M6 6l12 12M18 6L6 18"/></>,
     chevron: <path d="M6 9l6 6 6-6"/>,
     target: <><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v2M22 12h-2M12 22v-2M2 12h2"/></>,
+    list: <><path d="M8 6h12M8 12h12M8 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/></>,
   };
   return <svg {...common}>{paths[name]}</svg>;
 }
@@ -74,12 +75,12 @@ function BarChart({ data }: { data: { date: string; value: number }[] }) {
   </div>;
 }
 
-function CostDonut({ costs }: { costs: { gas: number; alcohol: number; maintenance: number; extras: number } }) {
+function CostDonut({ costs, onDetails }: { costs: { gas: number; alcohol: number; maintenance: number; extras: number }; onDetails: (category: DetailCategory) => void }) {
   const total = costs.gas + costs.alcohol + costs.maintenance + costs.extras;
-  const items = [{ label: "Gasolina", value: costs.gas, color: "#3498db" }, { label: "Álcool", value: costs.alcohol, color: "#2ecc71" }, { label: "Manutenção", value: costs.maintenance, color: "#f39c12" }, { label: "Extras", value: costs.extras, color: "#95a5a6" }];
+  const items = [{ label: "Gasolina", value: costs.gas, color: "#3498db", detail: null }, { label: "Álcool", value: costs.alcohol, color: "#2ecc71", detail: null }, { label: "Manutenção", value: costs.maintenance, color: "#f39c12", detail: "maintenance" as DetailCategory }, { label: "Extras", value: costs.extras, color: "#95a5a6", detail: "extras" as DetailCategory }];
   let cursor = 0;
   const stops = items.map(item => { const start = cursor; cursor += total ? item.value / total * 360 : 0; return `${item.color} ${start}deg ${cursor}deg`; });
-  return <div className="flex items-center gap-5"><div className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(${stops.join(",")})` }}><div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center shadow-inner"><span className="text-[10px] uppercase text-slate-400">Custos</span><strong className="text-sm text-slate-800">{formatBRL(total)}</strong></div></div><div className="min-w-0 space-y-2">{items.map(item => <div key={item.label} className="flex items-center justify-between gap-4 text-xs"><span className="flex items-center gap-2 text-slate-600"><i className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />{item.label}</span><strong className="text-slate-800">{formatBRL(item.value)}</strong></div>)}</div></div>;
+  return <div className="flex items-center gap-5"><div className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(${stops.join(",")})` }}><div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center shadow-inner"><span className="text-[10px] uppercase text-slate-400">Custos</span><strong className="text-sm text-slate-800">{formatBRL(total)}</strong></div></div><div className="min-w-0 flex-1 space-y-2">{items.map(item => <div key={item.label} className="flex items-center justify-between gap-2 text-xs"><span className="flex min-w-0 items-center gap-2 text-slate-600"><i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />{item.label}</span><span className="flex shrink-0 items-center gap-2"><strong className="text-slate-800">{formatBRL(item.value)}</strong>{item.detail && <button type="button" onClick={() => onDetails(item.detail!)} aria-label={`Ver detalhes de ${item.label}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"><Icon name="list" size={13}/>Detalhes</button>}</span></div>)}</div></div>;
 }
 
 function LineChart({ data }: { data: { label: string; value: number }[] }) {
@@ -90,25 +91,55 @@ function LineChart({ data }: { data: { label: string; value: number }[] }) {
 }
 
 export default function ReportsDashboard({ entries, initialFrom, initialTo }: Props) {
-  const [from, setFrom] = useState(initialFrom); const [to, setTo] = useState(initialTo); const [categories, setCategories] = useState<Categories>(DEFAULT_CATEGORIES); const [filtersOpen, setFiltersOpen] = useState(false); const [hoursOpen, setHoursOpen] = useState(false); const [sort, setSort] = useState<"date" | "profit" | "km" | "hours">("date");
+  const [from, setFrom] = useState(initialFrom); const [to, setTo] = useState(initialTo); const [categories, setCategories] = useState<Categories>(DEFAULT_CATEGORIES); const [filtersOpen, setFiltersOpen] = useState(false); const [hoursOpen, setHoursOpen] = useState(false); const [sort, setSort] = useState<"date" | "profit" | "km" | "hours">("date"); const [detailCategory, setDetailCategory] = useState<DetailCategory | null>(null);
   const filtered = useMemo(() => entries.filter(e => e.date >= from && e.date <= to), [entries, from, to]);
   const calc = (e: DailyEntry) => { const net = computeNetFare(e); const gas = categories.gas ? Math.max(0, Number(e.gas_expense) || 0) : 0; const alcohol = categories.alcohol ? Math.max(0, Number(e.alcohol_expense) || 0) : 0; const maintenance = categories.maintenance ? ((e.maintenance_details || []).reduce((s,i)=>s+toNumber(i.value),0) || Number(e.maintenance_expense || 0)) : 0; const extras = categories.extras ? (e.extra_expenses || []).reduce((s,i)=>s+toNumber(i.value),0) : 0; const km = Math.max(0, Number(e.km_driven) || 0); const h = Math.max(0, Number(e.hours_worked) || 0); return { net, gas, alcohol, maintenance, extras, km, hours: h, costs: gas + alcohol + maintenance + extras, profit: net - gas - alcohol - maintenance - extras, fuelLiters: computeFuelLiters(e) }; };
   const totals = useMemo(() => filtered.reduce((a,e)=>{const v=calc(e); Object.keys(a).forEach(k=>{(a as any)[k]+=(v as any)[k]}); return a;},{net:0,gas:0,alcohol:0,maintenance:0,extras:0,km:0,hours:0,costs:0,profit:0,fuelLiters:0}), [filtered,categories]);
   const profitPerKm = totals.km ? totals.profit / totals.km : null; const profitPerHour = totals.hours ? totals.profit / totals.hours : null; const costPerKm = totals.km ? totals.costs / totals.km : null;
   const rows = useMemo(()=>filtered.map(e=>({e,v:calc(e)})).sort((a,b)=>sort==="date"?b.e.date.localeCompare(a.e.date):sort==="profit"?b.v.profit-a.v.profit:sort==="km"?b.v.km-a.v.km:b.v.hours-a.v.hours),[filtered,categories,sort]);
-  const best = rows.reduce<{e:DailyEntry;v:ReturnType<typeof calc>}|null>((b,r)=>!b||r.v.profit>b.v.profit?r:b,null);
   const hoursByDate = useMemo(()=>{const map=new Map<string,number>();filtered.forEach(e=>map.set(e.date,(map.get(e.date)||0)+Math.max(0,Number(e.hours_worked)||0)));return Array.from(map.entries()).filter(([,h])=>h>0).sort((a,b)=>b[0].localeCompare(a[0]));},[filtered]);
   const daily = useMemo(()=>rows.slice().reverse().map(r=>({date:r.e.date,value:r.v.profit})),[rows]);
   const monthly = useMemo(()=>{const map=new Map<string,number>();filtered.forEach(e=>{const key=e.date.slice(0,7);map.set(key,(map.get(key)||0)+calc(e).profit);});return Array.from(map.entries()).sort().map(([key,value])=>({label:key.slice(5),value}));},[filtered,categories]);
+  const detailItems = useMemo<DetailItem[]>(() => {
+    if (!detailCategory) return [];
+    return filtered.flatMap(e => {
+      const source = detailCategory === "maintenance" ? (e.maintenance_details || []) : (e.extra_expenses || []);
+      return source.map(item => ({ date: e.date, description: String(item.description || "Gasto sem descrição"), value: toNumber(item.value) }));
+    }).filter(item => item.value > 0).sort((a,b) => b.date.localeCompare(a.date));
+  }, [filtered, detailCategory]);
   const activeCount = Object.values(categories).filter(Boolean).length;
   const periodLabel = from===to ? dateLabel(from) : `${dateLabel(from)} — ${dateLabel(to)}`;
 
   function setQuick(kind: "today"|"week"|"month") { const today = new Date().toISOString().slice(0,10); if(kind==="today"){setFrom(today);setTo(today);} if(kind==="week"){setFrom(startOfWeek(today));setTo(today);} if(kind==="month"){setFrom(`${today.slice(0,7)}-01`);setTo(endOfMonth(today));} }
-  const summaryText = [`FaturApp — Relatório`, `Período: ${periodLabel}`, `Lucro líquido: ${formatBRL(totals.profit)}`, `Receita líquida: ${formatBRL(totals.net)}`, `Custos: ${formatBRL(totals.costs)}`, `Km: ${number(totals.km,0)} km`, `Horas: ${hours(totals.hours)} h`, `R$/km: ${money(profitPerKm)}`, `R$/h: ${money(profitPerHour)}`].join("\n");
+
+  const detailedItemsText = (category: DetailCategory) => {
+    const items = filtered.flatMap(e => {
+      const source = category === "maintenance" ? (e.maintenance_details || []) : (e.extra_expenses || []);
+      return source.map(item => ({ date: e.date, description: String(item.description || "Gasto sem descrição"), value: toNumber(item.value) })).filter(item => item.value > 0);
+    }).sort((a,b) => b.date.localeCompare(a.date));
+    if (!items.length) return `${category === "maintenance" ? "Manutenção" : "Extras"}: nenhum lançamento detalhado`;
+    return `${category === "maintenance" ? "Manutenção" : "Extras"}:\n` + items.map(item => `- ${dateLabel(item.date)} — ${item.description}: ${formatBRL(item.value)}`).join("\n");
+  };
+
+  const summaryText = [`FaturApp — Relatório`, `Período: ${periodLabel}`, `Lucro líquido: ${formatBRL(totals.profit)}`, `Receita líquida: ${formatBRL(totals.net)}`, `Custos: ${formatBRL(totals.costs)}`, `Km: ${number(totals.km,0)} km`, `Horas: ${hours(totals.hours)} h`, `R$/km: ${money(profitPerKm)}`, `R$/h: ${money(profitPerHour)}`, ``, detailedItemsText("maintenance"), ``, detailedItemsText("extras")].join("\n");
   function share(){ if(navigator.share) navigator.share({title:"Relatório FaturApp",text:summaryText}).catch(()=>{}); else navigator.clipboard?.writeText(summaryText); }
   function whatsapp(){window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`,"_blank");}
   function email(){window.location.href=`mailto:?subject=${encodeURIComponent("Relatório FaturApp")}&body=${encodeURIComponent(summaryText)}`;}
-  function pdf(){const doc=new jsPDF("landscape","mm","a4");doc.setFontSize(18);doc.text("FaturApp — Dashboard de Relatórios",14,14);doc.setFontSize(9);doc.text(`Período: ${periodLabel} | Lucro: ${formatBRL(totals.profit)} | R$/km: ${money(profitPerKm)} | R$/h: ${money(profitPerHour)}`,14,21);autoTable(doc,{head:[["Data","Horas","Km","Receita","Custo","Lucro","Lucro/km"]],body:rows.map(r=>[dateLabel(r.e.date),`${hours(r.v.hours)} h`,`${number(r.v.km,0)} km`,formatBRL(r.v.net),formatBRL(r.v.costs),formatBRL(r.v.profit),money(r.v.km?r.v.profit/r.v.km:null)]),startY:27,theme:"striped",styles:{fontSize:8},headStyles:{fillColor:[52,152,219]}});doc.save(`FaturApp_${from}_${to}.pdf`);}
+  function pdf(){
+    const doc=new jsPDF("landscape","mm","a4");
+    doc.setFontSize(18); doc.text("FaturApp — Dashboard de Relatórios",14,14);
+    doc.setFontSize(9); doc.text(`Período: ${periodLabel} | Lucro: ${formatBRL(totals.profit)} | R$/km: ${money(profitPerKm)} | R$/h: ${money(profitPerHour)}`,14,21);
+    autoTable(doc,{head:[["Data","Horas","Km","Receita","Custo","Lucro","Lucro/km"]],body:rows.map(r=>[dateLabel(r.e.date),`${hours(r.v.hours)} h`,`${number(r.v.km,0)} km`,formatBRL(r.v.net),formatBRL(r.v.costs),formatBRL(r.v.profit),money(r.v.km?r.v.profit/r.v.km:null)]),startY:27,theme:"striped",styles:{fontSize:8},headStyles:{fillColor:[52,152,219]}});
+    const detailRows: string[][] = [];
+    filtered.forEach(e => {
+      (e.maintenance_details || []).forEach(item => detailRows.push(["Manutenção", dateLabel(e.date), String(item.description || "Gasto sem descrição"), formatBRL(toNumber(item.value))]));
+      (e.extra_expenses || []).forEach(item => detailRows.push(["Extras", dateLabel(e.date), String(item.description || "Gasto sem descrição"), formatBRL(toNumber(item.value))]));
+    });
+    const nextY = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 27) + 10;
+    doc.setFontSize(12); doc.text("Detalhamento de Manutenção e Gastos Extras",14,nextY);
+    autoTable(doc,{head:[["Categoria","Data","Descrição","Valor"]],body:detailRows.length ? detailRows : [["—","—","Nenhum lançamento encontrado","R$ 0,00"]],startY:nextY+4,theme:"striped",styles:{fontSize:8},headStyles:{fillColor:[52,152,219]}});
+    doc.save(`FaturApp_${from}_${to}.pdf`);
+  }
 
   return <div className="space-y-5 pb-24">
     <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Visão financeira</p><h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Relatórios</h1><p className="mt-1 text-sm text-slate-500">Uma visão clara do que realmente sobrou no período.</p></div><span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{periodLabel}</span></header>
@@ -130,7 +161,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
       <section className="grid gap-4 lg:grid-cols-3">
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2"><div className="flex items-center justify-between"><div><h2 className="font-bold text-slate-900">Lucro por dia</h2><p className="text-xs text-slate-500">Onde seu resultado está acontecendo</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{rows.length} dias</span></div><BarChart data={daily} /></div>
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-bold text-slate-900">Distribuição dos custos</h2><p className="text-xs text-slate-500">Combustível, manutenção e extras</p><div className="mt-4"><CostDonut costs={totals}/></div></div>
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-bold text-slate-900">Distribuição dos custos</h2><p className="text-xs text-slate-500">Combustível, manutenção e extras</p><div className="mt-4"><CostDonut costs={totals} onDetails={setDetailCategory}/></div></div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
@@ -142,6 +173,8 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-bold text-slate-900">Dias do período</h2><p className="text-xs text-slate-500">Toque nos cabeçalhos para ordenar.</p></div><div className="flex gap-2"><select value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"><option value="date">Mais recentes</option><option value="profit">Maior lucro</option><option value="km">Mais km</option><option value="hours">Mais horas</option></select></div></div><div className="mt-4 overflow-x-auto"><table className="min-w-[760px] w-full text-sm"><thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400"><th className="px-3 py-3 text-left">Data</th><th className="px-3 py-3 text-right">Horas</th><th className="px-3 py-3 text-right">Km</th><th className="px-3 py-3 text-right">Receita</th><th className="px-3 py-3 text-right">Custo</th><th className="px-3 py-3 text-right">Lucro</th><th className="px-3 py-3 text-right">Lucro/km</th></tr></thead><tbody>{rows.map(r=><tr key={r.e.id} className="border-b border-slate-100 transition hover:bg-slate-50"><td className="px-3 py-3 font-semibold text-slate-800">{dateLabel(r.e.date)}</td><td className="px-3 py-3 text-right text-slate-600">{hours(r.v.hours)} h</td><td className="px-3 py-3 text-right text-slate-600">{number(r.v.km,0)}</td><td className="px-3 py-3 text-right text-slate-700">{formatBRL(r.v.net)}</td><td className="px-3 py-3 text-right text-slate-600">{formatBRL(r.v.costs)}</td><td className={`px-3 py-3 text-right font-bold ${r.v.profit>=0?"text-emerald-600":"text-red-600"}`}>{formatBRL(r.v.profit)}</td><td className="px-3 py-3 text-right font-semibold text-slate-700">{money(r.v.km?r.v.profit/r.v.km:null)}</td></tr>)}</tbody></table></div></section>
     </>}
+
+    {detailCategory && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title"><div className="max-h-[85vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl"><div className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><div><h2 id="detail-modal-title" className="text-lg font-bold text-slate-900">{detailCategory === "maintenance" ? "Detalhes de Manutenção" : "Detalhes de Gastos Extras"}</h2><p className="text-xs text-slate-500">Período: {periodLabel}</p></div><button type="button" onClick={()=>setDetailCategory(null)} aria-label="Fechar detalhes" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><Icon name="close" size={20}/></button></div><div className="max-h-[65vh] overflow-y-auto p-5">{detailItems.length === 0 ? <div className="py-10 text-center text-sm text-slate-500">Nenhum lançamento encontrado</div> : <div className="overflow-hidden rounded-2xl border border-slate-200"><div className="grid grid-cols-[92px_1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-500"><span>Data</span><span>Descrição</span><span>Valor</span></div>{detailItems.map((item,index)=><div key={`${item.date}-${item.description}-${index}`} className="grid grid-cols-[92px_1fr_auto] gap-3 border-t border-slate-100 px-4 py-3 text-sm"><span className="text-slate-500">{dateLabel(item.date)}</span><span className="min-w-0 break-words font-medium text-slate-700">{item.description}</span><strong className="text-right text-slate-900">{formatBRL(item.value)}</strong></div>)}</div>}</div><div className="border-t border-slate-200 p-4"><button type="button" onClick={()=>setDetailCategory(null)} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800">Fechar</button></div></div></div>}
 
     {filtered.length>0 && <div className="fixed bottom-5 right-5 z-40"><div className="group relative"><button type="button" aria-label="Abrir ações de exportação" className="grid h-14 w-14 place-items-center rounded-full bg-slate-900 text-white shadow-2xl ring-4 ring-white transition hover:scale-105"><Icon name="download" size={22}/></button><div className="absolute bottom-16 right-0 hidden w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl group-hover:block"><button onClick={pdf} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="download" size={17}/>Baixar PDF</button><button onClick={whatsapp} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">WhatsApp</button><button onClick={email} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="mail" size={17}/>E-mail</button><button onClick={share} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="share" size={17}/>Compartilhar</button></div></div></div>}
   </div>;
