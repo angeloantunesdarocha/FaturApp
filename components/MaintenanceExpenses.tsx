@@ -10,20 +10,26 @@ type Props = { items: MaintenanceItem[]; onChange: (items: MaintenanceItem[]) =>
 export default function MaintenanceExpenses({ items, onChange }: Props) {
   const [description, setDescription] = useState("");
   const [value, setValue] = useState("");
-  const total = items.reduce((sum, item) => sum + toNumber(item.value), 0);
+  const itemized = items.filter((item) => item.description.trim() !== "");
+  const manualItem = items.find((item) => item.description.trim() === "");
+  const total = itemized.length ? itemized.reduce((sum, item) => sum + toNumber(item.value), 0) : toNumber(manualItem?.value);
 
   function addItem() {
     const cleanDescription = description.trim();
     const numericValue = toNumber(value);
-    if (!cleanDescription || numericValue <= 0) return;
-    if (items.length >= 5) return;
-    onChange([...items, { description: cleanDescription, value: numericValue }]);
+    if (!cleanDescription || numericValue <= 0 || itemized.length >= 5) return;
+    onChange([...itemized, { description: cleanDescription, value: numericValue }]);
     setDescription("");
     setValue("");
   }
 
   function removeItem(index: number) {
-    onChange(items.filter((_, i) => i !== index));
+    onChange(itemized.filter((_, i) => i !== index));
+  }
+
+  function setManual(raw: string) {
+    const numericValue = toNumber(raw);
+    onChange(numericValue > 0 ? [{ description: "", value: numericValue }] : []);
   }
 
   return (
@@ -33,23 +39,15 @@ export default function MaintenanceExpenses({ items, onChange }: Props) {
         <span className="text-sm font-semibold text-slate-600">Total: {formatBRL(total)}</span>
       </div>
 
-      <div className="grid grid-cols-12 gap-2 items-end">
-        <div className="col-span-12 sm:col-span-7">
-          <label className="label">Descrição do gasto</label>
-          <input type="text" className="input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: Troca de óleo" />
+      {itemized.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <label className="label">Gasto total de manutenção (R$)</label>
+          <input type="text" inputMode="decimal" className="input" value={manualItem?.value ? String(manualItem.value).replace(".", ",") : ""} onChange={(e) => setManual(e.target.value)} placeholder="Ex.: 35,00" />
+          <p className="mt-1 text-xs text-slate-500">Se quiser detalhar, adicione itens abaixo. O campo manual é o comportamento legado.</p>
         </div>
-        <div className="col-span-8 sm:col-span-3">
-          <label className="label">Valor (R$)</label>
-          <input type="text" inputMode="decimal" className="input" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }} placeholder="Ex.: 35,00" />
-        </div>
-        <div className="col-span-4 sm:col-span-2">
-          <button type="button" onClick={addItem} disabled={items.length >= 5} className="btn btn-secondary w-full px-3 py-2 text-sm">Adicionar</button>
-        </div>
-      </div>
-
-      {items.length > 0 && (
+      ) : (
         <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          {items.map((item, index) => (
+          {itemized.map((item, index) => (
             <div key={`${item.description}-${index}`} className="flex items-center gap-2 rounded-md bg-white px-3 py-2 border border-slate-200">
               <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{item.description}</span>
               <span className="shrink-0 text-sm font-semibold text-slate-700">{formatBRL(item.value)}</span>
@@ -60,7 +58,20 @@ export default function MaintenanceExpenses({ items, onChange }: Props) {
         </div>
       )}
 
-      <p className="text-xs text-slate-500">Adicione até 5 itens. Descrição e valor maior que zero são obrigatórios.</p>
+      <div className="grid grid-cols-12 gap-2 items-end">
+        <div className="col-span-12 sm:col-span-7">
+          <label className="label">Descrição do gasto</label>
+          <input type="text" className="input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Ex.: Troca de óleo" />
+        </div>
+        <div className="col-span-8 sm:col-span-3">
+          <label className="label">Valor (R$)</label>
+          <input type="text" inputMode="decimal" className="input" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addItem(); } }} placeholder="Ex.: 25,00" />
+        </div>
+        <div className="col-span-4 sm:col-span-2">
+          <button type="button" onClick={addItem} disabled={itemized.length >= 5} className="btn btn-secondary w-full px-3 py-2 text-sm">Adicionar</button>
+        </div>
+      </div>
+      <p className="text-xs text-slate-500">Descrição não pode ficar vazia e o valor deve ser maior que zero. Até 5 itens.</p>
     </div>
   );
 }
