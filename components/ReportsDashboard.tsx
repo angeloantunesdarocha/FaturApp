@@ -104,7 +104,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
     if (!detailCategory) return [];
     return filtered.flatMap(e => {
       const source = detailCategory === "maintenance" ? (e.maintenance_details || []) : (e.extra_expenses || []);
-      return source.map(item => ({ date: e.date, description: String(item.description || "Gasto sem descrição"), value: toNumber(item.value) }));
+      return source.map(item => ({ date: e.date, description: String(("description" in item ? item.description : item.name) || "Gasto sem descrição"), value: toNumber(item.value) }));
     }).filter(item => item.value > 0).sort((a,b) => b.date.localeCompare(a.date));
   }, [filtered, detailCategory]);
   const activeCount = Object.values(categories).filter(Boolean).length;
@@ -115,7 +115,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   const detailedItemsText = (category: DetailCategory) => {
     const items = filtered.flatMap(e => {
       const source = category === "maintenance" ? (e.maintenance_details || []) : (e.extra_expenses || []);
-      return source.map(item => ({ date: e.date, description: String(item.description || "Gasto sem descrição"), value: toNumber(item.value) })).filter(item => item.value > 0);
+      return source.map(item => ({ date: e.date, description: String(("description" in item ? item.description : item.name) || "Gasto sem descrição"), value: toNumber(item.value) })).filter(item => item.value > 0);
     }).sort((a,b) => b.date.localeCompare(a.date));
     if (!items.length) return `${category === "maintenance" ? "Manutenção" : "Extras"}: nenhum lançamento detalhado`;
     return `${category === "maintenance" ? "Manutenção" : "Extras"}:\n` + items.map(item => `- ${dateLabel(item.date)} — ${item.description}: ${formatBRL(item.value)}`).join("\n");
@@ -133,7 +133,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
     const detailRows: string[][] = [];
     filtered.forEach(e => {
       (e.maintenance_details || []).forEach(item => detailRows.push(["Manutenção", dateLabel(e.date), String(item.description || "Gasto sem descrição"), formatBRL(toNumber(item.value))]));
-      (e.extra_expenses || []).forEach(item => detailRows.push(["Extras", dateLabel(e.date), String(item.description || "Gasto sem descrição"), formatBRL(toNumber(item.value))]));
+      (e.extra_expenses || []).forEach(item => detailRows.push(["Extras", dateLabel(e.date), String(item.name || "Gasto sem descrição"), formatBRL(toNumber(item.value))]));
     });
     const nextY = ((doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY || 27) + 10;
     doc.setFontSize(12); doc.text("Detalhamento de Manutenção e Gastos Extras",14,nextY);
