@@ -79,12 +79,16 @@ export async function saveEntry(input: SaveEntryInput) {
   if (gasCost > 0 && gasPrice <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
   if (alcoholCost > 0 && alcoholPrice <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
 
-  const maintenanceItems = (input.manutencao_itens ?? input.maintenance_details ?? [])
+  const maintenanceSource = input.manutencao_itens ?? input.maintenance_details ?? [];
+  const extraSource = input.extras_itens ?? input.extra_expenses ?? [];
+  const maintenanceItems = maintenanceSource
     .map((item) => ({ description: String(item.description ?? "").trim(), value: Number(item.value) || 0 }))
     .filter((item) => item.description !== "" && item.value > 0);
-  const extraItems = (input.extras_itens ?? input.extra_expenses ?? [])
+  const extraItems = extraSource
     .map((item) => ({ name: String(item.name ?? "").trim(), value: Number(item.value) || 0 }))
     .filter((item) => item.name !== "" && item.value > 0);
+  const manualExtra = extraSource.find((item) => String(item.name ?? "").trim() === "" && Number(item.value) > 0);
+  const persistedExtras = extraItems.length > 0 ? extraItems : (manualExtra ? [{ name: "", value: Number(manualExtra.value) }] : []);
 
   const kmDriven = kmFinal - kmInitial;
   const gasolineLiters = gasPrice > 0 ? gasCost / gasPrice : 0;
@@ -107,9 +111,9 @@ export async function saveEntry(input: SaveEntryInput) {
     hours_worked: hoursWorked,
     maintenance_expense: maintenanceTotal > 0 ? maintenanceTotal : Math.max(0, Number(input.maintenance_expense) || 0),
     maintenance_details: maintenanceItems,
-    extra_expenses: extraItems,
+    extra_expenses: persistedExtras,
     manutencao_itens: maintenanceItems,
-    extras_itens: extraItems,
+    extras_itens: persistedExtras,
   };
 
   const supabase = createClientServer();
