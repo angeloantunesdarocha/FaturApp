@@ -3,7 +3,6 @@ import ReportsTable from "@/components/ReportsTable";
 import WrappedMensal from "@/components/WrappedMensal";
 import { computeDayProfit, formatBRL, formatDateBR, todayISO, toNumber } from "@/lib/utils";
 import { requireUser } from "@/lib/auth";
-import LogoutButton from "@/components/LogoutButton";
 
 export default async function ReportsPage() {
   await requireUser();
@@ -22,7 +21,7 @@ export default async function ReportsPage() {
   const verdict = profit > 0 ? <>🟢 Neste mês você <strong>LUCROU {formatBRL(profit)}</strong>. {km > 0 && profitPerKm !== null && costPerKm !== null ? <>Sobrou {formatBRL(profitPerKm)}/km e o custo ficou em {formatBRL(costPerKm)}/km.</> : ""}</> : profit < 0 ? <>🔴 Neste mês você <strong>PAGOU PRA TRABALHAR</strong>: faltaram {formatBRL(Math.abs(profit))}.</> : <>🟡 Neste mês você ficou no zero a zero: trabalhou pra pagar o carro.</>;
 
   return <div className="space-y-5">
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3"><div className="min-w-0"><h1 className="text-2xl font-bold text-slate-900">Relatórios</h1><p className="text-sm text-slate-600 break-safe">Usuário: {await (async () => { const u = await requireUser(); return u.login; })()}</p></div><div className="self-start"><LogoutButton /></div></div>
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3"><div className="min-w-0"><h1 className="text-2xl font-bold text-slate-900">Relatórios</h1><p className="text-sm text-slate-600 break-safe">Usuário: {await (async () => { const u = await requireUser(); return u.login; })()}</p></div></div>
     <p className="text-sm text-slate-600">Veja o que realmente sobrou: lucro, custo por km e resultado do mês.</p>
 
     {monthEntries.length > 0 && <>
