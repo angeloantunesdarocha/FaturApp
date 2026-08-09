@@ -1,92 +1,64 @@
 "use client";
 
+import { useState } from "react";
 import { toNumber, formatBRL, type ExtraExpense } from "@/lib/utils";
 
-type Props = {
-  extras: ExtraExpense[];
-  onChange: (extras: ExtraExpense[]) => void;
-};
+type Props = { extras: ExtraExpense[]; onChange: (extras: ExtraExpense[]) => void };
 
 export default function ExtraExpenses({ extras, onChange }: Props) {
-  const canAdd = extras.length < 5;
+  const [name, setName] = useState("");
+  const [value, setValue] = useState("");
+  const total = extras.reduce((sum, item) => sum + toNumber(item.value), 0);
 
   function addExtra() {
-    if (!canAdd) return;
-    onChange([...extras, { name: "", value: 0 }]);
-  }
-
-  function updateExtra(index: number, patch: Partial<ExtraExpense>) {
-    const next = extras.map((e, i) => (i === index ? { ...e, ...patch } : e));
-    onChange(next);
+    const cleanName = name.trim();
+    const numericValue = toNumber(value);
+    if (!cleanName || numericValue <= 0) return;
+    if (extras.length >= 5) return;
+    onChange([...extras, { name: cleanName, value: numericValue }]);
+    setName("");
+    setValue("");
   }
 
   function removeExtra(index: number) {
     onChange(extras.filter((_, i) => i !== index));
   }
 
-  const totalExtras = extras.reduce((acc, e) => acc + toNumber(e.value), 0);
-
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">
-          Gastos extras (máx. 5)
-        </h3>
-        <span className="text-sm text-slate-500">
-          Total: {formatBRL(totalExtras)}
-        </span>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-slate-700">Gastos extras</h3>
+        <span className="text-sm font-semibold text-slate-600">Total: {formatBRL(total)}</span>
       </div>
 
-      {extras.map((extra, i) => (
-        <div
-          key={i}
-          className="grid grid-cols-12 gap-2 items-end bg-white rounded-lg border border-slate-200 p-2"
-        >
-          <div className="col-span-12 sm:col-span-7">
-            <label className="label">Nome do gasto</label>
-            <input
-              type="text"
-              className="input"
-              placeholder="Ex: Lavagem, Estacionamento..."
-              value={extra.name}
-              onChange={(e) => updateExtra(i, { name: e.target.value })}
-            />
-          </div>
-          <div className="col-span-8 sm:col-span-4">
-            <label className="label">Valor (R$)</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              className="input"
-              value={extra.value || ""}
-              onChange={(e) =>
-                updateExtra(i, { value: toNumber(e.target.value) })
-              }
-            />
-          </div>
-          <div className="col-span-4 sm:col-span-1 flex sm:justify-end">
-            <button
-              type="button"
-              onClick={() => removeExtra(i)}
-              className="btn btn-danger px-3 py-2 text-xs"
-              aria-label="Remover gasto extra"
-              title="Remover"
-            >
-              ✕
-            </button>
-          </div>
+      <div className="grid grid-cols-12 gap-2 items-end">
+        <div className="col-span-12 sm:col-span-7">
+          <label className="label">Descrição do gasto</label>
+          <input type="text" className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Café da manhã" />
         </div>
-      ))}
+        <div className="col-span-8 sm:col-span-3">
+          <label className="label">Valor (R$)</label>
+          <input type="text" inputMode="decimal" className="input" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addExtra(); } }} placeholder="Ex.: 12,50" />
+        </div>
+        <div className="col-span-4 sm:col-span-2">
+          <button type="button" onClick={addExtra} disabled={extras.length >= 5} className="btn btn-secondary w-full px-3 py-2 text-sm">Adicionar</button>
+        </div>
+      </div>
 
-      <button
-        type="button"
-        onClick={addExtra}
-        disabled={!canAdd}
-        className="btn btn-secondary w-full"
-      >
-        + Adicionar gasto extra
-      </button>
+      {extras.length > 0 && (
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          {extras.map((item, index) => (
+            <div key={`${item.name}-${index}`} className="flex items-center gap-2 rounded-md bg-white px-3 py-2 border border-slate-200">
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-700">{item.name}</span>
+              <span className="shrink-0 text-sm font-semibold text-slate-700">{formatBRL(item.value)}</span>
+              <button type="button" onClick={() => removeExtra(index)} className="shrink-0 rounded-md px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50" aria-label={`Remover ${item.name}`}>✕</button>
+            </div>
+          ))}
+          <div className="border-t border-slate-200 pt-2 text-right text-sm font-bold text-slate-800">Total dos itens: {formatBRL(total)}</div>
+        </div>
+      )}
+
+      <p className="text-xs text-slate-500">Adicione até 5 itens. Descrição e valor maior que zero são obrigatórios.</p>
     </div>
   );
 }
