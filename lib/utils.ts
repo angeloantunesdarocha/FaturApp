@@ -47,7 +47,17 @@ export type DailyEntry = {
   maintenance_expense: number;
   maintenance_details?: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
+  manutencao_itens?: MaintenanceItem[];
+  extras_itens?: ExtraExpense[];
 };
+
+export function getMaintenanceItems(entry: Pick<DailyEntry, "manutencao_itens" | "maintenance_details">): MaintenanceItem[] {
+  return (entry.manutencao_itens?.length ? entry.manutencao_itens : entry.maintenance_details) || [];
+}
+
+export function getExtraItems(entry: Pick<DailyEntry, "extras_itens" | "extra_expenses">): ExtraExpense[] {
+  return (entry.extras_itens?.length ? entry.extras_itens : entry.extra_expenses) || [];
+}
 
 export function computeFeeAmount(entry: { gross_amount: number | null; fee_percent: number | null }): number {
   if (entry.gross_amount === null || entry.gross_amount === undefined) return 0;
@@ -82,9 +92,11 @@ export function computeFuelCostPerKm(expense: number, km: number): number | null
   return km > 0 ? expense / km : null;
 }
 
-export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses">): number {
+export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses" | "manutencao_itens" | "extras_itens">): number {
   const net = computeNetFare(entry);
-  const maintenance = (entry.maintenance_details || []).reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
-  const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
+  const maintenanceItems = getMaintenanceItems(entry);
+  const extrasItems = getExtraItems(entry);
+  const maintenance = maintenanceItems.reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
+  const extras = extrasItems.reduce((sum, item) => sum + toNumber(item.value), 0);
   return net - Math.max(0, Number(entry.gas_expense) || 0) - Math.max(0, Number(entry.alcohol_expense) || 0) - maintenance - extras;
 }

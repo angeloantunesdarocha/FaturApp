@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { computeFeeAmount, computeNetFare, formatBRL, formatDateBR, todayISO, toNumber, type DailyEntry } from "@/lib/utils";
+import { computeFeeAmount, computeNetFare, formatBRL, formatDateBR, getExtraItems, getMaintenanceItems, todayISO, toNumber, type DailyEntry } from "@/lib/utils";
 
 type Props = { entries: DailyEntry[]; initialFrom: string; initialTo: string };
 type Categories = { gas: boolean; alcohol: boolean; maintenance: boolean; extras: boolean };
@@ -13,14 +13,15 @@ function formatKm(value: number) { return value.toLocaleString("pt-BR", { maximu
 function formatLiters(value: number) { return value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function formatHours(value: number) { return value.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 1 }); }
 function formatKmPerLiter(value: number | null) { return value === null ? "—" : `${value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km/L`; }
-function maintenanceTotal(e: DailyEntry) { const d=(e.maintenance_details||[]).reduce((s,i)=>s+toNumber(i.value),0); return d>0?d:Number(e.maintenance_expense||0); }
-function extrasTotal(e: DailyEntry) { return (e.extra_expenses||[]).reduce((s,i)=>s+toNumber(i.value),0); }
-function maintenanceDetails(e: DailyEntry) { return (e.maintenance_details||[]).filter(i=>toNumber(i.value)!==0||i.description).map(i=>`${formatBRL(toNumber(i.value))} — ${i.description||"Item sem descrição"}`); }
-function extrasDetails(e: DailyEntry) { return (e.extra_expenses||[]).filter(i=>toNumber(i.value)!==0||i.name).map(i=>`${formatBRL(toNumber(i.value))} — ${i.name||"Item sem descrição"}`); }
+function maintenanceTotal(e: DailyEntry) { const d=getMaintenanceItems(e).reduce((s,i)=>s+toNumber(i.value),0); return d>0?d:Number(e.maintenance_expense||0); }
+function extrasTotal(e: DailyEntry) { const items=getExtraItems(e); return items.reduce((s,i)=>s+toNumber(i.value),0); }
+function maintenanceDetails(e: DailyEntry) { return getMaintenanceItems(e).filter(i=>toNumber(i.value)>0&&i.description.trim()).map(i=>`${i.description.trim()} ${formatBRL(toNumber(i.value))}`); }
+function extrasDetails(e: DailyEntry) { return getExtraItems(e).filter(i=>toNumber(i.value)>0&&i.name.trim()).map(i=>`${i.name.trim()} ${formatBRL(toNumber(i.value))}`); }
+function compactExpenseText(items: string[]) { return items.length ? ` (${items.join("; ")})` : ""; }
 function startOfWeekISO(dateISO:string){const d=new Date(`${dateISO}T12:00:00`);const day=d.getDay();const diff=day===0?-6:1-day;d.setDate(d.getDate()+diff);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;}
 
 function DetailList({items,total,emptyLabel}:{items:string[];total:number;emptyLabel:string}) {
-  return <div className="min-w-[170px] text-right">{items.length ? <div className="space-y-1 text-xs text-slate-600">{items.map((x,i)=><div key={`${x}-${i}`}>{x}</div>)}</div> : <div className="text-xs text-slate-400">{emptyLabel}</div>}<div className="mt-2 border-t border-slate-200 pt-1 font-semibold">Total: {formatBRL(total)}</div></div>;
+  return <div className="min-w-[170px] text-right">{items.length ? <div className="space-y-1 border-l-2 border-slate-200 pl-4 text-left text-xs text-slate-600">{items.map((x,i)=><div key={`${x}-${i}`} className="flex items-center justify-between gap-3"><span className="min-w-0">{x.replace(/ (R\$.*)$/, "")}</span><span className="shrink-0 font-medium">{x.match(/R\$.*$/)?.[0] ?? ""}</span></div>)}</div> : <div className="text-xs text-slate-400">{emptyLabel}</div>}<div className="mt-2 border-t border-slate-200 pt-1 font-semibold">Total: {formatBRL(total)}</div></div>;
 }
 
 export default function ReportsTable({entries,initialFrom,initialTo}:Props) {
@@ -50,24 +51,31 @@ export default function ReportsTable({entries,initialFrom,initialTo}:Props) {
   const monthHours=useMemo(()=>filtered.filter(e=>e.date>=monthStart&&e.date<=today).reduce((s,e)=>s+Math.max(0,Number(e.hours_worked)||0),0),[filtered,monthStart,today]);
   const hoursByDate=useMemo(()=>{const map=new Map<string,number>();for(const e of filtered){const h=Math.max(0,Number(e.hours_worked)||0);map.set(e.date,(map.get(e.date)||0)+h);}return Array.from(map.entries()).sort((a,b)=>a[0].localeCompare(b[0]));},[filtered]);
 
-  const summaryText=useMemo(()=>[
-    `Relatório FaturApp — ${formatDateBR(from)} a ${formatDateBR(to)}`,
-    `Horas trabalhadas no período: ${formatHours(totals.hours)} h`,
-    `Horas hoje: ${formatHours(todayHours)} h`,
-    `Horas nesta semana: ${formatHours(weekHours)} h`,
-    `Horas neste mês: ${formatHours(monthHours)} h`,
-    `Km no período: ${formatKm(totals.km)} km`,
-    `Km no mês até hoje: ${formatKm(monthKm)} km`,
-    `Gasolina: ${formatBRL(totals.gas)}`,
-    `Álcool: ${formatBRL(totals.alcohol)}`,
-    `Combustível total: ${formatBRL(totals.fuel)}`,
-    `Litros: ${formatLiters(totals.liters)} L`,
-    `Consumo médio: ${formatKmPerLiter(totalKmPerLiter)}`,
-    `Receita líquida: ${formatBRL(totals.net)}`,
-    `Lucro total: ${formatBRL(totals.profit)}`,
-    ...(cats.maintenance?[`Manutenção: ${formatBRL(totals.maintenance)}`]:[]),
-    ...(cats.extras?[`Gastos extras: ${formatBRL(totals.extras)}`]:[])
-  ].join("\n"),[from,to,totals,todayHours,weekHours,monthHours,monthKm,totalKmPerLiter,cats]);
+  const summaryText=useMemo(()=>{
+    const lines=[
+      `Relatório FaturApp — ${formatDateBR(from)} a ${formatDateBR(to)}`,
+      `Horas trabalhadas no período: ${formatHours(totals.hours)} h`,
+      `Horas hoje: ${formatHours(todayHours)} h`,
+      `Horas nesta semana: ${formatHours(weekHours)} h`,
+      `Horas neste mês: ${formatHours(monthHours)} h`,
+      `Km no período: ${formatKm(totals.km)} km`,
+      `Km no mês até hoje: ${formatKm(monthKm)} km`,
+      `Gasolina: ${formatBRL(totals.gas)}`,
+      `Álcool: ${formatBRL(totals.alcohol)}`,
+      `Combustível total: ${formatBRL(totals.fuel)}`,
+      `Litros: ${formatLiters(totals.liters)} L`,
+      `Consumo médio: ${formatKmPerLiter(totalKmPerLiter)}`,
+      `Receita líquida: ${formatBRL(totals.net)}`,
+      `Lucro total: ${formatBRL(totals.profit)}`,
+      ...(cats.maintenance?[`Manutenção: ${formatBRL(totals.maintenance)}`]:[]),
+      ...(cats.extras?[`Gastos extras: ${formatBRL(totals.extras)}`]:[]),
+    ];
+    filtered.forEach((e)=>{
+      if(cats.maintenance){const items=maintenanceDetails(e);if(items.length)lines.push(`${formatDateBR(e.date)} — Manutenção: ${formatBRL(maintenanceTotal(e))}${compactExpenseText(items)}`);}
+      if(cats.extras){const items=extrasDetails(e);if(items.length)lines.push(`${formatDateBR(e.date)} — Extras: ${formatBRL(extrasTotal(e))}${compactExpenseText(items)}`);}
+    });
+    return lines.join("\n");
+  },[from,to,totals,todayHours,weekHours,monthHours,monthKm,totalKmPerLiter,cats,filtered]);
 
   function openWhatsApp(){window.open(`https://wa.me/?text=${encodeURIComponent(summaryText)}`,"_blank");}
   function openEmail(){window.location.href=`mailto:?subject=${encodeURIComponent("Relatório FaturApp")}&body=${encodeURIComponent(summaryText)}`;}

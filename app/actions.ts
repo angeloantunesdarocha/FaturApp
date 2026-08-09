@@ -25,6 +25,8 @@ export type SaveEntryInput = {
   maintenance_expense: number;
   maintenance_details: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
+  manutencao_itens?: MaintenanceItem[];
+  extras_itens?: ExtraExpense[];
 };
 
 function sessionToken() { return cookies().get("faturapp_session")?.value ?? null; }
@@ -77,10 +79,21 @@ export async function saveEntry(input: SaveEntryInput) {
   if (gasCost > 0 && gasPrice <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
   if (alcoholCost > 0 && alcoholPrice <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
 
-  const maintenanceDetails = (input.maintenance_details ?? []).filter((item) => item.description.trim() !== "").map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
+  const maintenanceSource = input.manutencao_itens ?? input.maintenance_details ?? [];
+  const extraSource = input.extras_itens ?? input.extra_expenses ?? [];
+  const maintenanceItems = maintenanceSource
+    .map((item) => ({ description: String(item.description ?? "").trim(), value: Number(item.value) || 0 }))
+    .filter((item) => item.description !== "" && item.value > 0);
+  const extraItems = extraSource
+    .map((item) => ({ name: String(item.name ?? "").trim(), value: Number(item.value) || 0 }))
+    .filter((item) => item.name !== "" && item.value > 0);
+  const manualExtra = extraSource.find((item) => String(item.name ?? "").trim() === "" && Number(item.value) > 0);
+  const persistedExtras = extraItems.length > 0 ? extraItems : (manualExtra ? [{ name: "", value: Number(manualExtra.value) }] : []);
+
   const kmDriven = kmFinal - kmInitial;
   const gasolineLiters = gasPrice > 0 ? gasCost / gasPrice : 0;
   const alcoholLiters = alcoholPrice > 0 ? alcoholCost / alcoholPrice : 0;
+  const maintenanceTotal = maintenanceItems.reduce((sum, item) => sum + item.value, 0);
   const row = {
     date: input.date,
     gross_amount: input.gross_amount,
@@ -96,9 +109,11 @@ export async function saveEntry(input: SaveEntryInput) {
     km_final: kmFinal,
     km_driven: kmDriven,
     hours_worked: hoursWorked,
-    maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
-    maintenance_details: maintenanceDetails,
-    extra_expenses: input.extra_expenses ?? [],
+    maintenance_expense: maintenanceTotal > 0 ? maintenanceTotal : Math.max(0, Number(input.maintenance_expense) || 0),
+    maintenance_details: maintenanceItems,
+    extra_expenses: persistedExtras,
+    manutencao_itens: maintenanceItems,
+    extras_itens: persistedExtras,
   };
 
   const supabase = createClientServer();
