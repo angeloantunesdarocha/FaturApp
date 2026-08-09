@@ -97,9 +97,9 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   const profitPerKm = totals.km ? totals.profit / totals.km : null; const profitPerHour = totals.hours ? totals.profit / totals.hours : null; const costPerKm = totals.km ? totals.costs / totals.km : null;
   const rows = useMemo(()=>filtered.map(e=>({e,v:calc(e)})).sort((a,b)=>sort==="date"?b.e.date.localeCompare(a.e.date):sort==="profit"?b.v.profit-a.v.profit:sort==="km"?b.v.km-a.v.km:b.v.hours-a.v.hours),[filtered,categories,sort]);
   const best = rows.reduce<{e:DailyEntry;v:ReturnType<typeof calc>}|null>((b,r)=>!b||r.v.profit>b.v.profit?r:b,null);
-  const hoursByDate = useMemo(()=>{const map=new Map<string,number>();filtered.forEach(e=>map.set(e.date,(map.get(e.date)||0)+Math.max(0,Number(e.hours_worked)||0)));return [...map.entries()].filter(([,h])=>h>0).sort((a,b)=>b[0].localeCompare(a[0]));},[filtered]);
+  const hoursByDate = useMemo(()=>{const map=new Map<string,number>();filtered.forEach(e=>map.set(e.date,(map.get(e.date)||0)+Math.max(0,Number(e.hours_worked)||0)));return Array.from(map.entries()).filter(([,h])=>h>0).sort((a,b)=>b[0].localeCompare(a[0]));},[filtered]);
   const daily = useMemo(()=>rows.slice().reverse().map(r=>({date:r.e.date,value:r.v.profit})),[rows]);
-  const monthly = useMemo(()=>{const map=new Map<string,number>();filtered.forEach(e=>{const key=e.date.slice(0,7);map.set(key,(map.get(key)||0)+calc(e).profit);});return [...map.entries()].sort().map(([key,value])=>({label:key.slice(5),value}));},[filtered,categories]);
+  const monthly = useMemo(()=>{const map=new Map<string,number>();filtered.forEach(e=>{const key=e.date.slice(0,7);map.set(key,(map.get(key)||0)+calc(e).profit);});return Array.from(map.entries()).sort().map(([key,value])=>({label:key.slice(5),value}));},[filtered,categories]);
   const activeCount = Object.values(categories).filter(Boolean).length;
   const periodLabel = from===to ? dateLabel(from) : `${dateLabel(from)} — ${dateLabel(to)}`;
 
