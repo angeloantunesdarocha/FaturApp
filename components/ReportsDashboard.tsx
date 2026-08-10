@@ -172,7 +172,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
   const hoursByDate = useMemo(() => {
     const map = new Map<string, number>();
-    filtered.forEach(e => map.set(e.date, (map.get(e.date) || 0) + Math.max(0, Number(e.hours_worked) || 0));
+    filtered.forEach(e => map.set(e.date, (map.get(e.date) || 0) + Math.max(0, Number(e.hours_worked) || 0)));
     return Array.from(map.entries()).filter(([, h]) => h > 0).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
@@ -333,7 +333,6 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
             </div>
           </section>
 
-          {/* Evolução mensal removida: o espaço foi reaproveitado pelo resumo de custo/km. */}
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
