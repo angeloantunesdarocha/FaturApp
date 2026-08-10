@@ -113,10 +113,11 @@ function BarChart({ data }: { data: { date: string; value: number }[] }) {
 /**
  * CostDonut — Distribuição dos custos
  *
- * CORREÇÃO DE SCROLL:
- * - O componente em si permanece igual.
- * - O card pai envolve o CostDonut em overflow-x-auto + min-w-[260px]
- *   para garantir scroll horizontal no card quando a tela é muito pequena.
+ * CORREÇÃO DE LAYOUT:
+ * - No mobile: donut centralizado em cima, legenda embaixo com largura total.
+ * - No sm+: donut à esquerda, legenda à direita (layout original).
+ * - Cada linha da legenda usa flex com label flex-1 (expande) e valor
+ *   shrink-0 (não encolhe), eliminando sobreposição de texto sobre valor.
  */
 function CostDonut({ costs, onDetails }: { costs: { gas: number; alcohol: number; maintenance: number; extras: number }; onDetails: (category: DetailCategory) => void }) {
   const total = costs.gas + costs.alcohol + costs.maintenance + costs.extras;
@@ -133,7 +134,10 @@ function CostDonut({ costs, onDetails }: { costs: { gas: number; alcohol: number
     return `${item.color} ${start}deg ${cursor}deg`;
   });
   return (
-    <div className="flex items-center gap-5">
+    /* flex-col no mobile (donut em cima, legenda embaixo com largura toda)
+       flex-row no sm+ (donut à esquerda, legenda à direita) */
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+      {/* Donut */}
       <div
         className="grid h-36 w-36 shrink-0 place-items-center rounded-full"
         style={{ background: `conic-gradient(${stops.join(",")})` }}
@@ -143,26 +147,28 @@ function CostDonut({ costs, onDetails }: { costs: { gas: number; alcohol: number
           <strong className="text-sm text-slate-800">{formatBRL(total)}</strong>
         </div>
       </div>
-      <div className="min-w-0 flex-1 space-y-2">
+
+      {/* Legenda — largura total no mobile, flex-1 no sm+ */}
+      <div className="w-full min-w-0 space-y-2 sm:flex-1">
         {items.map(item => (
-          <div key={item.label} className="flex items-center justify-between gap-2 text-xs">
-            <span className="flex min-w-0 items-center gap-2 text-slate-600">
-              <i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
-              {item.label}
-            </span>
-            <span className="flex shrink-0 items-center gap-2">
-              <strong className="text-slate-800">{formatBRL(item.value)}</strong>
-              {item.detail && (
-                <button
-                  type="button"
-                  onClick={() => onDetails(item.detail!)}
-                  aria-label={`Ver detalhes de ${item.label}`}
-                  className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
-                >
-                  <Icon name="list" size={13}/>Detalhes
-                </button>
-              )}
-            </span>
+          <div key={item.label} className="flex items-center gap-2 text-xs">
+            {/* Bullet */}
+            <i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
+            {/* Label: flex-1 + min-w-0 garante que cresce mas não empurra o valor */}
+            <span className="min-w-0 flex-1 text-slate-600">{item.label}</span>
+            {/* Valor: nunca encolhe */}
+            <strong className="shrink-0 whitespace-nowrap text-slate-800">{formatBRL(item.value)}</strong>
+            {/* Botão Detalhes (apenas Manutenção e Extras) */}
+            {item.detail && (
+              <button
+                type="button"
+                onClick={() => onDetails(item.detail!)}
+                aria-label={`Ver detalhes de ${item.label}`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
+              >
+                <Icon name="list" size={13}/>Detalhes
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -414,16 +420,9 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
             <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="font-bold text-slate-900">Distribuição dos custos</h2>
               <p className="text-xs text-slate-500">Combustível, manutenção e extras</p>
-              {/*
-                overflow-x-auto aqui garante que o donut + legenda possam
-                scrollar horizontalmente em telas muito pequenas,
-                sem vazar pra fora do card ou da página.
-                min-w-[260px] é o mínimo para o layout do donut fazer sentido.
-              */}
-              <div className="mt-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-                <div style={{ minWidth: "260px" }}>
-                  <CostDonut costs={totals} onDetails={setDetailCategory}/>
-                </div>
+              {/* CostDonut resolve sozinho: empilha no mobile, lado a lado no sm+ */}
+              <div className="mt-4">
+                <CostDonut costs={totals} onDetails={setDetailCategory}/>
               </div>
             </div>
           </section>
