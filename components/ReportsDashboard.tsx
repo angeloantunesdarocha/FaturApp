@@ -68,39 +68,18 @@ function MetricCard({ title, value, icon, tone, detail }: { title: string; value
   </button>;
 }
 
-/**
- * BarChart — Lucro por dia
- *
- * CORREÇÃO DE SCROLL:
- * - Wrapper externo com overflow-x-auto é o container de scroll.
- * - Inner flex usa min-w-max para forçar largura natural (não encolhe).
- * - Cada barra usa w-[34px] shrink-0 (sem flex-1, que impedia o overflow).
- */
 function BarChart({ data }: { data: { date: string; value: number }[] }) {
   const max = Math.max(...data.map(x => x.value), 1);
   return (
-    <div
-      className="overflow-x-auto"
-      style={{ WebkitOverflowScrolling: "touch" }}
-      aria-label="Gráfico de lucro diário"
-    >
+    <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }} aria-label="Gráfico de lucro diário">
       <div className="flex h-44 min-w-max items-end gap-2 pb-6 pt-3">
         {data.map((item, i) => {
           const height = Math.max(4, Math.abs(item.value) / max * 125);
           const positive = item.value >= 0;
           return (
-            <div
-              key={`${item.date}-${i}`}
-              className="flex w-[34px] shrink-0 flex-col items-center justify-end gap-1"
-              title={`${dateLabel(item.date)}: ${formatBRL(item.value)}`}
-            >
-              <span className="text-[9px] font-semibold text-slate-500">
-                {formatBRL(item.value).replace("R$", "")}
-              </span>
-              <div
-                className={`w-full rounded-t-lg transition-all ${positive ? "bg-emerald-400" : "bg-red-300"}`}
-                style={{ height }}
-              />
+            <div key={`${item.date}-${i}`} className="flex w-[34px] shrink-0 flex-col items-center justify-end gap-1" title={`${dateLabel(item.date)}: ${formatBRL(item.value)}`}>
+              <span className="text-[9px] font-semibold text-slate-500">{formatBRL(item.value).replace("R$", "")}</span>
+              <div className={`w-full rounded-t-lg transition-all ${positive ? "bg-emerald-400" : "bg-red-300"}`} style={{ height }} />
               <span className="text-[9px] text-slate-400">{item.date.slice(8)}</span>
             </div>
           );
@@ -110,15 +89,6 @@ function BarChart({ data }: { data: { date: string; value: number }[] }) {
   );
 }
 
-/**
- * CostDonut — Distribuição dos custos
- *
- * CORREÇÃO DE LAYOUT:
- * - No mobile: donut centralizado em cima, legenda embaixo com largura total.
- * - No sm+: donut à esquerda, legenda à direita (layout original).
- * - Cada linha da legenda usa flex com label flex-1 (expande) e valor
- *   shrink-0 (não encolhe), eliminando sobreposição de texto sobre valor.
- */
 function CostDonut({ costs, onDetails }: { costs: { gas: number; alcohol: number; maintenance: number; extras: number }; onDetails: (category: DetailCategory) => void }) {
   const total = costs.gas + costs.alcohol + costs.maintenance + costs.extras;
   const items = [
@@ -134,65 +104,26 @@ function CostDonut({ costs, onDetails }: { costs: { gas: number; alcohol: number
     return `${item.color} ${start}deg ${cursor}deg`;
   });
   return (
-    /* flex-col no mobile (donut em cima, legenda embaixo com largura toda)
-       flex-row no sm+ (donut à esquerda, legenda à direita) */
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-      {/* Donut */}
-      <div
-        className="grid h-36 w-36 shrink-0 place-items-center rounded-full"
-        style={{ background: `conic-gradient(${stops.join(",")})` }}
-      >
+      <div className="grid h-36 w-36 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(${stops.join(",")})` }}>
         <div className="grid h-24 w-24 place-items-center rounded-full bg-white text-center shadow-inner">
           <span className="text-[10px] uppercase text-slate-400">Custos</span>
           <strong className="text-sm text-slate-800">{formatBRL(total)}</strong>
         </div>
       </div>
-
-      {/* Legenda — largura total no mobile, flex-1 no sm+ */}
       <div className="w-full min-w-0 space-y-2 sm:flex-1">
         {items.map(item => (
           <div key={item.label} className="flex items-center gap-2 text-xs">
-            {/* Bullet */}
             <i className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: item.color }} />
-            {/* Label: flex-1 + min-w-0 garante que cresce mas não empurra o valor */}
             <span className="min-w-0 flex-1 text-slate-600">{item.label}</span>
-            {/* Valor: nunca encolhe */}
             <strong className="shrink-0 whitespace-nowrap text-slate-800">{formatBRL(item.value)}</strong>
-            {/* Botão Detalhes (apenas Manutenção e Extras) */}
             {item.detail && (
-              <button
-                type="button"
-                onClick={() => onDetails(item.detail!)}
-                aria-label={`Ver detalhes de ${item.label}`}
-                className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700"
-              >
+              <button type="button" onClick={() => onDetails(item.detail!)} aria-label={`Ver detalhes de ${item.label}`} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-1.5 py-1 text-[10px] font-bold text-slate-600 hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-700">
                 <Icon name="list" size={13}/>Detalhes
               </button>
             )}
           </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function LineChart({ data }: { data: { label: string; value: number }[] }) {
-  if (!data.length) return <div className="grid h-44 place-items-center text-sm text-slate-400">Sem dados suficientes.</div>;
-  const max = Math.max(...data.map(x => x.value), 1);
-  const min = Math.min(...data.map(x => x.value), 0);
-  const range = Math.max(max - min, 1);
-  const points = data.map((x, i) => `${(i / Math.max(data.length - 1, 1)) * 100},${145 - ((x.value - min) / range) * 125}`).join(" ");
-  return (
-    <div className="h-44">
-      <svg viewBox="0 0 100 155" preserveAspectRatio="none" className="h-36 w-full overflow-visible" role="img" aria-label="Evolução do lucro mensal">
-        <polyline points={points} fill="none" stroke="#2ecc71" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
-        {data.map((x, i) => {
-          const [px, py] = points.split(" ")[i].split(",");
-          return <circle key={i} cx={px} cy={py} r="2" fill="#2ecc71" />;
-        })}
-      </svg>
-      <div className="flex justify-between text-[10px] text-slate-400">
-        {data.map(x => <span key={x.label}>{x.label}</span>)}
       </div>
     </div>
   );
@@ -241,20 +172,11 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
   const hoursByDate = useMemo(() => {
     const map = new Map<string, number>();
-    filtered.forEach(e => map.set(e.date, (map.get(e.date) || 0) + Math.max(0, Number(e.hours_worked) || 0)));
+    filtered.forEach(e => map.set(e.date, (map.get(e.date) || 0) + Math.max(0, Number(e.hours_worked) || 0));
     return Array.from(map.entries()).filter(([, h]) => h > 0).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
   const daily = useMemo(() => rows.slice().reverse().map(r => ({ date: r.e.date, value: r.v.profit })), [rows]);
-
-  const monthly = useMemo(() => {
-    const map = new Map<string, number>();
-    filtered.forEach(e => {
-      const key = e.date.slice(0, 7);
-      map.set(key, (map.get(key) || 0) + calc(e).profit);
-    });
-    return Array.from(map.entries()).sort().map(([key, value]) => ({ label: key.slice(5), value }));
-  }, [filtered, categories]);
 
   const detailItems = useMemo<DetailItem[]>(() => {
     if (!detailCategory) return [];
@@ -328,7 +250,6 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
   return (
     <div className="space-y-5 pb-24">
-      {/* ── CABEÇALHO ─────────────────────────────────────────────────── */}
       <header className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-600">Visão financeira</p>
@@ -338,7 +259,6 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{periodLabel}</span>
       </header>
 
-      {/* ── FILTROS ───────────────────────────────────────────────────── */}
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -378,7 +298,6 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
         )}
       </section>
 
-      {/* ── SEM DADOS ─────────────────────────────────────────────────── */}
       {filtered.length === 0 ? (
         <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-600"><Icon name="plus"/></div>
@@ -387,7 +306,6 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
         </section>
       ) : (
         <>
-          {/* ── CARDS DE MÉTRICAS ──────────────────────────────────────── */}
           <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             <MetricCard title="Lucro líquido" value={formatBRL(totals.profit)} icon="trend" tone="green" detail="O que realmente sobrou" />
             <MetricCard title="R$/km" value={money(profitPerKm)} icon="km" tone="blue" detail="Lucro por quilômetro" />
@@ -396,14 +314,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
             <MetricCard title="Horas" value={`${hours(totals.hours)} h`} icon="clock" tone="gray" detail="Somente horas registradas" />
           </section>
 
-          {/* ── LUCRO POR DIA + DISTRIBUIÇÃO DOS CUSTOS ───────────────── */}
-          {/*
-            min-w-0 nos filhos do grid é essencial: sem isso o grid pode
-            expandir além do viewport causando scroll horizontal na página.
-          */}
           <section className="grid gap-4 lg:grid-cols-3">
-
-            {/* Lucro por dia — scroll horizontal DENTRO do card */}
             <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
               <div className="flex items-center justify-between">
                 <div>
@@ -412,49 +323,36 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
                 </div>
                 <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{rows.length} dias</span>
               </div>
-              {/* BarChart já tem overflow-x-auto internamente */}
               <BarChart data={daily} />
             </div>
 
-            {/* Distribuição dos custos — scroll horizontal DENTRO do card */}
             <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
               <h2 className="font-bold text-slate-900">Distribuição dos custos</h2>
               <p className="text-xs text-slate-500">Combustível, manutenção e extras</p>
-              {/* CostDonut resolve sozinho: empilha no mobile, lado a lado no sm+ */}
-              <div className="mt-4">
-                <CostDonut costs={totals} onDetails={setDetailCategory}/>
-              </div>
+              <div className="mt-4"><CostDonut costs={totals} onDetails={setDetailCategory}/></div>
             </div>
           </section>
 
-          {/* ── EVOLUÇÃO MENSAL + CUSTO POR KM ────────────────────────── */}
-          <section className="grid gap-4 lg:grid-cols-3">
-            <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-bold text-slate-900">Evolução mensal</h2>
-                  <p className="text-xs text-slate-500">Lucro acumulado por mês dentro do período</p>
-                </div>
+          {/* Evolução mensal removida: o espaço foi reaproveitado pelo resumo de custo/km. */}
+          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2"><Icon name="target" size={18}/><h2 className="font-bold text-slate-900">Custo por km</h2></div>
+                <p className="mt-1 text-xs text-slate-500">Quanto custa cada quilômetro no período selecionado.</p>
               </div>
-              <div className="mt-3"><LineChart data={monthly}/></div>
-            </div>
-            <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center gap-2"><Icon name="target" size={18}/><h2 className="font-bold text-slate-900">Custo por km</h2></div>
-              <p className="mt-1 text-xs text-slate-500">Quanto custa cada quilômetro</p>
-              <div className="mt-5">
+              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
                 <strong className="text-3xl font-extrabold text-slate-900">{money(costPerKm)}</strong>
                 <span className="ml-1 text-sm text-slate-500">/km</span>
               </div>
-              <div className="mt-5 space-y-3 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Combustível</span><strong>{money(totals.gas + totals.alcohol)}</strong></div>
-                <div className="flex justify-between"><span className="text-slate-500">Manutenção</span><strong>{money(totals.maintenance)}</strong></div>
-                <div className="flex justify-between"><span className="text-slate-500">Extras</span><strong>{money(totals.extras)}</strong></div>
-              </div>
-              <div className="mt-5 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">Meta sugerida: defina seu limite de custo/km no próximo passo para acompanhar evolução.</div>
             </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Combustível</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.gas + totals.alcohol)}</strong></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Manutenção</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.maintenance)}</strong></div>
+              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Extras</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.extras)}</strong></div>
+            </div>
+            <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">Meta sugerida: defina seu limite de custo/km no próximo passo para acompanhar a evolução.</div>
           </section>
 
-          {/* ── HORAS TRABALHADAS ─────────────────────────────────────── */}
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -472,16 +370,12 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
             {hoursOpen && (
               <div className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200">
                 {hoursByDate.map(([date, h]) => (
-                  <div key={date} className="flex justify-between px-4 py-3 text-sm">
-                    <span>{dateLabel(date)}</span>
-                    <strong>{hours(h)} h</strong>
-                  </div>
+                  <div key={date} className="flex justify-between px-4 py-3 text-sm"><span>{dateLabel(date)}</span><strong>{hours(h)} h</strong></div>
                 ))}
               </div>
             )}
           </section>
 
-          {/* ── TABELA — DIAS DO PERÍODO ───────────────────────────────── */}
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
@@ -497,90 +391,54 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
                 </select>
               </div>
             </div>
-            {/* overflow-x-auto aqui já existia e está correto */}
             <div className="mt-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
               <table className="min-w-[760px] w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                    <th className="px-3 py-3 text-left">Data</th>
-                    <th className="px-3 py-3 text-right">Horas</th>
-                    <th className="px-3 py-3 text-right">Km</th>
-                    <th className="px-3 py-3 text-right">Receita</th>
-                    <th className="px-3 py-3 text-right">Custo</th>
-                    <th className="px-3 py-3 text-right">Lucro</th>
-                    <th className="px-3 py-3 text-right">Lucro/km</th>
+                <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
+                  <th className="px-3 py-3 text-left">Data</th><th className="px-3 py-3 text-right">Horas</th><th className="px-3 py-3 text-right">Km</th><th className="px-3 py-3 text-right">Receita</th><th className="px-3 py-3 text-right">Custo</th><th className="px-3 py-3 text-right">Lucro</th><th className="px-3 py-3 text-right">Lucro/km</th>
+                </tr></thead>
+                <tbody>{rows.map(r => (
+                  <tr key={r.e.id} className="border-b border-slate-100 transition hover:bg-slate-50">
+                    <td className="px-3 py-3 font-semibold text-slate-800">{dateLabel(r.e.date)}</td>
+                    <td className="px-3 py-3 text-right text-slate-600">{hours(r.v.hours)} h</td>
+                    <td className="px-3 py-3 text-right text-slate-600">{number(r.v.km, 0)}</td>
+                    <td className="px-3 py-3 text-right text-slate-700">{formatBRL(r.v.net)}</td>
+                    <td className="px-3 py-3 text-right text-slate-600">{formatBRL(r.v.costs)}</td>
+                    <td className={`px-3 py-3 text-right font-bold ${r.v.profit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatBRL(r.v.profit)}</td>
+                    <td className="px-3 py-3 text-right font-semibold text-slate-700">{money(r.v.km ? r.v.profit / r.v.km : null)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {rows.map(r => (
-                    <tr key={r.e.id} className="border-b border-slate-100 transition hover:bg-slate-50">
-                      <td className="px-3 py-3 font-semibold text-slate-800">{dateLabel(r.e.date)}</td>
-                      <td className="px-3 py-3 text-right text-slate-600">{hours(r.v.hours)} h</td>
-                      <td className="px-3 py-3 text-right text-slate-600">{number(r.v.km, 0)}</td>
-                      <td className="px-3 py-3 text-right text-slate-700">{formatBRL(r.v.net)}</td>
-                      <td className="px-3 py-3 text-right text-slate-600">{formatBRL(r.v.costs)}</td>
-                      <td className={`px-3 py-3 text-right font-bold ${r.v.profit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatBRL(r.v.profit)}</td>
-                      <td className="px-3 py-3 text-right font-semibold text-slate-700">{money(r.v.km ? r.v.profit / r.v.km : null)}</td>
-                    </tr>
-                  ))}
-                </tbody>
+                ))}</tbody>
               </table>
             </div>
           </section>
         </>
       )}
 
-      {/* ── MODAL DE DETALHES (Manutenção / Extras) ───────────────────── */}
       {detailCategory && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
           <div className="max-h-[85vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div>
-                <h2 id="detail-modal-title" className="text-lg font-bold text-slate-900">
-                  {detailCategory === "maintenance" ? "Detalhes de Manutenção" : "Detalhes de Gastos Extras"}
-                </h2>
-                <p className="text-xs text-slate-500">Período: {periodLabel}</p>
-              </div>
-              <button type="button" onClick={() => setDetailCategory(null)} aria-label="Fechar detalhes" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100">
-                <Icon name="close" size={20}/>
-              </button>
+              <div><h2 id="detail-modal-title" className="text-lg font-bold text-slate-900">{detailCategory === "maintenance" ? "Detalhes de Manutenção" : "Detalhes de Gastos Extras"}</h2><p className="text-xs text-slate-500">Período: {periodLabel}</p></div>
+              <button type="button" onClick={() => setDetailCategory(null)} aria-label="Fechar detalhes" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><Icon name="close" size={20}/></button>
             </div>
-            {/* overflow-y-auto para scroll vertical no modal */}
             <div className="max-h-[65vh] overflow-y-auto p-5">
-              {detailItems.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-500">Nenhum lançamento encontrado</div>
-              ) : (
-                /* overflow-x-auto para scroll horizontal nos detalhes dentro do modal */
+              {detailItems.length === 0 ? <div className="py-10 text-center text-sm text-slate-500">Nenhum lançamento encontrado</div> : (
                 <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
                   <div className="overflow-hidden rounded-2xl border border-slate-200" style={{ minWidth: "340px" }}>
-                    <div className="grid grid-cols-[92px_1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                      <span>Data</span><span>Descrição</span><span>Valor</span>
-                    </div>
-                    {detailItems.map((item, index) => (
-                      <div key={`${item.date}-${item.description}-${index}`} className="grid grid-cols-[92px_1fr_auto] gap-3 border-t border-slate-100 px-4 py-3 text-sm">
-                        <span className="text-slate-500">{dateLabel(item.date)}</span>
-                        <span className="min-w-0 break-words font-medium text-slate-700">{item.description}</span>
-                        <strong className="text-right text-slate-900">{formatBRL(item.value)}</strong>
-                      </div>
-                    ))}
+                    <div className="grid grid-cols-[92px_1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-500"><span>Data</span><span>Descrição</span><span>Valor</span></div>
+                    {detailItems.map((item, index) => <div key={`${item.date}-${item.description}-${index}`} className="grid grid-cols-[92px_1fr_auto] gap-3 border-t border-slate-100 px-4 py-3 text-sm"><span className="text-slate-500">{dateLabel(item.date)}</span><span className="min-w-0 break-words font-medium text-slate-700">{item.description}</span><strong className="text-right text-slate-900">{formatBRL(item.value)}</strong></div>)}
                   </div>
                 </div>
               )}
             </div>
-            <div className="border-t border-slate-200 p-4">
-              <button type="button" onClick={() => setDetailCategory(null)} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800">Fechar</button>
-            </div>
+            <div className="border-t border-slate-200 p-4"><button type="button" onClick={() => setDetailCategory(null)} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800">Fechar</button></div>
           </div>
         </div>
       )}
 
-      {/* ── FAB DE EXPORTAÇÃO ─────────────────────────────────────────── */}
       {filtered.length > 0 && (
         <div className="fixed bottom-5 right-5 z-40">
           <div className="group relative">
-            <button type="button" aria-label="Abrir ações de exportação" className="grid h-14 w-14 place-items-center rounded-full bg-slate-900 text-white shadow-2xl ring-4 ring-white transition hover:scale-105">
-              <Icon name="download" size={22}/>
-            </button>
+            <button type="button" aria-label="Abrir ações de exportação" className="grid h-14 w-14 place-items-center rounded-full bg-slate-900 text-white shadow-2xl ring-4 ring-white transition hover:scale-105"><Icon name="download" size={22}/></button>
             <div className="absolute bottom-16 right-0 hidden w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl group-hover:block">
               <button onClick={pdf} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="download" size={17}/>Baixar PDF</button>
               <button onClick={whatsapp} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">WhatsApp</button>
