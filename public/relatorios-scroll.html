@@ -6,60 +6,62 @@
   <title>FaturApp — Relatórios</title>
   <style>
     :root {
-      --green: #10B981;
-      --green-dark: #059669;
-      --green-soft: #ECFDF5;
-      --ink: #0f172a;
-      --muted: #64748b;
-      --line: #e2e8f0;
-      --surface: #ffffff;
-      --page: #f8fafc;
-      --danger: #B91C1C;
+      --green: #10B981; --green-dark: #059669; --green-soft: #ECFDF5;
+      --ink: #0f172a; --muted: #64748b; --line: #e2e8f0;
+      --surface: #fff; --page: #f8fafc; --danger: #B91C1C;
       --radius: 16px;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    * { box-sizing: border-box; }
-    html, body { margin: 0; min-height: 100%; }
-    body { background: var(--page); color: var(--ink); overflow-y: auto; }
+    /* CRÍTICO: html/body nunca são os scrollers. Toda rolagem vertical pertence a #app. */
+    *, *::before, *::after { box-sizing: border-box; max-width: 100%; }
+    html, body {
+      width: 100%; height: 100%; min-height: 0;
+      margin: 0; padding: 0;
+      overflow: hidden;
+    }
+    body { background: var(--page); color: var(--ink); }
     button { font: inherit; }
     a { color: inherit; text-decoration: none; }
 
-    .app { min-height: 100vh; }
+    /* #app ocupa exatamente a viewport e é a única fonte de scroll vertical. */
+    #app {
+      width: 100%; height: 100vh; height: 100dvh;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior-x: none;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: #cbd5e1 transparent;
+    }
+    #app::-webkit-scrollbar { width: 8px; }
+    #app::-webkit-scrollbar-track { background: transparent; }
+    #app::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    #app::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
     .header {
-      position: sticky;
-      top: 0;
-      z-index: 20;
+      position: sticky; top: 0; z-index: 20;
+      width: 100%;
       background: rgba(255,255,255,.96);
       border-bottom: 1px solid var(--line);
       backdrop-filter: blur(10px);
     }
     .header-inner {
-      width: min(1180px, 100%);
-      margin: 0 auto;
+      width: min(1180px, 100%); margin: 0 auto;
       padding: 12px clamp(12px, 3vw, 24px);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
     }
     .brand { font-size: 1.15rem; font-weight: 800; color: #123b63; white-space: nowrap; }
     .brand span { color: #168a4a; }
-    .nav { display: flex; align-items: center; gap: 8px; overflow-x: auto; }
+    .nav { display: flex; align-items: center; gap: 8px; min-width: 0; overflow-x: auto; overflow-y: hidden; }
     .nav-btn {
-      border: 1px solid var(--line);
-      background: #fff;
-      color: #123b63;
-      border-radius: 999px;
-      padding: .6rem .9rem;
-      font-size: .875rem;
-      font-weight: 700;
-      white-space: nowrap;
-      cursor: pointer;
-      transition: .18s ease;
+      flex: 0 0 auto; border: 1px solid var(--line); background: #fff; color: #123b63;
+      border-radius: 999px; padding: .6rem .9rem; font-size: .875rem; font-weight: 700;
+      white-space: nowrap; cursor: pointer; transition: .18s ease;
     }
     .nav-btn:hover { border-color: #94a3b8; }
-    .nav-btn.active { background: var(--green); color: white; border-color: var(--green); }
+    .nav-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
     .nav-btn.logout:active, .nav-btn.logout.pressed { background: var(--danger); border-color: var(--danger); color: #fff; }
 
     main { width: min(1180px, 100%); margin: 0 auto; padding: clamp(20px, 4vw, 38px) clamp(12px, 3vw, 24px) 48px; }
@@ -72,7 +74,7 @@
     .filter-card, .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 5px 18px rgba(15,23,42,.05); }
     .filter-card { padding: 14px; margin-bottom: 18px; }
     .filter-title { font-size: .85rem; font-weight: 800; margin-bottom: 10px; }
-    .filters { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; min-width: 0; }
     .chip { border: 1px solid var(--line); background: #fff; color: #475569; border-radius: 999px; padding: .55rem .8rem; font-size: .8rem; font-weight: 700; white-space: nowrap; }
     .chip.active { color: var(--green-dark); background: var(--green-soft); border-color: #86efac; }
 
@@ -86,31 +88,31 @@
     .metric.orange { border-top: 4px solid #f39c12; }
     .metric.gray { border-top: 4px solid #95a5a6; }
 
-    .section { margin-top: 18px; }
-    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .section { margin-top: 18px; min-width: 0; }
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; min-width: 0; }
     .section h2 { margin: 0; font-size: 1.05rem; }
     .section-note { color: var(--muted); font-size: .75rem; }
 
-    .days-card { padding: 14px; }
+    .days-card { padding: 14px; min-width: 0; }
+    /* ÚNICO scroller horizontal da área de conteúdo: a lista de dias. */
     .days-scroll {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 8px;
-      overflow-x: auto;
-      overflow-y: hidden;
+      display: flex; flex-wrap: nowrap; gap: 8px;
+      width: 100%; min-width: 0;
+      overflow-x: auto; overflow-y: hidden;
       padding: 4px 2px 12px;
-      scrollbar-width: auto;
+      scrollbar-width: thin; scrollbar-color: #94a3b8 #e2e8f0;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-x: contain;
+      scroll-snap-type: x proximity;
     }
-    .days-scroll::-webkit-scrollbar { height: 10px; }
+    .days-scroll::-webkit-scrollbar { height: 9px; }
     .days-scroll::-webkit-scrollbar-track { background: #e2e8f0; border-radius: 999px; }
     .days-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
-    .day { flex: 0 0 42px; width: 42px; height: 42px; border: 1px solid var(--line); background: #f8fafc; border-radius: 50%; display: grid; place-items: center; color: #475569; font-size: .78rem; font-weight: 800; }
+    .day { flex: 0 0 42px; width: 42px; height: 42px; border: 1px solid var(--line); background: #f8fafc; border-radius: 50%; display: grid; place-items: center; color: #475569; font-size: .78rem; font-weight: 800; scroll-snap-align: start; }
     .day.good { background: var(--green-soft); color: var(--green-dark); border-color: #86efac; }
 
     .bottom-grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; }
-    .summary { padding: 18px; }
+    .summary { padding: 18px; min-width: 0; }
     .summary-row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid #f1f5f9; font-size: .9rem; }
     .summary-row:last-child { border-bottom: 0; }
     .summary-row strong { color: var(--green-dark); }
@@ -123,7 +125,6 @@
     @media (max-width: 700px) {
       .header-inner { align-items: flex-start; flex-direction: column; }
       .nav { width: 100%; }
-      .nav-btn { flex: 0 0 auto; }
       .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .metric:first-child { grid-column: 1 / -1; }
     }
@@ -132,12 +133,13 @@
       .metrics { gap: 8px; }
       .metric { padding: 13px; }
       .metric-value { font-size: 1.2rem; }
-      .filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 5px; }
+      .filters { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding-bottom: 5px; }
     }
   </style>
 </head>
 <body>
-  <div class="app">
+  <!-- #app controla todo o scroll vertical; html/body permanecem sem barras. -->
+  <div id="app">
     <header class="header">
       <div class="header-inner">
         <a class="brand" href="#lancar">Fatur<span>App</span></a>
@@ -161,10 +163,8 @@
         <div class="filter-title" id="filters-title">Filtros e período</div>
         <div class="filters">
           <button class="chip active">Atualização automática</button>
-          <button class="chip">Hoje</button>
-          <button class="chip">Esta semana</button>
-          <button class="chip">Este mês</button>
-          <button class="chip">Personalizado</button>
+          <button class="chip">Hoje</button><button class="chip">Esta semana</button>
+          <button class="chip">Este mês</button><button class="chip">Personalizado</button>
         </div>
       </section>
 
@@ -186,42 +186,30 @@
       </section>
 
       <section class="bottom-grid section">
-        <article class="card summary">
-          <div class="section-head"><h2>Resumo do período</h2><span class="section-note">Agosto/2026</span></div>
-          <div class="summary-row"><span>Lucro líquido</span><strong>R$ 2.143,24</strong></div>
-          <div class="summary-row"><span>Distância</span><strong>2.005 km</strong></div>
-          <div class="summary-row"><span>Horas registradas</span><strong>38 h</strong></div>
-          <div class="summary-row"><span>Lucro por hora</span><strong>R$ 56,40</strong></div>
+        <article class="card summary"><div class="section-head"><h2>Resumo do período</h2><span class="section-note">Agosto/2026</span></div>
+          <div class="summary-row"><span>Lucro líquido</span><strong>R$ 2.143,24</strong></div><div class="summary-row"><span>Distância</span><strong>2.005 km</strong></div><div class="summary-row"><span>Horas registradas</span><strong>38 h</strong></div><div class="summary-row"><span>Lucro por hora</span><strong>R$ 56,40</strong></div>
         </article>
-        <article class="card summary">
-          <div class="section-head"><h2>Experiência mobile</h2></div>
-          <p class="hint">O conteúdo usa largura fluida. A lista de dias permanece em uma única linha e ganha rolagem horizontal, evitando que números sejam comprimidos ou que a página exija zoom.</p>
-        </article>
+        <article class="card summary"><div class="section-head"><h2>Experiência mobile</h2></div><p class="hint">A página usa largura fluida. A lista de dias permanece em uma única linha e é o único conteúdo com rolagem horizontal.</p></article>
       </section>
     </main>
   </div>
 
   <script>
-    // Navegação visual: ações de tela recebem o estado ativo; Sair é apenas uma ação.
+    // Apenas os botões que representam telas podem ficar ativos.
     const navButtons = document.querySelectorAll('.nav-btn[data-screen]');
-    navButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        navButtons.forEach((item) => item.classList.remove('active'));
-        button.classList.add('active');
-        if (button.dataset.screen === 'relatorios') {
-          document.getElementById('relatorios').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    });
+    navButtons.forEach((button) => button.addEventListener('click', () => {
+      navButtons.forEach((item) => item.classList.remove('active'));
+      button.classList.add('active');
+      if (button.dataset.screen === 'relatorios') {
+        document.getElementById('relatorios').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }));
 
-    // Feedback breve e alerta para simular o logout neste protótipo.
-    const logout = document.getElementById('logout');
-    logout.addEventListener('click', () => {
+    // Feedback vermelho breve antes do alerta de logout.
+    document.getElementById('logout').addEventListener('click', () => {
+      const logout = document.getElementById('logout');
       logout.classList.add('pressed');
-      window.setTimeout(() => {
-        logout.classList.remove('pressed');
-        window.alert('Deslogando...');
-      }, 120);
+      window.setTimeout(() => { logout.classList.remove('pressed'); window.alert('Deslogando...'); }, 120);
     });
   </script>
 </body>
