@@ -91,7 +91,7 @@ function normalizeEntry(input: SaveEntryInput) {
 }
 
 export async function saveEntry(input: SaveEntryInput) {
-  await requireUser();
+  const user = await requireUser();
   const token = sessionToken();
   if (!token) return { success: false, error: "Sessão inválida." };
   const row = normalizeEntry(input);
@@ -103,21 +103,22 @@ export async function saveEntry(input: SaveEntryInput) {
   if (error) return { success: false, error: error.message };
   const monthProfit = await getMonthProfit(input.date);
   revalidatePath("/"); revalidatePath("/relatorios");
-  return { success: true, monthProfit };
+  return { success: true, monthProfit, userId: user.user_id };
 }
 
 export async function updateEntry(id: string, input: SaveEntryInput) {
-  await requireUser();
-  const token = sessionToken();
-  if (!token || !id) return { success: false, error: "Sessão ou lançamento inválido." };
+  const user = await requireUser();
+  if (!id) return { success: false, error: "Lançamento inválido." };
   const row = normalizeEntry(input);
   if (row.km_final < row.km_initial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
   if (row.gas_expense > 0 && row.gasoline_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
   if (row.alcohol_expense > 0 && row.alcohol_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
+
+  // A mesma validação de sessão usada no restante do app é a fonte de verdade.
+  // Não fazemos uma segunda consulta manual à app_sessions, evitando divergências
+  // entre o token validado por app_get_session e a leitura direta da tabela.
   const supabase = createClientServer();
-  const { data: session, error: sessionError } = await supabase.from("app_sessions").select("user_id").eq("token", token).gt("expires_at", new Date().toISOString()).maybeSingle();
-  if (sessionError || !session?.user_id) return { success: false, error: "Sessão inválida." };
-  const { error } = await supabase.from("daily_entries").update({ ...row, user_id: session.user_id }).eq("id", id).eq("user_id", session.user_id);
+  const { error } = await supabase.from("daily_entries").update({ ...row, user_id: user.user_id }).eq("id", id).eq("user_id", user.user_id);
   if (error) return { success: false, error: error.message };
   revalidatePath("/"); revalidatePath("/relatorios");
   return { success: true };
