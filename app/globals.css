@@ -6,6 +6,7 @@ html {
   @apply bg-slate-50;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  overflow-x: hidden; /* impede scroll horizontal na página inteira */
 }
 
 body {
