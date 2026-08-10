@@ -15,8 +15,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col">
         <Header isAuthenticated={!!user} />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-4 sm:px-4 sm:py-6 lg:px-6">{children}</main>
-        <footer className="border-t border-slate-200 px-3 py-4 text-center text-xs text-slate-500 sm:px-4"><p>FaturApp — descubra se você está lucrando ou pagando pra trabalhar.</p><p className="mt-1">Desenvolvido por: Ângelo Antunes</p></footer>
+        {/* overflow-x-hidden: impede qualquer conteúdo interno de causar scroll horizontal na página */}
+        <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
+          {children}
+        </main>
+        <footer className="border-t border-slate-200 px-3 py-4 text-center text-xs text-slate-500 sm:px-4">
+          <p>FaturApp — descubra se você está lucrando ou pagando pra trabalhar.</p>
+          <p className="mt-1">Desenvolvido por: Ângelo Antunes</p>
+        </footer>
       </body>
     </html>
   );
