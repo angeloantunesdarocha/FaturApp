@@ -1,5 +1,6 @@
 import { getEntriesInRange } from "@/app/actions";
 import ReportsDashboard from "@/components/ReportsDashboard";
+import ShareResultCard from "@/components/ShareResultCard";
 import { todayISO } from "@/lib/utils";
 import { requireUser } from "@/lib/auth";
 
@@ -14,5 +15,6 @@ export default async function ReportsPage() {
 
   return <div className="space-y-5">
     <ReportsDashboard entries={entries} initialFrom={monthStart} initialTo={monthEnd} />
+    <ShareResultCard entries={entries} />
   </div>;
 }
