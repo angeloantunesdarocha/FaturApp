@@ -107,18 +107,23 @@ export async function saveEntry(input: SaveEntryInput) {
 }
 
 export async function updateEntry(id: string, input: SaveEntryInput) {
-  const user = await requireUser();
+  await requireUser();
+  const token = sessionToken();
+  if (!token) return { success: false, error: "Sessão inválida." };
   if (!id) return { success: false, error: "Lançamento inválido." };
   const row = normalizeEntry(input);
   if (row.km_final < row.km_initial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
   if (row.gas_expense > 0 && row.gasoline_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
   if (row.alcohol_expense > 0 && row.alcohol_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
 
-  // A mesma validação de sessão usada no restante do app é a fonte de verdade.
-  // Não fazemos uma segunda consulta manual à app_sessions, evitando divergências
-  // entre o token validado por app_get_session e a leitura direta da tabela.
+  // A atualização passa pela função RPC protegida no banco. Ela valida o token,
+  // garante que o lançamento pertence ao usuário e executa o UPDATE com SECURITY DEFINER.
   const supabase = createClientServer();
-  const { error } = await supabase.from("daily_entries").update({ ...row, user_id: user.user_id }).eq("id", id).eq("user_id", user.user_id);
+  const { error } = await supabase.rpc("app_update_entry", {
+    p_token: token,
+    p_entry_id: id,
+    p_entry: row,
+  });
   if (error) return { success: false, error: error.message };
   revalidatePath("/"); revalidatePath("/relatorios");
   return { success: true };
