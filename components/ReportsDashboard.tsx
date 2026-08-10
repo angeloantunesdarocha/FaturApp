@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
+  computeFeeAmount,
   computeFuelLiters,
   computeNetFare,
   formatBRL,
@@ -141,6 +142,9 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   const filtered = useMemo(() => entries.filter(e => e.date >= from && e.date <= to), [entries, from, to]);
 
   const calc = (e: DailyEntry) => {
+    const gross = Math.max(0, Number(e.gross_amount) || 0);
+    const feePercent = Math.max(0, Number(e.fee_percent) || 0);
+    const feeAmount = computeFeeAmount(e);
     const net = computeNetFare(e);
     const gas = categories.gas ? Math.max(0, Number(e.gas_expense) || 0) : 0;
     const alcohol = categories.alcohol ? Math.max(0, Number(e.alcohol_expense) || 0) : 0;
@@ -150,14 +154,14 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
     const extras = categories.extras ? (e.extra_expenses || []).reduce((s, i) => s + toNumber(i.value), 0) : 0;
     const km = Math.max(0, Number(e.km_driven) || 0);
     const h = Math.max(0, Number(e.hours_worked) || 0);
-    return { net, gas, alcohol, maintenance, extras, km, hours: h, costs: gas + alcohol + maintenance + extras, profit: net - gas - alcohol - maintenance - extras, fuelLiters: computeFuelLiters(e) };
+    return { gross, feePercent, feeAmount, net, gas, alcohol, maintenance, extras, km, hours: h, costs: gas + alcohol + maintenance + extras, profit: net - gas - alcohol - maintenance - extras, fuelLiters: computeFuelLiters(e) };
   };
 
   const totals = useMemo(() => filtered.reduce((a, e) => {
     const v = calc(e);
     Object.keys(a).forEach(k => { (a as any)[k] += (v as any)[k]; });
     return a;
-  }, { net: 0, gas: 0, alcohol: 0, maintenance: 0, extras: 0, km: 0, hours: 0, costs: 0, profit: 0, fuelLiters: 0 }), [filtered, categories]);
+  }, { gross: 0, feeAmount: 0, feePercent: 0, net: 0, gas: 0, alcohol: 0, maintenance: 0, extras: 0, km: 0, hours: 0, costs: 0, profit: 0, fuelLiters: 0 }), [filtered, categories]);
 
   const profitPerKm = totals.km ? totals.profit / totals.km : null;
   const profitPerHour = totals.hours ? totals.profit / totals.hours : null;
@@ -172,7 +176,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
   const hoursByDate = useMemo(() => {
     const map = new Map<string, number>();
-    filtered.forEach(e => map.set(e.date, (map.get(e.date) || 0) + Math.max(0, Number(e.hours_worked) || 0)));
+    filtered.forEach(e => map.set(e.date, (map.get(e.date) || 0) + Math.max(0, Number(e.hours_worked) || 0));
     return Array.from(map.entries()).filter(([, h]) => h > 0).sort((a, b) => b[0].localeCompare(a[0]));
   }, [filtered]);
 
@@ -216,9 +220,11 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   const summaryText = [
     `FaturApp — Relatório`,
     `Período: ${periodLabel}`,
-    `Lucro líquido: ${formatBRL(totals.profit)}`,
+    `Receita bruta: ${formatBRL(totals.gross)}`,
+    `Taxas dos aplicativos: ${formatBRL(totals.feeAmount)}`,
     `Receita líquida: ${formatBRL(totals.net)}`,
     `Custos: ${formatBRL(totals.costs)}`,
+    `Lucro líquido: ${formatBRL(totals.profit)}`,
     `Km: ${number(totals.km, 0)} km`,
     `Horas: ${hours(totals.hours)} h`,
     `R$/km: ${money(profitPerKm)}`,
@@ -235,8 +241,8 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   function pdf() {
     const doc = new jsPDF("landscape", "mm", "a4");
     doc.setFontSize(18); doc.text("FaturApp — Dashboard de Relatórios", 14, 14);
-    doc.setFontSize(9); doc.text(`Período: ${periodLabel} | Lucro: ${formatBRL(totals.profit)} | R$/km: ${money(profitPerKm)} | R$/h: ${money(profitPerHour)}`, 14, 21);
-    autoTable(doc, { head: [["Data", "Horas", "Km", "Receita", "Custo", "Lucro", "Lucro/km"]], body: rows.map(r => [dateLabel(r.e.date), `${hours(r.v.hours)} h`, `${number(r.v.km, 0)} km`, formatBRL(r.v.net), formatBRL(r.v.costs), formatBRL(r.v.profit), money(r.v.km ? r.v.profit / r.v.km : null)]), startY: 27, theme: "striped", styles: { fontSize: 8 }, headStyles: { fillColor: [52, 152, 219] } });
+    doc.setFontSize(9); doc.text(`Período: ${periodLabel} | Receita líquida: ${formatBRL(totals.net)} | Taxas: ${formatBRL(totals.feeAmount)} | Lucro: ${formatBRL(totals.profit)}`, 14, 21);
+    autoTable(doc, { head: [["Data", "Horas", "Km", "Receita bruta", "Taxa", "Valor taxa", "Receita líquida", "Custo", "Lucro", "Lucro/km"]], body: rows.map(r => [dateLabel(r.e.date), `${hours(r.v.hours)} h`, `${number(r.v.km, 0)} km`, formatBRL(r.v.gross), r.v.gross > 0 ? `${r.v.feePercent.toFixed(2)}%` : "—", formatBRL(r.v.feeAmount), formatBRL(r.v.net), formatBRL(r.v.costs), formatBRL(r.v.profit), money(r.v.km ? r.v.profit / r.v.km : null)]), startY: 27, theme: "striped", styles: { fontSize: 7 }, headStyles: { fillColor: [52, 152, 219] } });
     const detailRows: string[][] = [];
     filtered.forEach(e => {
       (e.maintenance_details || []).forEach(item => detailRows.push(["Manutenção", dateLabel(e.date), String(item.description || "Gasto sem descrição"), formatBRL(toNumber(item.value))]));
@@ -261,13 +267,8 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
 
       <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm lg:p-5">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">Filtros e período</h2>
-            <p className="text-xs text-slate-500">Atualização automática</p>
-          </div>
-          <button type="button" onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-            <Icon name="filter" size={17}/>Filtros <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">{activeCount}</span>
-          </button>
+          <div><h2 className="text-base font-bold text-slate-900">Filtros e período</h2><p className="text-xs text-slate-500">Atualização automática</p></div>
+          <button type="button" onClick={() => setFiltersOpen(v => !v)} aria-expanded={filtersOpen} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="filter" size={17}/>Filtros <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">{activeCount}</span></button>
         </div>
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
           <button onClick={() => setQuick("today")} className="whitespace-nowrap rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-emerald-50">Hoje</button>
@@ -278,20 +279,12 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
         {filtersOpen && (
           <div className="mt-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200">
             <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label htmlFor="report-from" className="mb-1 block text-xs font-semibold text-slate-600">Data inicial</label>
-                <input id="report-from" type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"/>
-              </div>
-              <div>
-                <label htmlFor="report-to" className="mb-1 block text-xs font-semibold text-slate-600">Data final</label>
-                <input id="report-to" type="date" value={to} onChange={e => setTo(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"/>
-              </div>
+              <div><label htmlFor="report-from" className="mb-1 block text-xs font-semibold text-slate-600">Data inicial</label><input id="report-from" type="date" value={from} onChange={e => setFrom(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"/></div>
+              <div><label htmlFor="report-to" className="mb-1 block text-xs font-semibold text-slate-600">Data final</label><input id="report-to" type="date" value={to} onChange={e => setTo(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm"/></div>
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {([["gas", "Gasolina"], ["alcohol", "Álcool"], ["maintenance", "Manutenção"], ["extras", "Gastos extras"]] as [CategoryKey, string][]).map(([key, label]) => (
-                <button key={key} onClick={() => setCategories(c => ({ ...c, [key]: !c[key] }))} aria-pressed={categories[key]} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${categories[key] ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-white text-slate-500"}`}>
-                  {categories[key] ? "✓ " : ""}{label}
-                </button>
+                <button key={key} onClick={() => setCategories(c => ({ ...c, [key]: !c[key] }))} aria-pressed={categories[key]} className={`rounded-full border px-3 py-2 text-xs font-semibold transition ${categories[key] ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-slate-300 bg-white text-slate-500"}`}>{categories[key] ? "✓ " : ""}{label}</button>
               ))}
             </div>
           </div>
@@ -299,11 +292,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
       </section>
 
       {filtered.length === 0 ? (
-        <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-600"><Icon name="plus"/></div>
-          <h2 className="mt-4 text-xl font-bold text-slate-900">Nenhum lançamento neste período</h2>
-          <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">Ajuste o período ou toque em "Lançar dia" para começar.</p>
-        </section>
+        <section className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm"><div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-600"><Icon name="plus"/></div><h2 className="mt-4 text-xl font-bold text-slate-900">Nenhum lançamento neste período</h2><p className="mx-auto mt-2 max-w-md text-sm text-slate-500">Ajuste o período ou toque em "Lançar dia" para começar.</p></section>
       ) : (
         <>
           <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
@@ -315,138 +304,38 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
           </section>
 
           <section className="grid gap-4 lg:grid-cols-3">
-            <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="font-bold text-slate-900">Lucro por dia</h2>
-                  <p className="text-xs text-slate-500">Onde seu resultado está acontecendo</p>
-                </div>
-                <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{rows.length} dias</span>
-              </div>
-              <BarChart data={daily} />
-            </div>
-
-            <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="font-bold text-slate-900">Distribuição dos custos</h2>
-              <p className="text-xs text-slate-500">Combustível, manutenção e extras</p>
-              <div className="mt-4"><CostDonut costs={totals} onDetails={setDetailCategory}/></div>
-            </div>
+            <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2"><div className="flex items-center justify-between"><div><h2 className="font-bold text-slate-900">Lucro por dia</h2><p className="text-xs text-slate-500">Onde seu resultado está acontecendo</p></div><span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">{rows.length} dias</span></div><BarChart data={daily} /></div>
+            <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><h2 className="font-bold text-slate-900">Distribuição dos custos</h2><p className="text-xs text-slate-500">Combustível, manutenção e extras</p><div className="mt-4"><CostDonut costs={totals} onDetails={setDetailCategory}/></div></div>
           </section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex items-center gap-2"><Icon name="target" size={18}/><h2 className="font-bold text-slate-900">Custo por km</h2></div>
-                <p className="mt-1 text-xs text-slate-500">Quanto custa cada quilômetro no período selecionado.</p>
-              </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-3 text-right">
-                <strong className="text-3xl font-extrabold text-slate-900">{money(costPerKm)}</strong>
-                <span className="ml-1 text-sm text-slate-500">/km</span>
-              </div>
-            </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Combustível</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.gas + totals.alcohol)}</strong></div>
-              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Manutenção</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.maintenance)}</strong></div>
-              <div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Extras</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.extras)}</strong></div>
-            </div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex items-center gap-2"><Icon name="target" size={18}/><h2 className="font-bold text-slate-900">Custo por km</h2></div><p className="mt-1 text-xs text-slate-500">Quanto custa cada quilômetro no período selecionado.</p></div><div className="rounded-2xl bg-slate-50 px-4 py-3 text-right"><strong className="text-3xl font-extrabold text-slate-900">{money(costPerKm)}</strong><span className="ml-1 text-sm text-slate-500">/km</span></div></div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Combustível</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.gas + totals.alcohol)}</strong></div><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Manutenção</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.maintenance)}</strong></div><div className="rounded-2xl bg-slate-50 p-4"><p className="text-xs text-slate-500">Extras</p><strong className="mt-1 block text-lg text-slate-900">{money(totals.extras)}</strong></div></div>
             <div className="mt-4 rounded-xl bg-emerald-50 p-3 text-xs text-emerald-800">Meta sugerida: defina seu limite de custo/km no próximo passo para acompanhar a evolução.</div>
           </section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Horas trabalhadas</h2>
-                <p className="text-xs text-slate-500">Somente dias com horas registradas.</p>
-              </div>
-              <button onClick={() => setHoursOpen(v => !v)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
-                {hoursOpen ? "Ocultar detalhes" : "Ver detalhes"}<Icon name="chevron" size={15}/>
-              </button>
-            </div>
-            <div className="mt-4 rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">Total do período</p>
-              <p className="mt-1 text-3xl font-extrabold text-slate-900">{hours(totals.hours)} h</p>
-            </div>
-            {hoursOpen && (
-              <div className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200">
-                {hoursByDate.map(([date, h]) => (
-                  <div key={date} className="flex justify-between px-4 py-3 text-sm"><span>{dateLabel(date)}</span><strong>{hours(h)} h</strong></div>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold text-slate-900">Horas trabalhadas</h2><p className="text-xs text-slate-500">Somente dias com horas registradas.</p></div><button onClick={() => setHoursOpen(v => !v)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">{hoursOpen ? "Ocultar detalhes" : "Ver detalhes"}<Icon name="chevron" size={15}/></button></div>
+            <div className="mt-4 rounded-2xl bg-slate-50 p-4"><p className="text-xs font-bold uppercase tracking-wide text-slate-400">Total do período</p><p className="mt-1 text-3xl font-extrabold text-slate-900">{hours(totals.hours)} h</p></div>
+            {hoursOpen && <div className="mt-3 divide-y divide-slate-100 rounded-2xl border border-slate-200">{hoursByDate.map(([date, h]) => <div key={date} className="flex justify-between px-4 py-3 text-sm"><span>{dateLabel(date)}</span><strong>{hours(h)} h</strong></div>)}</div>}
           </section>
 
           <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-slate-900">Dias do período</h2>
-                <p className="text-xs text-slate-500">Toque nos cabeçalhos para ordenar.</p>
-              </div>
-              <div className="flex gap-2">
-                <select value={sort} onChange={e => setSort(e.target.value as typeof sort)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
-                  <option value="date">Mais recentes</option>
-                  <option value="profit">Maior lucro</option>
-                  <option value="km">Mais km</option>
-                  <option value="hours">Mais horas</option>
-                </select>
-              </div>
-            </div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-xl font-bold text-slate-900">Dias do período</h2><p className="text-xs text-slate-500">A taxa cobrada pelo aplicativo é mostrada e contabilizada aqui em cada dia.</p></div><div className="flex gap-2"><select value={sort} onChange={e => setSort(e.target.value as typeof sort)} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"><option value="date">Mais recentes</option><option value="profit">Maior lucro</option><option value="km">Mais km</option><option value="hours">Mais horas</option></select></div></div>
             <div className="mt-4 overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-              <table className="min-w-[760px] w-full text-sm">
-                <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400">
-                  <th className="px-3 py-3 text-left">Data</th><th className="px-3 py-3 text-right">Horas</th><th className="px-3 py-3 text-right">Km</th><th className="px-3 py-3 text-right">Receita</th><th className="px-3 py-3 text-right">Custo</th><th className="px-3 py-3 text-right">Lucro</th><th className="px-3 py-3 text-right">Lucro/km</th>
-                </tr></thead>
-                <tbody>{rows.map(r => (
-                  <tr key={r.e.id} className="border-b border-slate-100 transition hover:bg-slate-50">
-                    <td className="px-3 py-3 font-semibold text-slate-800">{dateLabel(r.e.date)}</td>
-                    <td className="px-3 py-3 text-right text-slate-600">{hours(r.v.hours)} h</td>
-                    <td className="px-3 py-3 text-right text-slate-600">{number(r.v.km, 0)}</td>
-                    <td className="px-3 py-3 text-right text-slate-700">{formatBRL(r.v.net)}</td>
-                    <td className="px-3 py-3 text-right text-slate-600">{formatBRL(r.v.costs)}</td>
-                    <td className={`px-3 py-3 text-right font-bold ${r.v.profit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatBRL(r.v.profit)}</td>
-                    <td className="px-3 py-3 text-right font-semibold text-slate-700">{money(r.v.km ? r.v.profit / r.v.km : null)}</td>
-                  </tr>
-                ))}</tbody>
+              <table className="min-w-[1080px] w-full text-sm">
+                <thead><tr className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-400"><th className="px-3 py-3 text-left">Data</th><th className="px-3 py-3 text-right">Horas</th><th className="px-3 py-3 text-right">Km</th><th className="px-3 py-3 text-right">Receita bruta</th><th className="px-3 py-3 text-right">Taxa app</th><th className="px-3 py-3 text-right">Valor da taxa</th><th className="px-3 py-3 text-right">Receita líquida</th><th className="px-3 py-3 text-right">Custo</th><th className="px-3 py-3 text-right">Lucro</th><th className="px-3 py-3 text-right">Lucro/km</th></tr></thead>
+                <tbody>{rows.map(r => <tr key={r.e.id} className="border-b border-slate-100 transition hover:bg-slate-50"><td className="px-3 py-3 font-semibold text-slate-800">{dateLabel(r.e.date)}</td><td className="px-3 py-3 text-right text-slate-600">{hours(r.v.hours)} h</td><td className="px-3 py-3 text-right text-slate-600">{number(r.v.km, 0)}</td><td className="px-3 py-3 text-right text-slate-700">{formatBRL(r.v.gross)}</td><td className="px-3 py-3 text-right text-slate-600">{r.v.gross > 0 ? `${r.v.feePercent.toFixed(2)}%` : "—"}</td><td className="px-3 py-3 text-right font-semibold text-red-600">{r.v.gross > 0 ? `− ${formatBRL(r.v.feeAmount)}` : "—"}</td><td className="px-3 py-3 text-right text-slate-700">{formatBRL(r.v.net)}</td><td className="px-3 py-3 text-right text-slate-600">{formatBRL(r.v.costs)}</td><td className={`px-3 py-3 text-right font-bold ${r.v.profit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatBRL(r.v.profit)}</td><td className="px-3 py-3 text-right font-semibold text-slate-700">{money(r.v.km ? r.v.profit / r.v.km : null)}</td></tr>)}</tbody>
+                <tfoot><tr className="bg-slate-50 font-bold"><td className="px-3 py-3">TOTAL</td><td className="px-3 py-3 text-right">{hours(totals.hours)} h</td><td className="px-3 py-3 text-right">{number(totals.km, 0)}</td><td className="px-3 py-3 text-right">{formatBRL(totals.gross)}</td><td className="px-3 py-3 text-right">—</td><td className="px-3 py-3 text-right text-red-700">− {formatBRL(totals.feeAmount)}</td><td className="px-3 py-3 text-right">{formatBRL(totals.net)}</td><td className="px-3 py-3 text-right">{formatBRL(totals.costs)}</td><td className="px-3 py-3 text-right text-emerald-700">{formatBRL(totals.profit)}</td><td className="px-3 py-3 text-right">{money(profitPerKm)}</td></tr></tfoot>
               </table>
             </div>
           </section>
         </>
       )}
 
-      {detailCategory && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title">
-          <div className="max-h-[85vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-              <div><h2 id="detail-modal-title" className="text-lg font-bold text-slate-900">{detailCategory === "maintenance" ? "Detalhes de Manutenção" : "Detalhes de Gastos Extras"}</h2><p className="text-xs text-slate-500">Período: {periodLabel}</p></div>
-              <button type="button" onClick={() => setDetailCategory(null)} aria-label="Fechar detalhes" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><Icon name="close" size={20}/></button>
-            </div>
-            <div className="max-h-[65vh] overflow-y-auto p-5">
-              {detailItems.length === 0 ? <div className="py-10 text-center text-sm text-slate-500">Nenhum lançamento encontrado</div> : (
-                <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-                  <div className="overflow-hidden rounded-2xl border border-slate-200" style={{ minWidth: "340px" }}>
-                    <div className="grid grid-cols-[92px_1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-500"><span>Data</span><span>Descrição</span><span>Valor</span></div>
-                    {detailItems.map((item, index) => <div key={`${item.date}-${item.description}-${index}`} className="grid grid-cols-[92px_1fr_auto] gap-3 border-t border-slate-100 px-4 py-3 text-sm"><span className="text-slate-500">{dateLabel(item.date)}</span><span className="min-w-0 break-words font-medium text-slate-700">{item.description}</span><strong className="text-right text-slate-900">{formatBRL(item.value)}</strong></div>)}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="border-t border-slate-200 p-4"><button type="button" onClick={() => setDetailCategory(null)} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800">Fechar</button></div>
-          </div>
-        </div>
-      )}
+      {detailCategory && <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/45 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="detail-modal-title"><div className="max-h-[85vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-w-2xl sm:rounded-3xl"><div className="flex items-center justify-between border-b border-slate-200 px-5 py-4"><div><h2 id="detail-modal-title" className="text-lg font-bold text-slate-900">{detailCategory === "maintenance" ? "Detalhes de Manutenção" : "Detalhes de Gastos Extras"}</h2><p className="text-xs text-slate-500">Período: {periodLabel}</p></div><button type="button" onClick={() => setDetailCategory(null)} aria-label="Fechar detalhes" className="rounded-xl p-2 text-slate-500 hover:bg-slate-100"><Icon name="close" size={20}/></button></div><div className="max-h-[65vh] overflow-y-auto p-5">{detailItems.length === 0 ? <div className="py-10 text-center text-sm text-slate-500">Nenhum lançamento encontrado</div> : <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}><div className="overflow-hidden rounded-2xl border border-slate-200" style={{ minWidth: "340px" }}><div className="grid grid-cols-[92px_1fr_auto] gap-3 bg-slate-50 px-4 py-3 text-[11px] font-bold uppercase tracking-wide text-slate-500"><span>Data</span><span>Descrição</span><span>Valor</span></div>{detailItems.map((item, index) => <div key={`${item.date}-${item.description}-${index}`} className="grid grid-cols-[92px_1fr_auto] gap-3 border-t border-slate-100 px-4 py-3 text-sm"><span className="text-slate-500">{dateLabel(item.date)}</span><span className="min-w-0 break-words font-medium text-slate-700">{item.description}</span><strong className="text-right text-slate-900">{formatBRL(item.value)}</strong></div>)}</div></div>}</div><div className="border-t border-slate-200 p-4"><button type="button" onClick={() => setDetailCategory(null)} className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800">Fechar</button></div></div></div>}
 
-      {filtered.length > 0 && (
-        <div className="fixed bottom-5 right-5 z-40">
-          <div className="group relative">
-            <button type="button" aria-label="Abrir ações de exportação" className="grid h-14 w-14 place-items-center rounded-full bg-slate-900 text-white shadow-2xl ring-4 ring-white transition hover:scale-105"><Icon name="download" size={22}/></button>
-            <div className="absolute bottom-16 right-0 hidden w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl group-hover:block">
-              <button onClick={pdf} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="download" size={17}/>Baixar PDF</button>
-              <button onClick={whatsapp} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">WhatsApp</button>
-              <button onClick={email} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="mail" size={17}/>E-mail</button>
-              <button onClick={share} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="share" size={17}/>Compartilhar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {filtered.length > 0 && <div className="fixed bottom-5 right-5 z-40"><div className="group relative"><button type="button" aria-label="Abrir ações de exportação" className="grid h-14 w-14 place-items-center rounded-full bg-slate-900 text-white shadow-2xl ring-4 ring-white transition hover:scale-105"><Icon name="download" size={22}/></button><div className="absolute bottom-16 right-0 hidden w-48 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl group-hover:block"><button onClick={pdf} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="download" size={17}/>Baixar PDF</button><button onClick={whatsapp} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">WhatsApp</button><button onClick={email} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="mail" size={17}/>E-mail</button><button onClick={share} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"><Icon name="share" size={17}/>Compartilhar</button></div></div></div>}
     </div>
   );
 }
