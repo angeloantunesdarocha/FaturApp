@@ -6,6 +6,29 @@ import { getCurrentUser } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "FaturApp — Você está lucrando ou pagando pra trabalhar?",
   description: "O app do motorista de aplicativo que mostra o lucro real: por dia, por km e por hora. Receita, taxa do app, combustível e manutenção em um só lugar.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-16x16.png", sizes: "16x16", type: "image/png" },
+      { url: "/icon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "FaturApp",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "msapplication-TileColor": "#123B63",
+    "msapplication-TileImage": "/icon-192x192.png",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -15,7 +38,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col">
         <Header isAuthenticated={!!user} />
-        {/* overflow-x-hidden: impede qualquer conteúdo interno de causar scroll horizontal na página */}
         <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
           {children}
         </main>
