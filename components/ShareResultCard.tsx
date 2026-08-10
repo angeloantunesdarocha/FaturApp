@@ -6,6 +6,8 @@ import { computeDayProfit, computeNetFare, formatBRL, formatDateBR, toNumber, ty
 type Props = { entries: DailyEntry[] };
 type Mood = "positive" | "attention" | "negative";
 
+const MAIN_SITE_URL = "https://fatur-app.vercel.app";
+
 function getMood(profit: number): Mood {
   if (profit < 0) return "negative";
   if (profit <= 20) return "attention";
@@ -18,7 +20,7 @@ const moodConfig: Record<Mood, { emoji: string; eyebrow: string; title: string; 
   negative: { emoji: "😔", eyebrow: "RESULTADO DO DIA", title: "Hoje deu prejuízo", message: "Nem todo dia é lucro. O importante é saber o número e tomar decisões melhores amanhã.", accent: "#dc2626", soft: "#fef2f2", button: "Compartilhar meu alerta" },
 };
 
-function cardSvg(entry: DailyEntry, origin: string) {
+function cardSvg(entry: DailyEntry) {
   const profit = computeDayProfit(entry);
   const mood = getMood(profit);
   const c = moodConfig[mood];
@@ -28,7 +30,6 @@ function cardSvg(entry: DailyEntry, origin: string) {
   const extras = (entry.extra_expenses || []).reduce((s, i) => s + toNumber(i.value), 0);
   const km = Math.max(0, Number(entry.km_driven) || 0);
   const hours = Math.max(0, Number(entry.hours_worked) || 0);
-  const cta = `Veja quanto realmente sobra no seu dia com o FaturApp: ${origin}`;
   const money = (v: number) => formatBRL(v).replace(/&/g, "&amp;");
   const esc = (v: string) => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
@@ -51,9 +52,9 @@ function cardSvg(entry: DailyEntry, origin: string) {
     <text x="112" y="925" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#0f172a">Distância</text><text x="470" y="925" font-family="Arial,sans-serif" font-size="28" font-weight="800" fill="#0f172a">${km.toLocaleString("pt-BR")} km</text>
     <text x="72" y="1035" font-family="Arial,sans-serif" font-size="28" font-weight="700" fill="#334155">${esc(c.message)}</text>
     <rect x="72" y="1090" width="936" height="112" rx="28" fill="#0f172a"/>
-    <text x="540" y="1140" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="800" fill="#ffffff">${esc(cta)}</text>
-    <text x="540" y="1178" text-anchor="middle" font-family="Arial,sans-serif" font-size="20" fill="#cbd5e1">Controle seus números. Trabalhe com mais inteligência.</text>
-    <text x="72" y="1275" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#64748b">faturapp • gestão financeira para motoristas</text>
+    <text x="540" y="1140" text-anchor="middle" font-family="Arial,sans-serif" font-size="27" font-weight="800" fill="#ffffff">Descubra quanto realmente sobra no seu dia</text>
+    <text x="540" y="1178" text-anchor="middle" font-family="Arial,sans-serif" font-size="24" font-weight="800" fill="#ffffff">${MAIN_SITE_URL.replace("https://", "")}</text>
+    <text x="72" y="1275" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#64748b">FaturApp • gestão financeira para motoristas</text>
   </svg>`;
 }
 
@@ -69,7 +70,7 @@ export default function ShareResultCard({ entries }: Props) {
   if (!selected) return null;
 
   async function makeBlob() {
-    const svg = cardSvg(selected, window.location.origin);
+    const svg = cardSvg(selected);
     const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const image = new Image();
@@ -86,14 +87,14 @@ export default function ShareResultCard({ entries }: Props) {
     try {
       const blob = await makeBlob();
       const file = new File([blob], `FaturApp_${selected.date}.png`, { type: "image/png" });
+      const shareText = `Meu resultado de ${formatDateBR(selected.date)} no FaturApp: ${formatBRL(computeDayProfit(selected))}. ${c.message}\n\nDescubra quanto realmente sobra no seu dia e faça seu cadastro/login:\n${MAIN_SITE_URL}`;
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-        await navigator.share({ files: [file], title: "Meu resultado no FaturApp", text: `Meu resultado de ${formatDateBR(selected.date)} no FaturApp. ${c.message}` });
-        setStatus("Card pronto para compartilhar!");
+        await navigator.share({ files: [file], title: "Meu resultado no FaturApp", text: shareText });
+        setStatus("Card pronto para compartilhar! O endereço principal do FaturApp acompanha a mensagem.");
       } else {
         const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
-        const text = `Meu resultado de ${formatDateBR(selected.date)} no FaturApp: ${formatBRL(computeDayProfit(selected))}. ${c.message} Acesse: ${window.location.origin}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
-        setStatus("O card foi baixado e o WhatsApp foi aberto. Anexe a imagem à conversa.");
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, "_blank");
+        setStatus("O card foi baixado e o WhatsApp foi aberto. Anexe a imagem à conversa; o link principal segue na mensagem e fica clicável no WhatsApp.");
       }
     } catch (error) { if ((error as Error).name !== "AbortError") setStatus("Não foi possível compartilhar agora. Tente novamente."); }
     finally { setSharing(false); }
@@ -111,7 +112,7 @@ export default function ShareResultCard({ entries }: Props) {
       <div className="mt-5 rounded-3xl p-6 text-white shadow-lg" style={{ background: `linear-gradient(135deg, ${c.accent}, #0f172a)` }}><p className="text-xs font-bold uppercase tracking-wider text-white/80">Lucro líquido do dia</p><p className="mt-2 text-4xl font-black tracking-tight sm:text-5xl">{formatBRL(computeDayProfit(selected))}</p><p className="mt-2 text-sm text-white/85">Receita líquida {formatBRL(computeNetFare(selected))} • {Math.max(0, Number(selected.km_driven) || 0).toLocaleString("pt-BR")} km</p></div>
       <p className="mt-5 text-sm font-semibold leading-6 text-slate-600">{c.message}</p>
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><div className="rounded-2xl bg-white p-3 shadow-sm"><p className="text-[10px] uppercase text-slate-400">Combustível</p><p className="mt-1 font-extrabold">{formatBRL((Number(selected.gas_expense)||0)+(Number(selected.alcohol_expense)||0))}</p></div><div className="rounded-2xl bg-white p-3 shadow-sm"><p className="text-[10px] uppercase text-slate-400">Km</p><p className="mt-1 font-extrabold">{Math.max(0, Number(selected.km_driven)||0).toLocaleString("pt-BR")}</p></div><div className="rounded-2xl bg-white p-3 shadow-sm"><p className="text-[10px] uppercase text-slate-400">Horas</p><p className="mt-1 font-extrabold">{Math.max(0, Number(selected.hours_worked)||0).toLocaleString("pt-BR")} h</p></div><div className="rounded-2xl bg-white p-3 shadow-sm"><p className="text-[10px] uppercase text-slate-400">FaturApp</p><p className="mt-1 font-extrabold">Controle real</p></div></div>
-      <div className="mt-5 rounded-2xl bg-slate-950 p-4 text-center text-sm font-bold text-white">Descubra quanto realmente sobra no seu dia • {typeof window !== "undefined" ? window.location.origin : "FaturApp"}</div>
+      <div className="mt-5 rounded-2xl bg-slate-950 p-4 text-center text-sm font-bold text-white">Descubra quanto realmente sobra no seu dia • {MAIN_SITE_URL.replace("https://", "")}</div>
     </div>
     <div className="mt-4 flex flex-col gap-2 sm:flex-row"><button type="button" onClick={shareCard} disabled={sharing} className="flex-1 rounded-xl px-4 py-3 font-extrabold text-white shadow-sm transition hover:brightness-95 disabled:opacity-60" style={{ backgroundColor: c.accent }}>{sharing ? "Gerando card…" : c.button}</button><button type="button" onClick={downloadCard} className="rounded-xl border border-slate-200 px-4 py-3 font-bold text-slate-700 hover:bg-slate-50">Baixar PNG</button></div>
     {status && <p className="mt-3 rounded-xl bg-slate-50 p-3 text-sm font-medium text-slate-600">{status}</p>}
