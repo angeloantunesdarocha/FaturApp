@@ -2,27 +2,30 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 /**
- * Rota de callback para Google OAuth via Supabase.
- *
- * Fluxo:
- *  1. Supabase redireciona aqui com ?code=... após autenticação Google
- *  2. Trocamos o code pela sessão Supabase (PKCE)
- *  3. Pegamos email + id do usuário Google
- *  4. Chamamos app_google_auth RPC → cria/localiza user no sistema customizado
- *  5. Gravamos o cookie faturapp_session e redirecionamos para /
+ * Callback do Google OAuth via Supabase.
+ * Cria a sessão customizada do FaturApp e retorna ao Dashboard no mesmo
+ * domínio que iniciou o fluxo OAuth.
  */
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get("code");
+  const requestedNext = requestUrl.searchParams.get("next") ?? "/";
 
-  // URL base dinâmica: funciona em dev, preview e produção
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-    ?? (request.headers.get("x-forwarded-proto") ?? "https") + "://" + request.headers.get("host");
+  // Nunca usa NEXT_PUBLIC_APP_URL para o callback: em produção/preview ele
+  // pode apontar para outro deployment e fazer o usuário perder o cookie.
+  const forwardedProto = request.headers.get("x-forwarded-proto") ?? requestUrl.protocol.replace(":", "");
+  const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? requestUrl.host;
+  const origin = `${forwardedProto}://${forwardedHost}`;
 
-  if (!code) {
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_missing_code`);
-  }
+  // Aceita somente caminhos internos para evitar redirecionamento externo.
+  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//")
+    ? requestedNext
+    : "/";
+
+  const loginError = (error: string) =>
+    NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error)}`, origin));
+
+  if (!code) return loginError("oauth_missing_code");
 
   try {
     const supabase = createClient(
@@ -30,48 +33,48 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    // 1. Trocar code por sessão Supabase (PKCE)
+    // 1. Trocar o código OAuth pela sessão do Supabase.
     const { data: sessionData, error: sessionError } =
       await supabase.auth.exchangeCodeForSession(code);
 
     if (sessionError || !sessionData?.user) {
       console.error("OAuth exchangeCode error:", sessionError);
-      return NextResponse.redirect(`${baseUrl}/login?error=oauth_exchange_failed`);
+      return loginError("oauth_exchange_failed");
     }
 
+    const email = sessionData.user.email ?? "";
     const googleId = sessionData.user.id;
-    const email    = sessionData.user.email ?? "";
 
-    if (!email) {
-      return NextResponse.redirect(`${baseUrl}/login?error=oauth_no_email`);
-    }
+    if (!email) return loginError("oauth_no_email");
 
-    // 2. Autenticar/registrar no sistema de auth customizado (app_users / app_sessions)
+    // 2. Criar/localizar a conta e gerar a sessão própria do FaturApp.
     const { data: authData, error: authError } = await supabase.rpc("app_google_auth", {
-      p_email:     email,
+      p_email: email,
       p_google_id: googleId,
     });
 
-    if (authError || !authData?.[0]?.session_token) {
+    const sessionToken = authData?.[0]?.session_token;
+
+    if (authError || !sessionToken) {
       console.error("app_google_auth RPC error:", authError);
-      return NextResponse.redirect(`${baseUrl}/login?error=oauth_auth_failed`);
+      return loginError("oauth_auth_failed");
     }
 
-    const sessionToken: string = String(authData[0].session_token);
-
-    // 3. Gravar cookie de sessão e redirecionar
-    const response = NextResponse.redirect(`${baseUrl}${next}`);
-    response.cookies.set("faturapp_session", sessionToken, {
+    // 3. O cookie e o redirect saem na MESMA resposta HTTP. Isso evita que
+    // o navegador chegue ao Dashboard antes de receber a sessão.
+    const response = NextResponse.redirect(new URL(next, origin));
+    response.cookies.set("faturapp_session", String(sessionToken), {
       httpOnly: true,
       sameSite: "lax",
-      secure:   process.env.NODE_ENV === "production",
-      path:     "/",
-      maxAge:   60 * 60 * 24 * 30, // 30 dias
+      secure: true,
+      path: "/",
+      maxAge: 60 * 60 * 24 * 30,
     });
+    response.headers.set("Cache-Control", "no-store, max-age=0");
 
     return response;
   } catch (err) {
     console.error("Google OAuth callback unexpected error:", err);
-    return NextResponse.redirect(`${baseUrl}/login?error=oauth_unexpected`);
+    return loginError("oauth_unexpected");
   }
 }
