@@ -60,53 +60,67 @@ export async function logoutUser() {
   redirect("/login");
 }
 
-export async function saveEntry(input: SaveEntryInput) {
-  await requireUser();
-  const token = sessionToken();
-  if (!token) return { success: false, error: "Sessão inválida." };
-
+function normalizeEntry(input: SaveEntryInput) {
   const kmInitial = Math.max(0, Number(input.km_initial) || 0);
   const kmFinal = Math.max(0, Number(input.km_final) || 0);
-  if (kmFinal < kmInitial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
-
   const hoursWorked = Math.max(0, Number(input.hours_worked) || 0);
   const gasCost = Math.max(0, Number(input.gas_expense) || 0);
   const alcoholCost = Math.max(0, Number(input.alcohol_expense) || 0);
   const gasPrice = Math.max(0, Number(input.gasoline_price_per_liter) || 0);
   const alcoholPrice = Math.max(0, Number(input.alcohol_price_per_liter) || 0);
-  if (gasCost > 0 && gasPrice <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
-  if (alcoholCost > 0 && alcoholPrice <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
-
-  const maintenanceDetails = (input.maintenance_details ?? []).filter((item) => item.description.trim() !== "").map((item) => ({ description: item.description.trim(), value: Number(item.value) || 0 }));
-  const kmDriven = kmFinal - kmInitial;
-  const gasolineLiters = gasPrice > 0 ? gasCost / gasPrice : 0;
-  const alcoholLiters = alcoholPrice > 0 ? alcoholCost / alcoholPrice : 0;
-  const row = {
+  const maintenanceDetails = (input.maintenance_details ?? []).filter(item => item.description.trim() !== "").map(item => ({ description: item.description.trim(), value: Math.max(0, Number(item.value) || 0) }));
+  return {
     date: input.date,
-    gross_amount: input.gross_amount,
-    fee_percent: input.fee_percent,
-    net_fare: input.net_fare,
+    gross_amount: input.gross_amount == null ? null : Math.max(0, Number(input.gross_amount) || 0),
+    fee_percent: input.fee_percent == null ? null : Math.max(0, Number(input.fee_percent) || 0),
+    net_fare: input.net_fare == null ? null : Number(input.net_fare) || 0,
     gas_expense: gasCost,
     alcohol_expense: alcoholCost,
     gasoline_price_per_liter: gasPrice,
     alcohol_price_per_liter: alcoholPrice,
-    gasoline_liters: gasolineLiters,
-    alcohol_liters: alcoholLiters,
+    gasoline_liters: gasPrice > 0 ? gasCost / gasPrice : 0,
+    alcohol_liters: alcoholPrice > 0 ? alcoholCost / alcoholPrice : 0,
     km_initial: kmInitial,
     km_final: kmFinal,
-    km_driven: kmDriven,
+    km_driven: kmFinal - kmInitial,
     hours_worked: hoursWorked,
     maintenance_expense: maintenanceDetails.reduce((sum, item) => sum + item.value, 0),
     maintenance_details: maintenanceDetails,
-    extra_expenses: input.extra_expenses ?? [],
+    extra_expenses: (input.extra_expenses ?? []).map(item => ({ name: String(item.name || "").trim(), value: Math.max(0, Number(item.value) || 0) })).filter(item => item.name || item.value > 0),
   };
+}
 
+export async function saveEntry(input: SaveEntryInput) {
+  await requireUser();
+  const token = sessionToken();
+  if (!token) return { success: false, error: "Sessão inválida." };
+  const row = normalizeEntry(input);
+  if (row.km_final < row.km_initial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
+  if (row.gas_expense > 0 && row.gasoline_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
+  if (row.alcohol_expense > 0 && row.alcohol_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
   const supabase = createClientServer();
   const { error } = await supabase.rpc("app_save_entry", { p_token: token, p_entry: row });
   if (error) return { success: false, error: error.message };
   const monthProfit = await getMonthProfit(input.date);
   revalidatePath("/"); revalidatePath("/relatorios");
   return { success: true, monthProfit };
+}
+
+export async function updateEntry(id: string, input: SaveEntryInput) {
+  await requireUser();
+  const token = sessionToken();
+  if (!token || !id) return { success: false, error: "Sessão ou lançamento inválido." };
+  const row = normalizeEntry(input);
+  if (row.km_final < row.km_initial) return { success: false, error: "O km final não pode ser menor que o km inicial." };
+  if (row.gas_expense > 0 && row.gasoline_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro da gasolina." };
+  if (row.alcohol_expense > 0 && row.alcohol_price_per_liter <= 0) return { success: false, error: "Informe o preço por litro do álcool." };
+  const supabase = createClientServer();
+  const { data: session, error: sessionError } = await supabase.from("app_sessions").select("user_id").eq("token", token).gt("expires_at", new Date().toISOString()).maybeSingle();
+  if (sessionError || !session?.user_id) return { success: false, error: "Sessão inválida." };
+  const { error } = await supabase.from("daily_entries").update({ ...row, user_id: session.user_id }).eq("id", id).eq("user_id", session.user_id);
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/"); revalidatePath("/relatorios");
+  return { success: true };
 }
 
 export async function getMonthProfit(dateISO: string): Promise<number> {
