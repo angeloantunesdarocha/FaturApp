@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { formatBRL } from "@/lib/utils";
 
 type Props = {
@@ -23,47 +23,114 @@ type Props = {
 };
 
 const brl = (value: number) => formatBRL(Number.isFinite(value) ? value : 0);
-const num = (value: number, digits = 2) => (Number.isFinite(value) ? value : 0).toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const decimal = (value: number, digits = 1) => (Number.isFinite(value) ? value : 0).toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
 export default function StickyLaunchIntelligence({
-  profit, costs, revenue, gross = revenue, km = 0, consumptionKmPerLiter = 0,
-  fuelCostPerKm = 0, fuelConsumedLiters = 0, fuelSpent = 0,
-  fuelRemainingLiters = 0, fuelRemainingValue = 0, maintenance = 0,
-  extras = 0, netRevenue = revenue, className = "", active = true,
+  profit,
+  costs,
+  revenue,
+  gross = revenue,
+  km = 0,
+  consumptionKmPerLiter = 0,
+  fuelCostPerKm = 0,
+  fuelConsumedLiters = 0,
+  fuelSpent = 0,
+  fuelRemainingLiters = 0,
+  fuelRemainingValue = 0,
+  maintenance = 0,
+  extras = 0,
+  netRevenue = revenue,
+  className = "",
+  active = true,
 }: Props) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
-  const tone = profit < 0 ? "critical" : profit > 0 && margin >= 15 ? "positive" : "warning";
-
-  const theme = {
-    positive: { shell: "bg-emerald-950/95 border-emerald-400/40", glow: "shadow-emerald-950/40", accent: "text-emerald-300", icon: "↗", label: "Resultado positivo" },
-    warning: { shell: "bg-amber-950/95 border-amber-300/40", glow: "shadow-amber-950/40", accent: "text-amber-200", icon: "→", label: "Atenção ao resultado" },
-    critical: { shell: "bg-red-950/95 border-red-400/40", glow: "shadow-red-950/40", accent: "text-red-200", icon: "↘", label: "Prejuízo parcial" },
-  }[tone];
-
-  const summary = useMemo(() => `O valor bruto é ${brl(gross)}, você percorreu ${num(km, 1)} km, seu carro fez ${num(consumptionKmPerLiter, 1)} km/L. O custo por cada KM percorrido é ${brl(fuelCostPerKm)}. Você gastou ${brl(fuelSpent)} para percorrer os ${num(km, 1)} km do dia. Sobrou no tanque ${num(fuelRemainingLiters, 2)} Litros de combustível, que correspondem a ${brl(fuelRemainingValue)}. Você gastou ${brl(maintenance)} com manutenção e ${brl(extras)} com gastos extras. O valor líquido após as taxas do app é ${brl(netRevenue)}. O seu lucro líquido final até agora é de ${brl(profit)}.`, [gross, km, consumptionKmPerLiter, fuelCostPerKm, fuelSpent, fuelRemainingLiters, fuelRemainingValue, maintenance, extras, netRevenue, profit]);
-
+  const [expanded, setExpanded] = useState(false);
   if (!active) return null;
 
+  const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+  const state = profit < 0 ? "loss" : profit > 0 && margin < 10 ? "tight" : "profit";
+
+  const styles = {
+    profit: {
+      shell: "border-emerald-200/70 bg-white/90",
+      accent: "text-emerald-700",
+      soft: "bg-emerald-50/90",
+      icon: "😊",
+      label: "Está sobrando",
+    },
+    tight: {
+      shell: "border-amber-200/80 bg-white/92",
+      accent: "text-amber-700",
+      soft: "bg-amber-50/90",
+      icon: "😟",
+      label: "Margem apertada",
+    },
+    loss: {
+      shell: "border-red-200/80 bg-white/92",
+      accent: "text-red-700",
+      soft: "bg-red-50/90",
+      icon: "😔",
+      label: "Hoje está no prejuízo",
+    },
+  }[state];
+
   return (
-    <div className={`fixed inset-x-0 top-0 z-50 w-full ${className}`}>
-      <div className={`border-b ${theme.shell} ${theme.glow} shadow-2xl backdrop-blur-xl`}>
-        <button type="button" onClick={() => setIsExpanded(v => !v)} aria-expanded={isExpanded} className="mx-auto flex min-h-[72px] w-full max-w-4xl items-center justify-between gap-3 px-4 py-3 text-left text-white sm:px-6">
-          <div className="min-w-0 flex-1"><div className={`text-[10px] font-bold uppercase tracking-[0.18em] ${theme.accent}`}>{theme.label}</div><div className="mt-0.5 text-xl font-black leading-tight sm:text-2xl">{brl(profit)}</div></div>
-          <div className="hidden text-right sm:block"><div className="text-[10px] uppercase tracking-wider text-white/50">Margem</div><div className={`font-bold ${theme.accent}`}>{num(margin, 1)}%</div></div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-xl transition-transform duration-300" style={{ transform: `rotate(${isExpanded ? 180 : 0}deg)` }}>{theme.icon}</div>
+    <div
+      className={`fixed inset-x-0 top-0 z-[60] w-full px-2 pt-[env(safe-area-inset-top)] ${className}`}
+      style={{ isolation: "isolate" }}
+    >
+      <div className={`mx-auto w-full max-w-3xl overflow-hidden rounded-b-2xl border shadow-lg shadow-slate-900/10 backdrop-blur-xl ${styles.shell}`}>
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          aria-expanded={expanded}
+          className="flex min-h-[58px] w-full items-center gap-3 px-3 py-2 text-left sm:px-4"
+        >
+          <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${styles.soft} text-lg`} aria-hidden="true">
+            {styles.icon}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-2">
+              <span className={`truncate text-[10px] font-bold uppercase tracking-[0.08em] ${styles.accent}`}>{styles.label}</span>
+              <span className="hidden text-[10px] text-slate-400 sm:inline">• em tempo real</span>
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-2">
+              <strong className={`text-lg font-black leading-none sm:text-xl ${styles.accent}`}>{brl(profit)}</strong>
+              <span className="text-[11px] font-medium text-slate-500">lucro líquido</span>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <span className="block text-[9px] font-semibold uppercase tracking-wider text-slate-400">Margem</span>
+            <strong className={`text-sm ${styles.accent}`}>{decimal(margin)}%</strong>
+          </div>
+
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs text-slate-500 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} aria-hidden="true">⌄</span>
         </button>
 
-        <div className={`mx-auto grid w-full max-w-4xl overflow-hidden transition-all duration-300 ${isExpanded ? "max-h-[520px] opacity-100" : "max-h-0 opacity-0"}`}>
-          <div className="border-t border-white/10 px-4 pb-4 pt-3 sm:px-6">
-            <div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">Resumo inteligente</span><span className="text-[10px] text-white/40">Em tempo real</span></div>
-            <p className="rounded-2xl border border-white/10 bg-black/15 p-4 text-sm leading-6 text-white/90 shadow-inner sm:text-[15px]">{summary}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4"><Mini label="Receita líquida" value={brl(netRevenue)} /><Mini label="Custos" value={brl(costs)} /><Mini label="Combustível" value={brl(fuelSpent)} /><Mini label="Margem" value={`${num(margin, 1)}%`} /></div>
+        {expanded && (
+          <div className={`border-t border-slate-200/70 px-3 pb-3 pt-2 ${styles.soft}`}>
+            <div className="grid grid-cols-3 gap-2">
+              <Metric label="Receita líquida" value={brl(netRevenue)} />
+              <Metric label="Custos" value={brl(costs)} />
+              <Metric label="Km rodados" value={`${decimal(km)} km`} />
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] text-slate-500">
+              <span>Combustível: <b className="text-slate-700">{brl(fuelSpent)}</b></span>
+              <span className="text-right">Custo/km: <b className="text-slate-700">{brl(fuelCostPerKm)}</b></span>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-function Mini({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2"><span className="block text-[9px] uppercase tracking-wide text-white/45">{label}</span><strong className="mt-0.5 block text-xs text-white">{value}</strong></div>; }
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/80 bg-white/70 px-2.5 py-2">
+      <span className="block truncate text-[9px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
+      <strong className="mt-0.5 block truncate text-xs font-bold text-slate-700">{value}</strong>
+    </div>
+  );
+}
