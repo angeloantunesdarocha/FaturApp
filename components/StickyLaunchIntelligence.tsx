@@ -16,6 +16,7 @@ type Props = {
   fuelSpent?: number;
   maintenance?: number;
   extras?: number;
+  fuelRemainingValue?: number;
   className?: string;
   active?: boolean;
 };
@@ -36,6 +37,7 @@ export default function StickyLaunchIntelligence({
   fuelSpent = 0,
   maintenance = 0,
   extras = 0,
+  fuelRemainingValue = 0,
   className = "",
   active = true,
 }: Props) {
@@ -67,16 +69,21 @@ export default function StickyLaunchIntelligence({
 
         {expanded && (
           <div className={`border-t border-slate-200/60 px-1.5 pb-2 pt-1.5 ${styles.soft}`}>
-            <div className="grid grid-cols-2 gap-1">
-              <Metric label="Valor bruto" value={brl(gross)} />
-              <Metric label="Taxa do app" value={brl(feeAmount)} />
-              <Metric label="Km rodados" value={`${decimal(km)} km`} />
-              <Metric label="Valor por KM" value={brl(kmValue)} />
-              <Metric label="Horas trabalhadas" value={`${decimal(hours)} h`} />
-              <Metric label="Valor por hora" value={brl(hourValue)} />
-              <Metric label="Manutenção" value={brl(maintenance)} />
-              <Metric label="Gastos extras" value={brl(extras)} />
-              <Metric label="Combustível" value={brl(fuelSpent)} />
+            <div className="relative grid grid-cols-2 gap-x-2">
+              <div className="space-y-1 border-r border-slate-300/40 pr-2">
+                <Metric label="Valor bruto" value={brl(gross)} />
+                <Metric label="Taxa do app" value={brl(feeAmount)} />
+                <Metric label="Km rodados" value={`${decimal(km)} km`} />
+                <Metric label="Valor por KM" value={brl(kmValue)} />
+                <Metric label="Horas trabalhadas" value={`${decimal(hours)} h`} />
+              </div>
+              <div className="space-y-1 pl-0">
+                <Metric label="Valor por hora" value={brl(hourValue)} />
+                <Metric label="Combustível" value={brl(fuelSpent)} />
+                <Metric label="Manutenção" value={brl(maintenance)} />
+                <Metric label="Gastos extras" value={brl(extras)} />
+                <Metric label="Saldo / sobra no tanque" value={brl(fuelRemainingValue)} />
+              </div>
             </div>
           </div>
         )}
@@ -87,9 +94,9 @@ export default function StickyLaunchIntelligence({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-md border border-white/80 bg-white/75 px-1.5 py-1">
-      <span className="block truncate text-[7px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
-      <strong className="block truncate text-[10px] font-bold leading-tight text-slate-700">{value}</strong>
+    <div className="min-w-0 rounded-md border border-white/80 bg-white/75 px-2 py-1">
+      <span className="block truncate text-[10px] font-medium leading-tight text-slate-500">{label}</span>
+      <strong className="block truncate text-xs font-semibold leading-tight text-slate-700">{value}</strong>
     </div>
   );
 }
