@@ -114,6 +114,14 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
   );
 
   // ── Tabela principal — com linha de TOTAIS no rodapé ──────────────────────
+  //
+  // Larguras fixas (landscape A4 = 297mm, margens 14mm × 2 = 269mm úteis)
+  // Soma das colunas abaixo: 24+18+18+27+15+27+27+25+27+27 = 235mm
+  // (deixamos ~34mm de folga para cellPadding e bordas)
+  //
+  // IMPORTANTE: foot usa cell objects com styles.halign explícito porque
+  // o jsPDF-autotable NÃO herda halign de columnStyles de forma confiável
+  // na linha foot quando o tema é "striped".
   autoTable(doc, {
     head: [[
       "Data", "Horas", "Km", "Receita Bruta",
@@ -132,39 +140,49 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
       formatBRL(r.profit),
       money(r.profitKm),
     ]),
-    // ── RODAPÉ COM AS 9 SOMATÓRIAS ──────────────────────────────────────────
+    // ── RODAPÉ: cell objects com halign explícito por célula ────────────────
     foot: [[
-      "TOTAL",
-      `${nfmt(t.hours)} h`,
-      `${nfmt(t.km, 0)} km`,
-      formatBRL(t.gross),
-      "—",
-      formatBRL(t.fee),
-      formatBRL(t.net),
-      formatBRL(t.costs),
-      formatBRL(t.profit),
-      money(profitKmAvg),
+      { content: "TOTAL",                        styles: { halign: "left"   } },
+      { content: `${nfmt(t.hours)} h`,           styles: { halign: "right"  } },
+      { content: `${nfmt(t.km, 0)} km`,          styles: { halign: "right"  } },
+      { content: formatBRL(t.gross),             styles: { halign: "right"  } },
+      { content: "—",                            styles: { halign: "center" } },
+      { content: formatBRL(t.fee),               styles: { halign: "right"  } },
+      { content: formatBRL(t.net),               styles: { halign: "right"  } },
+      { content: formatBRL(t.costs),             styles: { halign: "right"  } },
+      { content: formatBRL(t.profit),            styles: { halign: "right"  } },
+      { content: money(profitKmAvg),             styles: { halign: "right"  } },
     ]],
-    startY:    27,
-    theme:     "striped",
-    showFoot:  "lastPage",
-    styles:    { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
+    startY:   27,
+    theme:    "striped",
+    showFoot: "lastPage",
+    styles:   { fontSize: 7, cellPadding: 2, overflow: "linebreak" },
     headStyles: {
-      fontSize:   7,
-      fontStyle:  "bold",
-      fillColor:  [15, 45, 74],   // azul FaturApp
-      textColor:  [255, 255, 255],
+      fontSize:  7,
+      fontStyle: "bold",
+      fillColor: [15, 45, 74],
+      textColor: [255, 255, 255],
+      halign:    "center",
     },
     footStyles: {
-      fontSize:   7,
-      fontStyle:  "bold",
-      fillColor:  [22, 101, 52],  // verde escuro
-      textColor:  [255, 255, 255],
+      fontSize:  7,
+      fontStyle: "bold",
+      fillColor: [22, 101, 52],
+      textColor: [255, 255, 255],
     },
+    // columnStyles: larguras fixas + halign para body e head
+    // (foot ignora isso — usa halign do cell object acima)
     columnStyles: {
-      3: { halign: "right" }, 5: { halign: "right" },
-      6: { halign: "right" }, 7: { halign: "right" },
-      8: { halign: "right" }, 9: { halign: "right" },
+      0: { cellWidth: 24, halign: "left"   },  // Data
+      1: { cellWidth: 18, halign: "right"  },  // Horas
+      2: { cellWidth: 18, halign: "right"  },  // Km
+      3: { cellWidth: 27, halign: "right"  },  // Receita Bruta
+      4: { cellWidth: 15, halign: "center" },  // Taxa App %
+      5: { cellWidth: 27, halign: "right"  },  // Valor Taxa
+      6: { cellWidth: 27, halign: "right"  },  // Receita Líquida
+      7: { cellWidth: 25, halign: "right"  },  // Custos
+      8: { cellWidth: 27, halign: "right"  },  // Lucro Líquido
+      9: { cellWidth: 27, halign: "right"  },  // Lucro/km
     },
   });
 
@@ -186,9 +204,18 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
     y += 4;
 
     autoTable(doc, {
-      head:     [["Data", "Descrição", "Valor"]],
-      body:     list.map((x) => [formatDateBR(x.date), x.description, formatBRL(x.value)]),
-      foot:     [["", "TOTAL", formatBRL(sectionTotal)]],
+      head: [["Data", "Descrição", "Valor"]],
+      body: list.map((x) => [
+        formatDateBR(x.date),
+        x.description,
+        formatBRL(x.value),
+      ]),
+      // foot com cell objects → alinhamento garantido independente de tema
+      foot: [[
+        { content: "",                      styles: { halign: "left"  } },
+        { content: "TOTAL",                 styles: { halign: "right", fontStyle: "bold" } },
+        { content: formatBRL(sectionTotal), styles: { halign: "right", fontStyle: "bold" } },
+      ]],
       startY:   y,
       theme:    "grid",
       showFoot: "lastPage",
@@ -196,13 +223,17 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
       headStyles: {
         fillColor: [15, 45, 74],
         textColor: [255, 255, 255],
+        halign:    "center",
       },
       footStyles: {
-        fontStyle:  "bold",
-        fillColor:  [22, 101, 52],
-        textColor:  [255, 255, 255],
+        fillColor: [22, 101, 52],
+        textColor: [255, 255, 255],
       },
-      columnStyles: { 2: { halign: "right" } },
+      columnStyles: {
+        0: { cellWidth: 28, halign: "left"  },  // Data
+        1: { halign: "left"                 },  // Descrição (flexível)
+        2: { cellWidth: 35, halign: "right" },  // Valor
+      },
     });
 
     y = (doc as any).lastAutoTable.finalY + 7;
