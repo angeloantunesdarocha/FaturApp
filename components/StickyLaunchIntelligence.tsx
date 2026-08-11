@@ -68,7 +68,7 @@ export default function StickyLaunchIntelligence({
 
         {expanded && (
           <div className={`border-t border-slate-200/70 px-2.5 pb-3 pt-2 ${styles.soft}`}>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
               <Metric label="Valor bruto recebido" value={brl(gross)} />
               <Metric label="Taxa do app" value={brl(feeAmount)} />
               <Metric label="Km rodados" value={`${decimal(km)} km`} />
@@ -87,5 +87,10 @@ export default function StickyLaunchIntelligence({
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
-  return <div className="min-w-0 rounded-xl border border-white/80 bg-white/75 px-2.5 py-2"><span className="block truncate text-[9px] font-medium uppercase tracking-wide text-slate-400">{label}</span><strong className="mt-0.5 block truncate text-xs font-bold text-slate-700">{value}</strong></div>;
+  return (
+    <div className="min-w-0 rounded-lg border border-white/80 bg-white/75 px-2 py-1.5">
+      <span className="block truncate text-[8px] font-medium uppercase tracking-wide text-slate-400">{label}</span>
+      <strong className="mt-0.5 block truncate text-[11px] font-bold leading-tight text-slate-700">{value}</strong>
+    </div>
+  );
 }
