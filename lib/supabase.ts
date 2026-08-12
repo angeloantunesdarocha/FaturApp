@@ -13,7 +13,9 @@ const configuredSupabaseKey = supabaseKey
 
 // Cliente para Client Components
 export function createClientBrowser() {
-  return createBrowserClient(configuredSupabaseUrl, configuredSupabaseKey)
+  return createBrowserClient(configuredSupabaseUrl, configuredSupabaseKey, {
+    auth: { flowType: 'pkce' },
+  })
 }
 
 // Cliente para Server Components / Server Actions
