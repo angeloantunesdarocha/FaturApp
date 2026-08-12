@@ -30,6 +30,7 @@ export async function GET(request: Request) {
 
   try {
     const cookieStore = cookies();
+    const response = NextResponse.redirect(new URL(next, origin));
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
         cookies: {
           getAll() { return cookieStore.getAll(); },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+            cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
           },
         },
       }
@@ -48,7 +49,11 @@ export async function GET(request: Request) {
       await supabase.auth.exchangeCodeForSession(code);
 
     if (sessionError || !sessionData?.user) {
-      console.error("OAuth exchangeCode error:", sessionError);
+      console.error("OAuth exchangeCode error:", {
+        message: sessionError?.message,
+        code: sessionError?.code,
+        status: sessionError?.status,
+      });
       return loginError("oauth_exchange_failed");
     }
 
@@ -72,7 +77,6 @@ export async function GET(request: Request) {
 
     // 3. O cookie e o redirect saem na MESMA resposta HTTP. Isso evita que
     // o navegador chegue ao Dashboard antes de receber a sessão.
-    const response = NextResponse.redirect(new URL(next, origin));
     response.cookies.set("faturapp_session", String(sessionToken), {
       httpOnly: true,
       sameSite: "lax",
