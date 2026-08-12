@@ -23,8 +23,14 @@ export async function GET(request: Request) {
     ? requestedNext
     : "/";
 
-  const loginError = (error: string) =>
-    NextResponse.redirect(new URL(`/login?error=${encodeURIComponent(error)}`, origin));
+  const loginError = (error: string, detail?: string) => {
+    const url = new URL("/login", origin);
+    url.searchParams.set("error", error);
+    if (detail) url.searchParams.set("detail", detail.slice(0, 80));
+    const response = NextResponse.redirect(url);
+    response.headers.set("Cache-Control", "no-store, max-age=0");
+    return response;
+  };
 
   if (!code) return loginError("oauth_missing_code");
 
@@ -54,7 +60,7 @@ export async function GET(request: Request) {
         code: sessionError?.code,
         status: sessionError?.status,
       });
-      return loginError("oauth_exchange_failed");
+      return loginError("oauth_exchange_failed", sessionError?.code ?? "unknown");
     }
 
     const email = sessionData.user.email ?? "";
@@ -72,7 +78,7 @@ export async function GET(request: Request) {
 
     if (authError || !sessionToken) {
       console.error("app_google_auth RPC error:", authError);
-      return loginError("oauth_auth_failed");
+      return loginError("oauth_auth_failed", authError?.code ?? "rpc_error");
     }
 
     // 3. O cookie e o redirect saem na MESMA resposta HTTP. Isso evita que
