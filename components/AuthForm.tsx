@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { loginUser, registerUser } from "@/app/actions";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClientBrowser } from "@/lib/supabase";
 
-type Props = { mode: "login" | "register" };
+type Props = { mode: "login" | "register"; oauthError?: string };
 
 // SVG oficial do Google para o botão
 function GoogleIcon() {
@@ -31,7 +31,7 @@ function Divider() {
   );
 }
 
-export default function AuthForm({ mode }: Props) {
+export default function AuthForm({ mode, oauthError }: Props) {
   const router = useRouter();
   const [login, setLogin] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +39,9 @@ export default function AuthForm({ mode }: Props) {
   const [status, setStatus] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
   const isRegister = mode === "register";
+  const oauthMessage = oauthError
+    ? "Não foi possível concluir o login com Google. Verifique a configuração OAuth e tente novamente."
+    : "";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,10 +58,7 @@ export default function AuthForm({ mode }: Props) {
     setGoogleLoading(true);
     setStatus("");
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabase = createClientBrowser();
 
       const redirectTo = `${window.location.origin}/auth/callback`;
 
@@ -123,7 +123,7 @@ export default function AuthForm({ mode }: Props) {
           <button type="submit" className="btn btn-primary w-full">Criar conta</button>
         </form>
 
-        {status && <p className="text-center text-sm text-slate-600" role="status">{status}</p>}
+        {(status || oauthMessage) && <p className="text-center text-sm text-slate-600" role="status">{status || oauthMessage}</p>}
         <div className="text-center text-sm"><a className="font-semibold text-brand-700" href="/login">Já tenho uma conta</a></div>
       </div>
     );
@@ -206,7 +206,7 @@ export default function AuthForm({ mode }: Props) {
             <button type="submit" className="btn btn-primary w-full transition-transform duration-200 hover:scale-[1.01]">Descobrir meu lucro real</button>
           </form>
 
-          {status && <p className="mt-4 text-center text-sm text-slate-600" role="status">{status}</p>}
+          {(status || oauthMessage) && <p className="mt-4 text-center text-sm text-slate-600" role="status">{status || oauthMessage}</p>}
 
           <div className="mt-6 border-t border-slate-100 pt-5 text-center">
             <a className="text-[15px] font-semibold text-brand-700 hover:text-brand-800" href="/cadastro">Criar conta grátis — leva 1 minuto</a>
