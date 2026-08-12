@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
 import { getCurrentUser } from "@/lib/auth";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "FaturApp — Você está lucrando ou pagando pra trabalhar?",
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <p>FaturApp — descubra se você está lucrando ou pagando pra trabalhar.</p>
           <p className="mt-1">Desenvolvido por: Ângelo Antunes</p>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
