@@ -46,49 +46,77 @@ const fmtPerKm    = (v: number | null) => v === null ? "—" : `${formatBRL(v)} 
 // ─────────────────────────────────────────────────────────────────────────────
 
 type StickyProps = {
-  profit:      number;
-  costs:       number;
-  fareNet:     number;
-  monthProfit: number;
-  hasData:     boolean;
+  profit:         number;
+  costs:          number;
+  fareNet:        number;
+  monthProfit:    number;
+  hasData:        boolean;
+  // Campos do painel expandido
+  gross:          number;
+  feeAmount:      number;
+  feePercent:     number;
+  kmDriven:       number;
+  profitPerKm:    number | null;
+  hours:          number;
+  profitPerHour:  number | null;
+  fuelCost:       number;
+  maintenanceAmt: number;
+  extrasAmt:      number;
 };
 
-function StickyIntelligenceCard({ profit, costs, fareNet, monthProfit, hasData }: StickyProps) {
+function StickyIntelligenceCard({
+  profit, costs, fareNet, monthProfit, hasData,
+  gross, feeAmount, feePercent,
+  kmDriven, profitPerKm,
+  hours, profitPerHour,
+  fuelCost, maintenanceAmt, extrasAmt,
+}: StickyProps) {
+  const [expanded, setExpanded] = useState(false);
+
   if (!hasData) return null;
 
-  const margin    = fareNet > 0 ? (profit / fareNet) * 100 : null;
-  const isLoss    = profit < 0;
-  const isLow     = !isLoss && margin !== null && margin < 20;
-  const tone      = isLoss ? "red" : isLow ? "amber" : "green";
+  const margin  = fareNet > 0 ? (profit / fareNet) * 100 : null;
+  const isLoss  = profit < 0;
+  const isLow   = !isLoss && margin !== null && margin < 20;
+  const tone    = isLoss ? "red" : isLow ? "amber" : "green";
 
   const themes = {
     green: {
       wrap:   "bg-[#031a0d]/95 border-emerald-600/25",
+      div:    "border-emerald-400/10",
       dot:    "bg-emerald-400",
       sep:    "bg-emerald-400/20",
-      lbl:    "text-emerald-400/60",
+      lbl:    "text-emerald-400/55",
       val:    "text-emerald-100",
+      neg:    "text-emerald-300/65",
       badge:  "border-emerald-600/30 bg-emerald-500/15 text-emerald-300",
+      chev:   "text-emerald-400/50",
       icon:   "🟢",
       status: "Lucrando",
     },
     amber: {
       wrap:   "bg-[#1a1000]/95 border-amber-600/25",
+      div:    "border-amber-400/10",
       dot:    "bg-amber-400",
       sep:    "bg-amber-400/20",
-      lbl:    "text-amber-400/60",
+      lbl:    "text-amber-400/55",
       val:    "text-amber-100",
+      neg:    "text-amber-300/65",
       badge:  "border-amber-600/30 bg-amber-500/15 text-amber-300",
+      chev:   "text-amber-400/50",
       icon:   "🟡",
       status: "Atenção",
     },
     red: {
       wrap:   "bg-[#1a0303]/95 border-rose-600/25",
+      div:    "border-rose-400/10",
       dot:    "bg-rose-400",
       sep:    "bg-rose-400/20",
-      lbl:    "text-rose-400/60",
+      lbl:    "text-rose-400/55",
       val:    "text-rose-100",
+      neg:    "text-rose-300/65",
       badge:  "border-rose-600/30 bg-rose-500/15 text-rose-300",
+      chev:   "text-rose-400/50",
       icon:   "🔴",
       status: "Prejuízo",
     },
@@ -96,16 +124,29 @@ function StickyIntelligenceCard({ profit, costs, fareNet, monthProfit, hasData }
 
   const T = themes[tone];
 
+  // Sub-componente compacto para cada métrica no grid
+  const Item = ({ label, value, isNeg = false }: { label: string; value: string; isNeg?: boolean }) => (
+    <div className="min-w-0">
+      <p className={`truncate text-[9px] font-bold uppercase leading-none tracking-wide ${T.lbl}`}>
+        {label}
+      </p>
+      <p className={`truncate text-xs font-semibold leading-tight tabular-nums ${isNeg ? T.neg : T.val}`}>
+        {value}
+      </p>
+    </div>
+  );
+
   return (
     <div
-      className={`fixed inset-x-0 top-14 z-40 border-b backdrop-blur-xl transition-all duration-500 ${T.wrap}`}
+      className={`fixed inset-x-0 top-14 z-40 border-b backdrop-blur-xl transition-all duration-300 ${T.wrap}`}
       role="status"
       aria-live="polite"
       aria-label="Resumo financeiro em tempo real"
     >
-      <div className="mx-auto flex max-w-6xl items-center gap-0 px-3 py-2 sm:gap-1 sm:px-6">
+      {/* ── Barra compacta sempre visível ──────────────────────────── */}
+      <div className="mx-auto flex max-w-6xl items-center px-3 py-2 sm:px-6">
 
-        {/* Dot + label TEMPO REAL */}
+        {/* Dot animado */}
         <div className="flex shrink-0 items-center gap-2 pr-3">
           <span className={`h-2 w-2 shrink-0 animate-pulse rounded-full ${T.dot}`} />
           <span className={`hidden text-[9px] font-black uppercase tracking-[0.22em] sm:block ${T.lbl}`}>
@@ -113,68 +154,99 @@ function StickyIntelligenceCard({ profit, costs, fareNet, monthProfit, hasData }
           </span>
         </div>
 
-        <div className={`hidden h-6 w-px shrink-0 sm:block ${T.sep}`} />
+        <div className={`hidden h-5 w-px shrink-0 sm:block ${T.sep}`} />
 
         {/* Lucro */}
-        <div className="px-3">
+        <div className="px-2.5">
           <p className={`text-[9px] font-bold uppercase leading-none ${T.lbl}`}>Lucro</p>
-          <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>
-            {formatBRL(profit)}
-          </p>
+          <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>{formatBRL(profit)}</p>
         </div>
 
-        <div className={`h-6 w-px shrink-0 ${T.sep}`} />
+        <div className={`h-5 w-px shrink-0 ${T.sep}`} />
 
         {/* Custos */}
-        <div className="px-3">
+        <div className="px-2.5">
           <p className={`text-[9px] font-bold uppercase leading-none ${T.lbl}`}>Custos</p>
-          <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>
-            {formatBRL(costs)}
-          </p>
+          <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>{formatBRL(costs)}</p>
         </div>
 
-        {/* Margem — exibe apenas quando há receita */}
+        {/* Margem */}
         {margin !== null && (
           <>
-            <div className={`h-6 w-px shrink-0 ${T.sep}`} />
-            <div className="px-3">
+            <div className={`h-5 w-px shrink-0 ${T.sep}`} />
+            <div className="px-2.5">
               <p className={`text-[9px] font-bold uppercase leading-none ${T.lbl}`}>Margem</p>
-              <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>
-                {margin.toFixed(0)}%
-              </p>
+              <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>{margin.toFixed(0)}%</p>
             </div>
           </>
         )}
 
-        {/* Lucro do mês — apenas desktop */}
+        {/* Este mês — só desktop */}
         {monthProfit !== 0 && (
           <>
-            <div className={`hidden h-6 w-px shrink-0 sm:block ${T.sep}`} />
-            <div className="hidden px-3 sm:block">
+            <div className={`hidden h-5 w-px shrink-0 sm:block ${T.sep}`} />
+            <div className="hidden px-2.5 sm:block">
               <p className={`text-[9px] font-bold uppercase leading-none ${T.lbl}`}>Este mês</p>
-              <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>
-                {formatBRL(monthProfit)}
-              </p>
+              <p className={`text-sm font-black leading-tight tabular-nums ${T.val}`}>{formatBRL(monthProfit)}</p>
             </div>
           </>
         )}
 
-        {/* Badge de status — empurrado para a direita */}
-        <div className="ml-auto shrink-0">
-          <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold ${T.badge}`}>
-            {T.icon}
-            <span className="hidden sm:inline">{T.status}</span>
+        {/* Badge + chevron */}
+        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          <span className={`hidden items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold sm:inline-flex ${T.badge}`}>
+            {T.icon} {T.status}
           </span>
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            aria-expanded={expanded}
+            aria-label={expanded ? "Recolher detalhes" : "Ver todos os detalhes"}
+            className={`flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-white/10 ${T.chev}`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
         </div>
-
       </div>
+
+      {/* ── Painel expandido: grid 2 colunas ────────────────────────── */}
+      {expanded && (
+        <div className={`border-t px-3 pb-3 pt-2.5 sm:px-6 ${T.div}`}>
+          <div className="mx-auto max-w-6xl">
+            <div className="grid grid-cols-2">
+
+              {/* Coluna esquerda — separada por borda direita discreta */}
+              <div className={`space-y-2.5 border-r pr-4 ${T.div}`}>
+                <Item label="Receita bruta"            value={formatBRL(gross)} />
+                <Item label={`Taxa (${feePercent.toFixed(1)}%)`} value={feeAmount > 0 ? `− ${formatBRL(feeAmount)}` : "—"} isNeg={feeAmount > 0} />
+                <Item label="KM rodados"               value={kmDriven > 0 ? `${fmtKm(kmDriven)} km` : "—"} />
+                <Item label="Lucro por km"             value={profitPerKm !== null ? formatBRL(profitPerKm) : "—"} />
+                <Item label="Horas trabalhadas"        value={hours > 0 ? `${hours.toFixed(1)} h` : "—"} />
+              </div>
+
+              {/* Coluna direita */}
+              <div className="space-y-2.5 pl-4">
+                <Item label="Lucro por hora"           value={profitPerHour !== null ? formatBRL(profitPerHour) : "—"} />
+                <Item label="Combustível"              value={fuelCost > 0 ? `− ${formatBRL(fuelCost)}` : "—"} isNeg={fuelCost > 0} />
+                <Item label="Manutenção"               value={maintenanceAmt > 0 ? `− ${formatBRL(maintenanceAmt)}` : "—"} isNeg={maintenanceAmt > 0} />
+                <Item label="Gastos extras"            value={extrasAmt > 0 ? `− ${formatBRL(extrasAmt)}` : "—"} isNeg={extrasAmt > 0} />
+                <Item label="Saldo no tanque"          value="N/D" />
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Componente principal — EntryForm
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function EntryForm({ initialDate = todayISO(), initialMonthProfit = 0 }: Props) {
 
@@ -286,10 +358,20 @@ export default function EntryForm({ initialDate = todayISO(), initialMonthProfit
           Quando visível, adiciona padding-top ao conteúdo para não sobrepor. */}
       <StickyIntelligenceCard
         profit={visibleProfit}
-        costs={hasCurrentLaunch ? totalExpenses : savedCard ? Math.abs(savedCard.profit - (savedCard.profitPerKm ?? 0)) : 0}
+        costs={hasCurrentLaunch ? totalExpenses : 0}
         fareNet={visibleFareNet}
         monthProfit={monthProfit}
         hasData={stickyHasData}
+        gross={gross}
+        feeAmount={feeAmount}
+        feePercent={fee}
+        kmDriven={kmDriven}
+        profitPerKm={profitPerKm}
+        hours={hours}
+        profitPerHour={hours > 0 ? dayProfit / hours : null}
+        fuelCost={totalFuelCost}
+        maintenanceAmt={maintenanceTotal}
+        extrasAmt={extrasSum}
       />
 
       {/* Espaço compensatório quando o sticky card está visível */}
