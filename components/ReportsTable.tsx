@@ -38,7 +38,7 @@ export default function ReportsTable({entries,initialFrom,initialTo}:Props) {
     const hours=Math.max(0,Number(e.hours_worked)||0);
     const liters=Math.max(0,Number(e.gasoline_liters)||0)+Math.max(0,Number(e.alcohol_liters)||0);
     const fuel=Math.max(0,Number(e.gas_expense)||0)+Math.max(0,Number(e.alcohol_expense)||0);
-    const net=computeNetFare(e), profit=net-gas-alcohol-maintenance-extras;
+    const net=computeNetFare(e), profit=net-fuel-maintenance-extras;
     return {gross,feePercent,feeAmount:computeFeeAmount(e),net,gas,alcohol,maintenance,extras,profit,km,hours,liters,fuel,kmPerLiter:liters>0?km/liters:null};
   };
 

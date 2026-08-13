@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   computeFeeAmount,
+  computeFuelCostForProfit,
   computeNetFare,
   formatBRL,
   formatDateBR,
@@ -346,7 +347,7 @@ export default function ReportExportActions({ entries, from, to }: Props) {
     const alcohol = Math.max(0, Number(entry.alcohol_expense) || 0);
     const maintenanceTotal = maint.reduce((s, x) => s + x.value, 0) || Math.max(0, Number(entry.maintenance_expense) || 0);
     const extrasTotal = extr.reduce((s, x) => s + x.value, 0);
-    const fuelTotal = gas + alcohol;
+    const fuelTotal = computeFuelCostForProfit(entry);
     const costs = fuelTotal + maintenanceTotal + extrasTotal;
     const km = Math.max(0, Number(entry.km_driven) || 0);
     const hours = Math.max(0, Number(entry.hours_worked) || 0);
