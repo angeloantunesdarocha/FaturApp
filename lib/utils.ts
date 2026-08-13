@@ -70,7 +70,16 @@ export function computeFeeAmount(entry: { gross_amount: number | null; fee_perce
   return gross * (fee / 100);
 }
 
-export function computeNetFare(entry: { gross_amount: number | null; fee_percent: number | null; net_fare: number | null }): number {
+export function computeNetFare(entry: {
+  gross_amount: number | null;
+  fee_percent: number | null;
+  net_fare: number | null;
+  revenue_details?: Array<{ liquido?: number | null }>;
+}): number {
+  const details = entry.revenue_details || [];
+  if (details.length) {
+    return details.reduce((sum, item) => sum + Math.max(0, Number(item.liquido) || 0), 0);
+  }
   if (entry.gross_amount !== null && entry.gross_amount !== undefined) {
     const gross = Number(entry.gross_amount) || 0;
     const fee = Number(entry.fee_percent ?? 0) || 0;
@@ -96,9 +105,15 @@ export function computeFuelCostPerKm(expense: number, km: number): number | null
   return km > 0 ? expense / km : null;
 }
 
-export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses">): number {
+export function computeFuelCostForProfit(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense"> & Partial<Pick<DailyEntry, "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {
+  const measuredCost = Number(entry.fuel_consumed_cost);
+  if (Number.isFinite(measuredCost) && measuredCost > 0) return measuredCost;
+  return computeFuelCost(entry);
+}
+
+export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses"> & Partial<Pick<DailyEntry, "revenue_details" | "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {
   const net = computeNetFare(entry);
   const maintenance = (entry.maintenance_details || []).reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
   const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
-  return net - Math.max(0, Number(entry.gas_expense) || 0) - Math.max(0, Number(entry.alcohol_expense) || 0) - maintenance - extras;
+  return net - computeFuelCostForProfit(entry) - maintenance - extras;
 }
