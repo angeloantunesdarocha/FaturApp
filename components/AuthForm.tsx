@@ -34,6 +34,7 @@ function Divider() {
 export default function AuthForm({ mode, oauthError }: Props) {
   const router = useRouter();
   const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("");
@@ -47,7 +48,7 @@ export default function AuthForm({ mode, oauthError }: Props) {
     e.preventDefault();
     setStatus("Processando...");
     const result = isRegister
-      ? await registerUser(login, password)
+      ? await registerUser(login, password, email)
       : await loginUser(login, password);
     if (!result.success) { setStatus(`❌ ${result.error}`); return; }
     router.push("/");
@@ -111,6 +112,11 @@ export default function AuthForm({ mode, oauthError }: Props) {
             <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]">Login</label>
             <input className="input border-slate-400 py-3 text-slate-900 placeholder:text-slate-400" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Nome ou endereço de e-mail" required maxLength={120} />
             <p className="mt-1 text-xs leading-5 text-slate-500">Pode usar nome, nomes com espaços ou e-mail. Maiúsculas e minúsculas são aceitas.</p>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]" htmlFor="recovery-email">E-mail de recuperação</label>
+            <input id="recovery-email" type="email" className="input border-slate-400 py-3 text-slate-900 placeholder:text-slate-400" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seuemail@exemplo.com" required autoComplete="email" />
+            <p className="mt-1 text-xs leading-5 text-slate-500">Usaremos este e-mail somente para recuperar seu acesso.</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]">Senha</label>
@@ -208,7 +214,8 @@ export default function AuthForm({ mode, oauthError }: Props) {
 
           {(status || oauthMessage) && <p className="mt-4 text-center text-sm text-slate-600" role="status">{status || oauthMessage}</p>}
 
-          <div className="mt-6 border-t border-slate-100 pt-5 text-center">
+            <div className="mt-6 border-t border-slate-100 pt-5 text-center">
+            <a className="mb-4 block text-sm font-semibold text-slate-600 hover:text-[#123B63]" href="/recuperar">Esqueci meu login ou senha</a>
             <a className="text-[15px] font-semibold text-brand-700 hover:text-brand-800" href="/cadastro">Criar conta grátis — leva 1 minuto</a>
           </div>
         </section>
