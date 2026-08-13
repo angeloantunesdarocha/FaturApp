@@ -36,7 +36,7 @@ export type DailyEntry = {
   net_fare: number | null;
   revenue_details?: Array<{
     id: string;
-    app: "Uber" | "99" | "inDrive" | "Indefinido" | "Outro";
+    app: "Uber" | "99" | "inDrive" | "Outro";
     nomeAppPersonalizado: string;
     bruto: number;
     taxa: number;
