@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { computeFeeAmount, computeFuelCostForProfit, computeNetFare, formatBRL, formatDateBR, todayISO, toNumber, type DailyEntry } from "@/lib/utils";
+import { computeFeeAmount, computeNetFare, formatBRL, formatDateBR, todayISO, toNumber, type DailyEntry } from "@/lib/utils";
 
 type Props = { entries: DailyEntry[]; initialFrom: string; initialTo: string };
 type Categories = { gas: boolean; alcohol: boolean; maintenance: boolean; extras: boolean };
@@ -37,8 +37,8 @@ export default function ReportsTable({entries,initialFrom,initialTo}:Props) {
     const km=Math.max(0,Number(e.km_driven)||0);
     const hours=Math.max(0,Number(e.hours_worked)||0);
     const liters=Math.max(0,Number(e.gasoline_liters)||0)+Math.max(0,Number(e.alcohol_liters)||0);
-    const fuel=computeFuelCostForProfit(e);
-    const net=computeNetFare(e), profit=net-gas-alcohol-maintenance-extras;
+    const fuel=Math.max(0,Number(e.gas_expense)||0)+Math.max(0,Number(e.alcohol_expense)||0);
+    const net=computeNetFare(e), profit=net-fuel-maintenance-extras;
     return {gross,feePercent,feeAmount:computeFeeAmount(e),net,gas,alcohol,maintenance,extras,profit,km,hours,liters,fuel,kmPerLiter:liters>0?km/liters:null};
   };
 
