@@ -28,15 +28,19 @@ export default function LogoutButton() {
 
       {isOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#071c31]/65 px-4 py-6 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex h-[100dvh] items-center justify-center overflow-y-auto bg-[#071c31]/65 px-4 py-6 backdrop-blur-sm sm:px-6 sm:py-8"
+          style={{
+            paddingTop: "max(1.5rem, env(safe-area-inset-top))",
+            paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+          }}
           role="dialog"
           aria-modal="true"
           aria-labelledby="logout-title"
         >
-          <div className="w-full max-w-sm animate-fade-up overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl">
-            <div className="bg-gradient-to-br from-[#123B63] via-[#14527a] to-[#168A4A] px-6 pb-7 pt-8 text-center text-white">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/15 text-4xl shadow-inner" aria-hidden="true">👋</div>
-              <h2 id="logout-title" className="mt-4 text-2xl font-extrabold tracking-tight">Ah, que pena você já vai?</h2>
+          <div className="my-auto max-h-[calc(100dvh-3rem)] w-full max-w-sm animate-fade-up overflow-y-auto rounded-3xl border border-white/60 bg-white shadow-2xl sm:max-h-[calc(100dvh-4rem)]">
+            <div className="bg-gradient-to-br from-[#123B63] via-[#14527a] to-[#168A4A] px-5 pb-6 pt-7 text-center text-white sm:px-6 sm:pb-7 sm:pt-8">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/15 text-3xl shadow-inner sm:h-16 sm:w-16 sm:text-4xl" aria-hidden="true">👋</div>
+              <h2 id="logout-title" className="mt-4 text-xl font-extrabold tracking-tight sm:text-2xl">Ah, que pena você já vai?</h2>
               <p className="mt-3 text-sm leading-6 text-white/85">Seu lucro real continua esperando por você. Volte quando quiser — o FaturApp estará aqui para ajudar você a trabalhar sabendo quanto realmente sobra.</p>
             </div>
 
