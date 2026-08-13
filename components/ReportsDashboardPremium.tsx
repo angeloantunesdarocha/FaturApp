@@ -38,69 +38,7 @@ export default function ReportsDashboardPremium({ entries, initialFrom, initialT
   function addExtra(){setDraft(d=>d?({...d,extra_expenses:[...d.extra_expenses,{name:"",value:0}]}):d)}
   async function save(){if(!editing||!draft)return;setSaving(true);setMessage("");const result=await updateEntry(editing.id,{date:draft.date,gross_amount:draft.gross_amount===""?null:n(draft.gross_amount),fee_percent:draft.fee_percent===""?null:n(draft.fee_percent),net_fare:draft.net_fare===""?null:n(draft.net_fare),gas_expense:n(draft.gas_expense),alcohol_expense:n(draft.alcohol_expense),gasoline_price_per_liter:n(draft.gasoline_price_per_liter),alcohol_price_per_liter:n(draft.alcohol_price_per_liter),gasoline_liters:0,alcohol_liters:0,km_initial:n(draft.km_initial),km_final:n(draft.km_final),km_driven:Math.max(0,n(draft.km_final)-n(draft.km_initial)),hours_worked:n(draft.hours_worked),maintenance_expense:draft.maintenance_details.reduce((s,i)=>s+n(i.value),0),maintenance_details:draft.maintenance_details,extra_expenses:draft.extra_expenses});setSaving(false);if(result.success){setMessage("Lançamento atualizado. Recarregando...");window.location.reload()}else setMessage(result.error||"Não foi possível salvar.")}
 
-  const period=from===to?formatDateBR(from):`${formatDateBR(from)} — ${formatDateBR(to)}`;
-  return <div className="space-y-6 pb-24">
-    <section className="relative overflow-hidden rounded-[2rem] bg-slate-950 p-6 text-white shadow-2xl sm:p-8 lg:p-10">
-
-      {/* Camada de profundidade: dois orbs para o efeito fintech */}
-      <div className="pointer-events-none absolute -left-20 -top-20 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 -right-16 h-64 w-64 rounded-full bg-violet-500/10 blur-3xl" />
-
-      {/* Grid sutil de fundo — textura tecnológica */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        style={{backgroundImage:"linear-gradient(rgba(255,255,255,.6) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.6) 1px,transparent 1px)",backgroundSize:"32px 32px"}} />
-
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-
-        {/* Conteúdo principal */}
-        <div className="max-w-2xl">
-
-          {/* Selo — Inteligência financeira + período integrado */}
-          <div className="inline-flex items-center gap-2.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3.5 py-1.5">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            <span className="text-[10px] font-black uppercase tracking-[.22em] text-emerald-300">
-              Inteligência Financeira
-            </span>
-            <span className="text-[10px] text-emerald-400/50">·</span>
-            <span className="text-[10px] font-semibold tracking-wide text-emerald-400/80">{period}</span>
-          </div>
-
-          {/* Headline — Variação 1 */}
-          <h1 className="mt-4 text-3xl font-black leading-[1.08] tracking-tight sm:text-4xl lg:text-5xl">
-            Você fatura muito.{" "}
-            <span className="bg-gradient-to-r from-emerald-300 to-emerald-400 bg-clip-text text-transparent">
-              Lucra o suficiente?
-            </span>
-          </h1>
-
-          {/* Body */}
-          <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-400 sm:text-[15px]">
-            Plataformas mostram o bruto. O FaturApp mostra o que sobrou depois de tudo —
-            combustível, taxas, manutenção, tempo.{" "}
-            <span className="font-semibold text-slate-200">Esta é a única análise que importa.</span>
-          </p>
-
-        </div>
-
-        {/* Painel de métrica destaque */}
-        <div className="shrink-0 rounded-2xl border border-white/8 bg-white/5 px-5 py-4 backdrop-blur-sm">
-          <p className="text-[10px] font-black uppercase tracking-[.18em] text-slate-500">
-            Lucro do período
-          </p>
-          <p className={`mt-1.5 text-3xl font-black tracking-tight ${totals.profit >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-            {money(totals.profit)}
-          </p>
-          <div className="mt-2 flex items-center gap-1.5">
-            <span className={`inline-block h-1.5 w-1.5 rounded-full ${totals.profit >= 0 ? "bg-emerald-400" : "bg-rose-400"}`} />
-            <p className="text-[11px] text-slate-500">
-              {rows.length} dia(s) analisado(s)
-            </p>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
+  return <div className="space-y-4 pb-24">
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5"><label className="text-xs font-bold text-slate-500">De<input type="date" value={from} onChange={e=>setFrom(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-semibold"/></label><label className="text-xs font-bold text-slate-500">Até<input type="date" value={to} onChange={e=>setTo(e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 font-semibold"/></label><button onClick={()=>{const t=new Date().toISOString().slice(0,10);setFrom(t);setTo(t)}} className="self-end rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold">Hoje</button><button onClick={()=>{const t=new Date();const first=new Date(t.getFullYear(),t.getMonth(),1).toISOString().slice(0,10);setFrom(first);setTo(t.toISOString().slice(0,10))}} className="self-end rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold">Este mês</button><select value={sort} onChange={e=>setSort(e.target.value as Sort)} className="self-end rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold"><option value="recent">Mais recentes</option><option value="profit">Maior lucro</option><option value="km">Mais km</option><option value="hours">Mais horas trabalhadas</option><option value="loss">Maior prejuízo</option></select></section>
 
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5"><p className="text-xs font-bold uppercase tracking-wide text-emerald-700">Lucro líquido</p><p className="mt-2 text-3xl font-black text-emerald-800">{money(totals.profit)}</p><p className="mt-1 text-xs text-emerald-700/80">Resultado após taxas e custos</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Receita líquida</p><p className="mt-2 text-3xl font-black text-slate-900">{money(totals.net)}</p><p className="mt-1 text-xs text-slate-500">Bruta {money(totals.gross)} · Taxas {money(totals.fee)}</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Operação</p><p className="mt-2 text-3xl font-black text-slate-900">{km(totals.km)} km</p><p className="mt-1 text-xs text-slate-500">{hrs(totals.hours)} h trabalhadas</p></div><div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-bold uppercase tracking-wide text-slate-500">Lucro por km</p><p className="mt-2 text-3xl font-black text-slate-900">{money(totals.km?totals.profit/totals.km:0)}</p><p className="mt-1 text-xs text-slate-500">No período selecionado</p></div></section>
