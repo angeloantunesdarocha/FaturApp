@@ -34,6 +34,15 @@ export type DailyEntry = {
   gross_amount: number | null;
   fee_percent: number | null;
   net_fare: number | null;
+  revenue_details?: Array<{
+    id: string;
+    app: "Uber" | "99" | "inDrive" | "Indefinido" | "Outro";
+    nomeAppPersonalizado: string;
+    bruto: number;
+    taxa: number;
+    taxaValor: number;
+    liquido: number;
+  }>;
   gas_expense: number;
   alcohol_expense: number;
   gasoline_price_per_liter: number;
@@ -47,6 +56,11 @@ export type DailyEntry = {
   maintenance_expense: number;
   maintenance_details?: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
+  fuel_consumption_km_per_liter?: number;
+  fuel_consumed_liters?: number;
+  fuel_consumed_cost?: number;
+  fuel_remaining_liters?: number;
+  fuel_remaining_value?: number;
 };
 
 export function computeFeeAmount(entry: { gross_amount: number | null; fee_percent: number | null }): number {
