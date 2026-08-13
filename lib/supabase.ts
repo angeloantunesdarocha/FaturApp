@@ -10,12 +10,15 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error("NEXT_PUBLIC_SUPABASE_URL e uma chave pública Supabase válida são obrigatórias.");
 }
 
+const configuredSupabaseUrl: string = supabaseUrl;
+const configuredSupabaseKey: string = supabaseKey;
+
 export function createClientBrowser() {
-  return createBrowserClient(supabaseUrl, supabaseKey, {
+  return createBrowserClient(configuredSupabaseUrl, configuredSupabaseKey, {
     auth: { flowType: "pkce" },
   });
 }
 
 export function createClientServer() {
-  return createClient(supabaseUrl, supabaseKey);
+  return createClient(configuredSupabaseUrl, configuredSupabaseKey);
 }
