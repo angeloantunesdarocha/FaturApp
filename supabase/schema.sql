@@ -7,6 +7,7 @@ create table if not exists public.daily_entries (
   gross_amount numeric,
   fee_percent numeric,
   net_fare numeric,
+  revenue_details jsonb default '[]'::jsonb not null,
   gas_expense numeric default 0 not null,
   alcohol_expense numeric default 0 not null,
   gasoline_price_per_liter numeric default 0 not null,
@@ -22,6 +23,7 @@ create table if not exists public.daily_entries (
   extra_expenses jsonb default '[]'::jsonb not null
 );
 
+alter table public.daily_entries add column if not exists revenue_details jsonb default '[]'::jsonb not null;
 alter table public.daily_entries add column if not exists maintenance_details jsonb default '[]'::jsonb not null;
 alter table public.daily_entries add column if not exists gasoline_price_per_liter numeric default 0 not null;
 alter table public.daily_entries add column if not exists alcohol_price_per_liter numeric default 0 not null;
@@ -34,6 +36,7 @@ alter table public.daily_entries add column if not exists hours_worked numeric d
 create index if not exists idx_daily_entries_date on public.daily_entries (date);
 create index if not exists idx_daily_entries_user_id on public.daily_entries (user_id);
 create index if not exists daily_entries_user_id_date_created_idx on public.daily_entries(user_id, date, created_at);
+create index if not exists daily_entries_revenue_details_gin_idx on public.daily_entries using gin (revenue_details);
 
 create extension if not exists pgcrypto;
 
