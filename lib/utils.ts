@@ -79,6 +79,23 @@ export function computeNetFare(entry: { gross_amount: number | null; fee_percent
   return Number(entry.net_fare ?? 0) || 0;
 }
 
+/** Receita multi-app é a fonte de verdade quando revenue_details existe. */
+export function computeRevenueTotals(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "revenue_details">) {
+  const details = entry.revenue_details || [];
+  if (details.length > 0) {
+    return details.reduce((acc, item) => {
+      const bruto = Math.max(0, Number(item.bruto) || 0);
+      const taxa = Math.max(0, Number(item.taxa) || 0);
+      const rawFee = Number(item.taxaValor);
+      const taxaValor = Number.isFinite(rawFee) ? Math.max(0, rawFee) : Math.round(bruto * (taxa / 100) * 100) / 100;
+      const rawNet = Number(item.liquido);
+      const liquido = Number.isFinite(rawNet) ? Math.max(0, rawNet) : Math.max(0, Math.round((bruto - taxaValor) * 100) / 100);
+      return { gross: acc.gross + bruto, fee: acc.fee + taxaValor, net: acc.net + liquido };
+    }, { gross: 0, fee: 0, net: 0 });
+  }
+  return { gross: Math.max(0, Number(entry.gross_amount) || 0), fee: Math.max(0, computeFeeAmount(entry)), net: Math.max(0, computeNetFare(entry)) };
+}
+
 export function computeFuelCost(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense">): number {
   return Math.max(0, Number(entry.gas_expense) || 0) + Math.max(0, Number(entry.alcohol_expense) || 0);
 }
@@ -96,9 +113,11 @@ export function computeFuelCostPerKm(expense: number, km: number): number | null
   return km > 0 ? expense / km : null;
 }
 
-export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses">): number {
-  const net = computeNetFare(entry);
-  const maintenance = (entry.maintenance_details || []).reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
+export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "revenue_details" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses">): number {
+  const { net } = computeRevenueTotals(entry);
+  const maintenanceDetails = (entry.maintenance_details || []).reduce((sum, item) => sum + toNumber(item.value), 0);
+  const maintenance = maintenanceDetails > 0 ? maintenanceDetails : Math.max(0, Number(entry.maintenance_expense) || 0);
   const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
-  return net - Math.max(0, Number(entry.gas_expense) || 0) - Math.max(0, Number(entry.alcohol_expense) || 0) - maintenance - extras;
+  const fuel = Math.max(0, Number(entry.gas_expense) || 0) + Math.max(0, Number(entry.alcohol_expense) || 0);
+  return net - fuel - maintenance - extras;
 }
