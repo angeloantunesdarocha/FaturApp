@@ -1,4 +1,4 @@
-export const REVENUE_APPS = ["Uber", "99", "inDrive", "Indefinido", "Outro"] as const;
+export const REVENUE_APPS = ["Uber", "99", "inDrive", "Outro"] as const;
 
 export type RevenueAppName = (typeof REVENUE_APPS)[number];
 
@@ -23,9 +23,12 @@ export function normalizeRevenueItems(items: RevenueItem[]): RevenueItemPersiste
     const taxa = Math.min(100, Math.max(0, Number(item.taxa) || 0));
     const taxaValor = roundMoney(bruto * (taxa / 100));
     const liquido = roundMoney(bruto - taxaValor);
+    // Registros antigos que usavam "Indefinido" continuam legíveis e passam
+    // a aparecer como "Outro", sem manter a opção confusa para novos lançamentos.
+    const app = (item.app as string) === "Indefinido" ? "Outro" : item.app;
     return {
       id: String(item.id),
-      app: item.app,
+      app,
       nomeAppPersonalizado: String(item.nomeAppPersonalizado || "").trim(),
       bruto,
       taxa,
@@ -47,7 +50,7 @@ export function summarizeRevenue(items: RevenueItem[]) {
 export function createRevenueItem(): RevenueItem {
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    app: "Indefinido",
+    app: "Uber",
     nomeAppPersonalizado: "",
     bruto: 0,
     taxa: 0,
