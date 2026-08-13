@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { configuredSupabaseUrl, configuredSupabaseKey } from "@/lib/supabase";
 
 /**
  * Callback do Google OAuth via Supabase.
@@ -38,8 +39,8 @@ export async function GET(request: Request) {
     const cookieStore = cookies();
     const response = NextResponse.redirect(new URL(next, origin));
     const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!,
+      configuredSupabaseUrl,
+      configuredSupabaseKey,
       {
         cookies: {
           getAll() { return cookieStore.getAll(); },
