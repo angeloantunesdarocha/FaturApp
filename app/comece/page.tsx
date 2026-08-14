@@ -2,6 +2,7 @@ import Link from "next/link";
 import HeroProfitMockup from "@/components/HeroProfitMockup";
 import ProfitStoryShowcase from "@/components/ProfitStoryShowcase";
 import RevealOnScroll from "@/components/RevealOnScroll";
+import TrustSection from "@/components/TrustSection";
 
 export default function StartPage() {
   return (
@@ -26,6 +27,8 @@ export default function StartPage() {
           </RevealOnScroll>
         </div>
       </section>
+
+      <TrustSection />
 
       <div id="como-funciona"><ProfitStoryShowcase /></div>
 
