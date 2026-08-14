@@ -15,10 +15,19 @@ const inactiveNav = "border border-slate-200 bg-white text-[#123B63] hover:borde
 export default function Header({ isAuthenticated }: { isAuthenticated: boolean }) {
   const pathname = usePathname();
   const isReports = pathname === "/relatorios";
+  const isLanding = pathname === "/comece";
 
   return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:flex-nowrap sm:px-4">
     <Link href="/" aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
-    {isAuthenticated && <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
+    {isLanding && <nav aria-label="Navegação da apresentação" className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+      <div className="hidden items-center gap-1 lg:flex">
+        <Link href="/comece#como-funciona" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Como funciona</Link>
+        <Link href="/comece#beneficios" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Benefícios</Link>
+      </div>
+      <Link href="/login" className="hidden rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#123B63] transition-colors hover:border-[#123B63] hover:bg-slate-50 sm:inline-flex">Entrar</Link>
+      <Link href="/cadastro" className="rounded-full bg-[#10B981] px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#059669] focus:outline-none focus:ring-2 focus:ring-[#10B981]/30">Começar grátis</Link>
+    </nav>}
+    {isAuthenticated && !isLanding && <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
       <Link href="/" aria-current={!isReports ? "page" : undefined} className={`${baseNav} ${!isReports ? activeNav : inactiveNav}`}>Lançar dia</Link>
       <Link href="/relatorios" aria-current={isReports ? "page" : undefined} className={`${baseNav} ${isReports ? activeNav : inactiveNav}`}>Relatórios</Link>
       <div className="relative -top-0.5"><LogoutButton /></div>
