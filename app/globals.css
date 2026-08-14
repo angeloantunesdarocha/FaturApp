@@ -108,11 +108,16 @@ button, a {
   overflow: hidden;
   width: 100%;
   min-width: 0;
+  max-width: 100%;
+  contain: paint;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 3%, #000 97%, transparent 100%);
 }
 
 .marquee-track {
   display: flex;
   width: max-content;
+  max-width: none;
   animation: marquee 18s linear infinite;
   will-change: transform;
 }
