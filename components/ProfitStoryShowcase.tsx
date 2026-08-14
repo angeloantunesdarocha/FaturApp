@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const steps = ["Enxergue cada custo", "Lance seu dia", "Veja seu lucro real"];
+
 const scenes = [
   {
     label: "1 · Registre",
@@ -34,6 +36,33 @@ const scenes = [
     glow: "bg-emerald-400/20",
   },
 ];
+
+function StepIcon({ index }: { index: number }) {
+  if (index === 0) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <circle cx="11" cy="11" r="6.5" />
+        <path strokeLinecap="round" d="m16 16 4 4M8.5 11h5M11 8.5v5" />
+      </svg>
+    );
+  }
+
+  if (index === 1) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+        <rect x="5" y="3.5" width="14" height="17" rx="2" />
+        <path strokeLinecap="round" d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 19V5m0 14h16" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="m7 15 3-3 2 2 5-6" />
+    </svg>
+  );
+}
 
 export default function ProfitStoryShowcase() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -97,6 +126,18 @@ export default function ProfitStoryShowcase() {
           <p className="mt-5 max-w-xl text-lg leading-8 text-slate-300">
             O FaturApp transforma a rotina do motorista em uma visão simples para entender, comparar e melhorar.
           </p>
+
+          <div className="mt-8 grid max-w-xl grid-cols-3 gap-2" aria-label="Etapas do FaturApp">
+            {steps.map((step, index) => (
+              <div key={step} className="relative">
+                {index < steps.length - 1 && <span className="absolute left-[calc(50%+16px)] right-[-8px] top-4 h-px bg-white/15" aria-hidden="true" />}
+                <div className="relative mx-auto flex h-8 w-8 items-center justify-center rounded-full border border-emerald-300/30 bg-[#08243c] text-emerald-200">
+                  <StepIcon index={index} />
+                </div>
+                <p className="mt-2 text-center text-[10px] font-bold leading-4 text-slate-300 sm:text-xs">{step}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="relative mx-auto w-full max-w-2xl">
