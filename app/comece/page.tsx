@@ -1,19 +1,13 @@
 import Link from "next/link";
+import HeroProfitMockup from "@/components/HeroProfitMockup";
 import ProfitStoryShowcase from "@/components/ProfitStoryShowcase";
 import RevealOnScroll from "@/components/RevealOnScroll";
-
-const metrics = [
-  ["Valor bruto", "R$ 210,00", "text-white"],
-  ["Taxas dos apps", "− R$ 52,50", "text-rose-300"],
-  ["Combustível", "− R$ 28,00", "text-amber-300"],
-  ["Lucro real", "R$ 129,50", "text-emerald-300"],
-];
 
 export default function StartPage() {
   return (
     <main className="-mx-3 -mt-4 overflow-hidden bg-[#071c31] text-white sm:-mx-4 sm:-mt-6 lg:-mx-6">
       <section id="visao" className="relative isolate px-4 pb-14 pt-12 sm:px-8 sm:pb-20 sm:pt-16 lg:px-16 lg:pt-20">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_15%,rgba(16,185,129,.3),transparent_32%),linear-gradient(135deg,#071c31_0%,#123b63_58%,#087443_100%)]" />
+        <div className="hero-gradient absolute inset-0 -z-10" />
         <div className="pointer-events-none absolute -right-24 top-12 -z-10 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="mx-auto grid min-w-0 max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
           <RevealOnScroll direction="left" className="min-w-0">
@@ -28,17 +22,7 @@ export default function StartPage() {
           </RevealOnScroll>
 
           <RevealOnScroll direction="right" delay={120} className="min-w-0">
-            <div className="relative">
-              <div className="absolute -left-3 -top-4 z-10 rounded-2xl border border-emerald-200/20 bg-[#092943]/90 px-4 py-3 shadow-xl backdrop-blur sm:-left-8"><p className="text-[10px] font-bold uppercase tracking-[.16em] text-emerald-200">O número que importa</p><p className="mt-1 text-lg font-black text-white">R$ 129,50 <span className="text-xs font-semibold text-emerald-300">de lucro real</span></p></div>
-              <div className="rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur sm:p-5">
-                <div className="rounded-[1.4rem] bg-[#0d2f4f] p-5 sm:p-7">
-                  <div className="flex items-center justify-between"><div><p className="text-sm font-bold text-white">Hoje</p><p className="mt-1 text-xs text-slate-400">Um exemplo do que fica no seu bolso</p></div><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-300">simulação</span></div>
-                  <div className="mt-7 space-y-4">{metrics.map(([label, value, color]) => <div key={label} className={`flex items-center justify-between gap-4 ${label === "Lucro real" ? "border-t border-white/10 pt-5" : ""}`}><span className={label === "Lucro real" ? "font-bold text-white" : "text-slate-300"}>{label}</span><strong className={`${color} ${label === "Lucro real" ? "text-3xl" : "text-lg"}`}>{value}</strong></div>)}</div>
-                  <div className="mt-6 rounded-xl bg-emerald-400/10 p-3 text-center text-sm font-semibold text-emerald-200">R$ 16,19 por hora · R$ 1,08 por km</div>
-                </div>
-              </div>
-              <p className="mt-4 text-center text-sm text-slate-300">Faturar muito não significa lucrar muito.</p>
-            </div>
+            <HeroProfitMockup />
           </RevealOnScroll>
         </div>
       </section>
