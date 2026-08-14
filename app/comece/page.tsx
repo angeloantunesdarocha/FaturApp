@@ -41,7 +41,27 @@ export default function StartPage() {
       <ProfitStoryShowcase />
 
       <section className="bg-white px-4 py-14 text-[#123B63] sm:px-8 sm:py-20 lg:px-16">
-        <div className="mx-auto max-w-6xl"><div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-600">O que o FaturApp revela</p><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Pare de confundir faturamento com lucro.</h2><p className="mt-4 text-lg leading-8 text-slate-600">O dinheiro que entra no aplicativo não é o dinheiro que fica com você. O FaturApp organiza os custos que normalmente passam despercebidos.</p></div><div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["⛽","Combustível","Veja quanto o carro realmente consome."],["📱","Taxas dos apps","Compare o bruto com o líquido."],["🔧","Manutenção","Reserve dinheiro para o desgaste do veículo."],["⏱️","Hora e km","Descubra se seu tempo está compensando."]].map(([icon,title,body])=><div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><div className="text-2xl">{icon}</div><h3 className="mt-4 font-extrabold">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{body}</p></div>)}</div></div>
+        <div className="mx-auto max-w-6xl">
+          <div className="max-w-2xl">
+            <p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-600">Tudo em um só lugar</p>
+            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Uma visão mais inteligente do seu trabalho.</h2>
+            <p className="mt-4 text-lg leading-8 text-slate-600">Do lançamento ao relatório, o FaturApp reúne as informações que ajudam você a trabalhar com mais clareza.</p>
+          </div>
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ["✍️", "Lançamentos completos", "Registre aplicativos, combustível, quilômetros, horas e despesas."],
+              ["📊", "Relatórios claros", "Acompanhe seus dias, períodos e evolução sem depender de memória."],
+              ["📄", "Exportação prática", "Leve seus dados organizados para Excel e PDF quando precisar."],
+              ["📲", "Resultados compartilháveis", "Transforme seus resultados em cards para enviar aos seus contatos."],
+            ].map(([icon, title, body]) => (
+              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5 transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-lg">
+                <div className="text-2xl">{icon}</div>
+                <h3 className="mt-4 font-extrabold">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="bg-slate-50 px-4 py-14 text-center sm:px-8 sm:py-16"><h2 className="text-3xl font-black tracking-tight text-[#123B63]">Seu próximo dia de trabalho começa com uma decisão melhor.</h2><p className="mx-auto mt-4 max-w-xl text-slate-600">Comece gratuitamente e descubra o número que realmente importa: quanto sobra no seu bolso.</p><Link href="/cadastro" className="mt-7 inline-flex min-h-14 items-center justify-center rounded-2xl bg-[#10B981] px-8 font-extrabold text-white shadow-lg shadow-emerald-700/20 hover:bg-[#059669]">Começar gratuitamente →</Link></section>
