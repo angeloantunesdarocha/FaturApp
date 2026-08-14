@@ -1,6 +1,7 @@
 import Link from "next/link";
 import BeforeAfterSection from "@/components/BeforeAfterSection";
 import FeatureGrid from "@/components/FeatureGrid";
+import FaqSection from "@/components/FaqSection";
 import HeroProfitMockup from "@/components/HeroProfitMockup";
 import ProfitStoryShowcase from "@/components/ProfitStoryShowcase";
 import ProfitSimulator from "@/components/ProfitSimulator";
@@ -40,6 +41,8 @@ export default function StartPage() {
       <BeforeAfterSection />
 
       <FeatureGrid />
+
+      <FaqSection />
 
       <section className="relative overflow-hidden bg-slate-50/ px-4 py-14 text-center sm:px-8 sm:py-16"><div className="absolute left-1/2 top-0 h-48 w-96 -translate-x-1/2 rounded-full bg-emerald-200/40 blur-3xl" /><RevealOnScroll className="relative"><p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-600">Pronto para enxergar melhor?</p><h2 className="mx-auto mt-3 max-w-3xl text-3xl font-black tracking-tight text-[#123B63]">Seu próximo dia de trabalho começa com uma decisão melhor.</h2><p className="mx-auto mt-4 max-w-xl text-slate-600">Comece gratuitamente e descubra o número que realmente importa: quanto sobra no seu bolso.</p><Link href="/cadastro" className="mt-7 inline-flex min-h-14 items-center justify-center rounded-2xl bg-[#10B981] px-8 font-extrabold text-white shadow-lg shadow-emerald-700/20 transition duration-300 hover:-translate-y-0.5 hover:bg-[#059669]">Começar gratuitamente →</Link></RevealOnScroll></section>
     </main>
