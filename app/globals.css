@@ -162,13 +162,47 @@ button, a {
   }
 }
 
+.login-banner-viewport {
+  overflow: hidden;
+  width: 100%;
+  border-radius: 1rem;
+  contain: paint;
+}
+
+.login-banner-track {
+  display: flex;
+  width: max-content;
+  animation: login-banner 18s linear infinite;
+  will-change: transform;
+}
+
+.login-banner-sequence {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 1rem;
+  padding-right: 1rem;
+  white-space: nowrap;
+}
+
+@keyframes login-banner {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .marquee-track {
+  .marquee-track,
+  .login-banner-track {
     animation: none;
     transform: none;
   }
 
-  .marquee-item + .marquee-item {
+  .marquee-item + .marquee-item,
+  .login-banner-sequence + .login-banner-sequence {
     display: none;
   }
 }
