@@ -13,10 +13,10 @@ export default function StartPage() {
     <main className="-mx-3 -mt-4 overflow-hidden bg-[#071c31] text-white sm:-mx-4 sm:-mt-6 lg:-mx-6">
       <section className="relative isolate px-4 pb-14 pt-12 sm:px-8 sm:pb-20 sm:pt-16 lg:px-16 lg:pt-20">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_85%_15%,rgba(16,185,129,.28),transparent_32%),linear-gradient(135deg,#071c31_0%,#123b63_58%,#087443_100%)]" />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
-          <div className="animate-fade-up">
+        <div className="mx-auto grid min-w-0 max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
+          <div className="animate-fade-up min-w-0">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.16em] text-emerald-200">FaturApp · feito para motoristas</div>
-            <h1 className="marquee-viewport max-w-2xl text-4xl font-black leading-[1.03] tracking-[-.04em] sm:text-6xl" aria-label="Você sabe quanto realmente sobra depois de trabalhar?"><span className="marquee-track" aria-hidden="true"><span className="marquee-item">Você sabe quanto realmente sobra depois de trabalhar?</span><span className="marquee-item">Você sabe quanto realmente sobra depois de trabalhar?</span></span></h1>
+            <h1 className="marquee-viewport w-full min-w-0 max-w-2xl text-4xl font-black leading-[1.03] tracking-[-.04em] sm:text-6xl" aria-label="Você sabe quanto realmente sobra depois de trabalhar?"><span className="marquee-track" aria-hidden="true"><span className="marquee-item">Você sabe quanto realmente sobra depois de trabalhar?</span><span className="marquee-item">Você sabe quanto realmente sobra depois de trabalhar?</span></span></h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200 sm:text-xl">Descubra seu lucro real descontando taxas, combustível, manutenção e despesas — por dia, por quilômetro e por hora.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/cadastro" className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-emerald-500 px-7 text-base font-extrabold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-400">Calcular meu lucro agora <span className="ml-2">→</span></Link>
@@ -25,7 +25,7 @@ export default function StartPage() {
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300"><span>✓ Grátis para começar</span><span>✓ Sem cartão</span><span>✓ Leva menos de 1 minuto</span></div>
           </div>
 
-          <div className="animate-fade-up [animation-delay:150ms]">
+          <div className="animate-fade-up min-w-0 [animation-delay:150ms]">
             <div className="relative rounded-[2rem] border border-white/15 bg-white/10 p-3 shadow-2xl backdrop-blur sm:p-5">
               <div className="rounded-[1.4rem] bg-[#0d2f4f] p-5 sm:p-7">
                 <div className="flex items-center justify-between"><div><p className="text-sm font-bold text-white">Hoje</p><p className="mt-1 text-xs text-slate-400">Um exemplo do que fica no seu bolso</p></div><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-300">simulação</span></div>
