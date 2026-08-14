@@ -65,7 +65,7 @@ export default function ProfitStoryShowcase() {
     }, 8000);
 
     return () => window.clearInterval(timer);
-  }, [isPlaying, isVisible, reduceMotion]);
+  }, [isVisible, reduceMotion]);
 
   const scene = scenes[activeScene];
 
