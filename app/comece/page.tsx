@@ -16,7 +16,7 @@ export default function StartPage() {
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
           <div className="animate-fade-up">
             <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.16em] text-emerald-200">FaturApp · feito para motoristas</div>
-            <h1 className="max-w-2xl text-4xl font-black leading-[1.03] tracking-[-.04em] sm:text-6xl">Você sabe quanto realmente sobra depois de trabalhar?</h1>
+            <h1 className="marquee-viewport max-w-2xl text-4xl font-black leading-[1.03] tracking-[-.04em] sm:text-6xl" aria-label="Você sabe quanto realmente sobra depois de trabalhar?"><span className="marquee-track" aria-hidden="true"><span className="marquee-item">Você sabe quanto realmente sobra depois de trabalhar?</span><span className="marquee-item">Você sabe quanto realmente sobra depois de trabalhar?</span></span></h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200 sm:text-xl">Descubra seu lucro real descontando taxas, combustível, manutenção e despesas — por dia, por quilômetro e por hora.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link href="/cadastro" className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-emerald-500 px-7 text-base font-extrabold text-white shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-400">Calcular meu lucro agora <span className="ml-2">→</span></Link>
