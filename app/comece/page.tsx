@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ProfitStoryShowcase from "@/components/ProfitStoryShowcase";
 
 const metrics = [
   ["Valor bruto", "R$ 210,00", "text-white"],
@@ -36,6 +37,8 @@ export default function StartPage() {
           </div>
         </div>
       </section>
+
+      <ProfitStoryShowcase />
 
       <section className="bg-white px-4 py-14 text-[#123B63] sm:px-8 sm:py-20 lg:px-16">
         <div className="mx-auto max-w-6xl"><div className="max-w-2xl"><p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-600">O que o FaturApp revela</p><h2 className="mt-3 text-3xl font-black tracking-tight sm:text-4xl">Pare de confundir faturamento com lucro.</h2><p className="mt-4 text-lg leading-8 text-slate-600">O dinheiro que entra no aplicativo não é o dinheiro que fica com você. O FaturApp organiza os custos que normalmente passam despercebidos.</p></div><div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{[["⛽","Combustível","Veja quanto o carro realmente consome."],["📱","Taxas dos apps","Compare o bruto com o líquido."],["🔧","Manutenção","Reserve dinheiro para o desgaste do veículo."],["⏱️","Hora e km","Descubra se seu tempo está compensando."]].map(([icon,title,body])=><div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-5"><div className="text-2xl">{icon}</div><h3 className="mt-4 font-extrabold">{title}</h3><p className="mt-2 text-sm leading-6 text-slate-600">{body}</p></div>)}</div></div>
