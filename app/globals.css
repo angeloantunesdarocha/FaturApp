@@ -194,9 +194,28 @@ button, a {
   }
 }
 
+@keyframes hero-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.hero-gradient {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(37, 99, 235, .42), transparent 34%),
+    radial-gradient(circle at 86% 78%, rgba(16, 185, 129, .35), transparent 36%),
+    linear-gradient(120deg, #071c31 0%, #123b63 48%, #075b50 100%);
+  background-size: 140% 140%, 140% 140%, 220% 220%;
+  animation: hero-gradient 18s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marquee-track,
-  .login-banner-track {
+  .login-banner-track,
+  .hero-gradient {
     animation: none;
     transform: none;
   }
