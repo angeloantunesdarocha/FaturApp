@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 const scenes = [
@@ -11,7 +10,6 @@ const scenes = [
     valueLabel: "Faturamento bruto",
     value: "R$ 210,00",
     valueClass: "text-white",
-    accent: "from-sky-400 to-cyan-300",
     glow: "bg-sky-400/20",
   },
   {
@@ -21,7 +19,6 @@ const scenes = [
     valueLabel: "Custos do trabalho",
     value: "− R$ 80,50",
     valueClass: "text-rose-300",
-    accent: "from-rose-400 to-amber-300",
     glow: "bg-rose-400/20",
   },
   {
@@ -31,7 +28,6 @@ const scenes = [
     valueLabel: "Lucro no seu bolso",
     value: "R$ 129,50",
     valueClass: "text-emerald-300",
-    accent: "from-emerald-400 to-lime-300",
     glow: "bg-emerald-400/20",
   },
 ];
@@ -40,7 +36,6 @@ export default function ProfitStoryShowcase() {
   const sectionRef = useRef<HTMLElement>(null);
   const [activeScene, setActiveScene] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
 
   useEffect(() => {
@@ -63,11 +58,11 @@ export default function ProfitStoryShowcase() {
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !isPlaying || reduceMotion) return;
+    if (!isVisible || reduceMotion) return;
 
     const timer = window.setInterval(() => {
       setActiveScene((current) => (current + 1) % scenes.length);
-    }, 3000);
+    }, 8000);
 
     return () => window.clearInterval(timer);
   }, [isPlaying, isVisible, reduceMotion]);
@@ -100,22 +95,6 @@ export default function ProfitStoryShowcase() {
             Não basta saber quanto entrou. O FaturApp revela quanto seu trabalho realmente colocou no seu bolso.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              href="/cadastro"
-              className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-emerald-500 px-7 font-extrabold text-white shadow-lg shadow-emerald-950/30 transition hover:-translate-y-0.5 hover:bg-emerald-400"
-            >
-              Descobrir meu lucro grátis →
-            </Link>
-            <button
-              type="button"
-              onClick={() => setIsPlaying((current) => !current)}
-              className="inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-6 font-bold text-slate-200 transition hover:bg-white/10"
-              aria-label={isPlaying ? "Pausar demonstração" : "Reproduzir demonstração"}
-            >
-              {isPlaying ? "❚❚ Pausar" : "▶ Reproduzir"}
-            </button>
-          </div>
         </div>
 
         <div className="relative mx-auto w-full max-w-2xl">
@@ -161,30 +140,7 @@ export default function ProfitStoryShowcase() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 px-3 pb-3 sm:px-7 sm:pb-5">
-              {scenes.map((item, index) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    setActiveScene(index);
-                    setIsPlaying(false);
-                  }}
-                  className="group py-2 text-left"
-                  aria-label={`Mostrar etapa ${index + 1}`}
-                  aria-current={activeScene === index ? "step" : undefined}
-                >
-                  <span className="block h-1.5 overflow-hidden rounded-full bg-white/10">
-                    <span className={`block h-full rounded-full bg-gradient-to-r transition-all duration-500 ${item.accent} ${activeScene === index ? "w-full" : "w-0"}`} />
-                  </span>
-                  <span className={`mt-2 hidden text-[10px] font-bold uppercase tracking-wider sm:block ${activeScene === index ? "text-white" : "text-slate-500"}`}>
-                    Etapa {index + 1}
-                  </span>
-                </button>
-              ))}
-            </div>
           </div>
-          <p className="mt-4 text-center text-xs text-slate-400">A animação inicia somente quando aparece na sua tela.</p>
         </div>
       </div>
     </section>
