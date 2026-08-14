@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BeforeAfterSection from "@/components/BeforeAfterSection";
 import HeroProfitMockup from "@/components/HeroProfitMockup";
 import ProfitStoryShowcase from "@/components/ProfitStoryShowcase";
 import ProfitSimulator from "@/components/ProfitSimulator";
@@ -34,6 +35,8 @@ export default function StartPage() {
       <div id="como-funciona"><ProfitStoryShowcase /></div>
 
       <ProfitSimulator />
+
+      <BeforeAfterSection />
 
       <section id="beneficios" className="bg-white px-4 py-14 text-[#123B63] sm:px-8 sm:py-20 lg:px-16">
         <div className="mx-auto max-w-6xl">
