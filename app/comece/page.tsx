@@ -9,12 +9,6 @@ const metrics = [
   ["Lucro real", "R$ 129,50", "text-emerald-300"],
 ];
 
-const steps = [
-  ["Registre", "Anote o resultado do seu dia em poucos segundos."],
-  ["Entenda", "Organize custos e transforme movimento em clareza."],
-  ["Decida", "Trabalhe sabendo qual meta faz sentido para o seu bolso."],
-];
-
 export default function StartPage() {
   return (
     <main className="-mx-3 -mt-4 overflow-hidden bg-[#071c31] text-white sm:-mx-4 sm:-mt-6 lg:-mx-6">
@@ -49,32 +43,7 @@ export default function StartPage() {
         </div>
       </section>
 
-      <ProfitStoryShowcase />
-
-      <section id="como-funciona" className="relative overflow-hidden bg-[#081f35] px-4 py-16 sm:px-8 sm:py-24 lg:px-16">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(16,185,129,.12),transparent_28%),radial-gradient(circle_at_85%_80%,rgba(18,59,99,.7),transparent_35%)]" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[.8fr_1.2fr]">
-          <RevealOnScroll direction="left">
-            <p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-300">Como funciona</p>
-            <h2 className="mt-3 text-3xl font-black tracking-tight sm:text-5xl">Seu dia de trabalho, com mais clareza.</h2>
-            <p className="mt-5 max-w-lg text-lg leading-8 text-slate-300">Uma sequência simples para você deixar de dirigir no escuro e começar a enxergar o resultado.</p>
-            <div className="mt-8 space-y-4">
-              {steps.map(([title, body], index) => <div key={title} className="flex gap-4 rounded-2xl border border-white/10 bg-white/[.04] p-4 transition duration-300 hover:border-emerald-300/40 hover:bg-white/[.07]"><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-emerald-400/15 text-sm font-black text-emerald-300">0{index + 1}</span><div><h3 className="font-extrabold text-white">{title}</h3><p className="mt-1 text-sm leading-6 text-slate-400">{body}</p></div></div>)}
-            </div>
-          </RevealOnScroll>
-
-          <RevealOnScroll direction="right" delay={120}>
-            <div className="mx-auto max-w-xl rounded-[2rem] border border-white/10 bg-[#0d2f4f] p-3 shadow-2xl shadow-black/20 sm:p-5">
-              <div className="rounded-[1.4rem] border border-white/10 bg-[#092943] p-5 sm:p-7">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4"><div className="flex gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-400" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-emerald-400" /></div><span className="text-[10px] font-bold uppercase tracking-[.18em] text-slate-400">Seu dia no FaturApp</span><span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold text-emerald-300">ATUALIZADO</span></div>
-                <p className="mt-8 text-xs font-bold uppercase tracking-[.18em] text-emerald-300">Resultado do dia</p><h3 className="mt-2 text-2xl font-black text-white sm:text-3xl">Você trabalhou com informação.</h3><p className="mt-3 max-w-md text-sm leading-6 text-slate-400">O painel reúne o que entrou, o que saiu e o que realmente sobrou.</p>
-                <div className="mt-7 grid gap-3 sm:grid-cols-3"><div className="rounded-2xl bg-white/[.05] p-4"><p className="text-xs text-slate-400">Entrou</p><strong className="mt-2 block text-xl text-white">R$ 210</strong></div><div className="rounded-2xl bg-white/[.05] p-4"><p className="text-xs text-slate-400">Custos</p><strong className="mt-2 block text-xl text-rose-300">− R$ 80</strong></div><div className="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4"><p className="text-xs text-emerald-200">Sobrou</p><strong className="mt-2 block text-xl text-emerald-300">R$ 129</strong></div></div>
-                <div className="mt-6 flex items-center justify-between rounded-xl bg-emerald-400/10 px-4 py-3 text-sm"><span className="text-slate-300">Leitura do seu dia</span><span className="font-bold text-emerald-300">positivo ↑</span></div>
-              </div>
-            </div>
-          </RevealOnScroll>
-        </div>
-      </section>
+      <div id="como-funciona"><ProfitStoryShowcase /></div>
 
       <section id="beneficios" className="bg-white px-4 py-14 text-[#123B63] sm:px-8 sm:py-20 lg:px-16">
         <div className="mx-auto max-w-6xl">
