@@ -94,3 +94,52 @@ button, a {
 .break-safe {
   overflow-wrap: anywhere;
 }
+
+@keyframes marquee {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.marquee-viewport {
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 18s linear infinite;
+  will-change: transform;
+}
+
+.marquee-item {
+  flex: 0 0 auto;
+  padding-right: 3rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .marquee-track {
+    animation-duration: 14s;
+  }
+
+  .marquee-item {
+    padding-right: 2rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+    transform: none;
+  }
+
+  .marquee-item + .marquee-item {
+    display: none;
+  }
+}
