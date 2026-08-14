@@ -44,7 +44,33 @@ export default function StartPage() {
 
       <FaqSection />
 
-      <section className="relative overflow-hidden bg-slate-50/ px-4 py-14 text-center sm:px-8 sm:py-16"><div className="absolute left-1/2 top-0 h-48 w-96 -translate-x-1/2 rounded-full bg-emerald-200/40 blur-3xl" /><RevealOnScroll className="relative"><p className="text-sm font-bold uppercase tracking-[.16em] text-emerald-600">Pronto para enxergar melhor?</p><h2 className="mx-auto mt-3 max-w-3xl text-3xl font-black tracking-tight text-[#123B63]">Seu próximo dia de trabalho começa com uma decisão melhor.</h2><p className="mx-auto mt-4 max-w-xl text-slate-600">Comece gratuitamente e descubra o número que realmente importa: quanto sobra no seu bolso.</p><Link href="/cadastro" className="mt-7 inline-flex min-h-14 items-center justify-center rounded-2xl bg-[#10B981] px-8 font-extrabold text-white shadow-lg shadow-emerald-700/20 transition duration-300 hover:-translate-y-0.5 hover:bg-[#059669]">Começar gratuitamente →</Link></RevealOnScroll></section>
+      <section className="relative isolate overflow-hidden bg-gradient-to-br from-[#0b2d4f] via-[#123b63] to-[#087f69] px-4 py-16 text-center sm:px-8 sm:py-20">
+        <div className="pointer-events-none absolute -left-20 top-8 h-56 w-56 rounded-full bg-sky-400/20 blur-3xl" />
+        <div className="pointer-events-none absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl" />
+
+        <RevealOnScroll className="relative mx-auto max-w-3xl">
+          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-200/30 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[.16em] text-emerald-100">
+            Seu próximo passo
+          </div>
+          <h2 className="mx-auto mt-5 max-w-3xl text-3xl font-black tracking-tight text-white sm:text-5xl">
+            Seu próximo dia de trabalho começa com uma decisão melhor.
+          </h2>
+          <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-200 sm:text-lg">
+            Comece gratuitamente e descubra o número que realmente importa: quanto sobra no seu bolso.
+          </p>
+          <Link
+            href="/cadastro"
+            className="mt-8 inline-flex min-h-14 items-center justify-center rounded-2xl bg-emerald-400 px-8 text-base font-extrabold text-[#07334a] shadow-[0_14px_35px_rgba(4,20,35,0.28)] transition duration-300 hover:-translate-y-1 hover:bg-emerald-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#123b63]"
+          >
+            Começar gratuitamente <span className="ml-2 text-lg">→</span>
+          </Link>
+          <div className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-slate-200">
+            <span>✓ Sem cartão</span>
+            <span>✓ Dados do seu trabalho organizados</span>
+            <span>✓ Acesso pelo navegador</span>
+          </div>
+        </RevealOnScroll>
+      </section>
     </main>
   );
 }
