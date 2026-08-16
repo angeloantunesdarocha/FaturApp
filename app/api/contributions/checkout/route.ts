@@ -79,6 +79,7 @@ export async function POST(request: Request) {
             transaction_amount: amount,
             currency_id: "BRL",
           },
+          notification_url: appUrl + "/api/contributions/webhook",
           back_url: appUrl + "/apoie?status=retorno",
           status: "pending",
         }),
