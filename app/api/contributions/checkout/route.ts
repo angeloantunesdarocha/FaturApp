@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { mercadoPagoRequest } from "@/lib/mercadopago";
 import crypto from "node:crypto";
@@ -26,7 +26,12 @@ function validEmail(value: unknown): value is string {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireUser();
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Faça login para iniciar uma contribuição." }, { status: 401 });
+    }
+
     const body = await request.json();
     const amount = normalizeAmount(body?.amount);
     const payerEmail = validEmail(body?.payerEmail) ? body.payerEmail.trim().toLowerCase() : null;
