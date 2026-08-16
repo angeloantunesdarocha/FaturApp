@@ -15,6 +15,7 @@ const inactiveNav = "border border-slate-200 bg-white text-[#123B63] hover:borde
 export default function Header({ isAuthenticated }: { isAuthenticated: boolean }) {
   const pathname = usePathname();
   const isReports = pathname === "/relatorios";
+  const isSupport = pathname === "/apoie";
   const isLanding = pathname === "/comece";
 
   return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:flex-nowrap sm:px-4">
@@ -28,8 +29,9 @@ export default function Header({ isAuthenticated }: { isAuthenticated: boolean }
       <Link href="/cadastro" className="rounded-full bg-[#10B981] px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#059669] focus:outline-none focus:ring-2 focus:ring-[#10B981]/30">Começar grátis</Link>
     </nav>}
     {isAuthenticated && !isLanding && <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
-      <Link href="/" aria-current={!isReports ? "page" : undefined} className={`${baseNav} ${!isReports ? activeNav : inactiveNav}`}>Lançar dia</Link>
-      <Link href="/relatorios" aria-current={isReports ? "page" : undefined} className={`${baseNav} ${isReports ? activeNav : inactiveNav}`}>Relatórios</Link>
+      <Link href="/" aria-current={!isReports && !isSupport ? "page" : undefined} className={baseNav + " " + (!isReports && !isSupport ? activeNav : inactiveNav)}>Lançar dia</Link>
+      <Link href="/relatorios" aria-current={isReports ? "page" : undefined} className={baseNav + " " + (isReports ? activeNav : inactiveNav)}>Relatórios</Link>
+      <Link href="/apoie" aria-current={isSupport ? "page" : undefined} className={baseNav + " " + (isSupport ? activeNav : inactiveNav)}>Apoiar</Link>
       <div className="relative -top-0.5"><LogoutButton /></div>
     </nav>}
   </div></header>;
