@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const user = await requireUser();
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Faça login para consultar sua contribuição." }, { status: 401 });
+    }
+
     const { data, error } = await createAdminClient()
       .from("contributions")
       .select("id,amount,currency,status,provider_status,payer_email,next_payment_at,canceled_at,created_at")

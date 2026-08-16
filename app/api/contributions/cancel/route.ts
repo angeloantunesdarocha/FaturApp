@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { mercadoPagoRequest } from "@/lib/mercadopago";
 
 export async function DELETE() {
   try {
-    const user = await requireUser();
+    const user = await getCurrentUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Faça login para cancelar sua contribuição." }, { status: 401 });
+    }
+
     const admin = createAdminClient();
     const { data: contribution, error } = await admin
       .from("contributions")
