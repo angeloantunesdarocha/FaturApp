@@ -5,9 +5,44 @@ import { getCurrentUser } from "@/lib/auth";
 import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://fatur-app.vercel.app"),
   title: "FaturApp — Você está lucrando ou pagando pra trabalhar?",
-  description: "O app do motorista de aplicativo que mostra o lucro real: por dia, por km e por hora. Receita, taxa do app, combustível e manutenção em um só lugar.",
+  description:
+    "O app do motorista de aplicativo que mostra o lucro real: por dia, por km e por hora. Receita, taxa do app, combustível e manutenção em um só lugar.",
+  keywords: [
+    "motorista de aplicativo",
+    "lucro líquido",
+    "ganhos Uber",
+    "ganhos 99",
+    "ganhos InDrive",
+    "controle financeiro",
+    "FaturApp",
+  ],
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "https://fatur-app.vercel.app/",
+    siteName: "FaturApp",
+    title: "FaturApp — Descubra quanto realmente sobra no seu dia",
+    description:
+      "Calcule seu lucro real por dia, quilômetro e hora. Controle combustível, taxas, manutenção e descubra se você está lucrando.",
+    images: [
+      {
+        url: "/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "FaturApp — controle do lucro para motoristas de aplicativo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FaturApp — Descubra quanto realmente sobra no seu dia",
+    description:
+      "Calcule seu lucro real e tenha mais controle sobre o seu trabalho como motorista de aplicativo.",
+    images: ["/icon-512x512.png"],
+  },
   icons: {
     icon: [
       { url: "/icon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -29,6 +64,9 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
     "msapplication-TileColor": "#123B63",
     "msapplication-TileImage": "/icon-192x192.png",
+    subject:
+      "Controle financeiro e cálculo de lucro para motoristas de aplicativo",
+    copyright: "FaturApp — Desenvolvido por Ângelo Antunes",
   },
 };
 
