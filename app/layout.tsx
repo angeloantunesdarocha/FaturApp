@@ -18,11 +18,11 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: "https://fatur-app.vercel.app",
+    url: "https://fatur-app.vercel.app/comece",
     siteName: "FaturApp",
-    title: "FaturApp — Descubra quanto realmente sobra",
+    title: "FaturApp — Descubra quanto realmente sobra. Calcule agora.",
     description:
-      "Pare de trabalhar no escuro. Veja seu lucro real por dia, por km e por hora, com todos os custos descontados.",
+      "Descubra em poucos minutos se você está lucrando ou pagando para trabalhar. Calcule seu lucro real por dia, por km e por hora.",
     images: [
       {
         url: "/opengraph-image",
