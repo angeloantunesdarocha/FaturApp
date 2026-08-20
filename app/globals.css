@@ -64,6 +64,36 @@ button, a {
   animation: fade-up 500ms ease-out both;
 }
 
+@keyframes notice-enter {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -18px, 0) scale(.97);
+  }
+  65% {
+    opacity: 1;
+    transform: translate3d(0, 3px, 0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes notice-glow {
+  0%, 100% {
+    box-shadow: 0 18px 45px rgba(15, 23, 42, .16);
+  }
+  50% {
+    box-shadow: 0 18px 45px rgba(16, 185, 129, .28);
+  }
+}
+
+.notice-toast {
+  animation:
+    notice-enter 500ms cubic-bezier(.22, 1, .36, 1) both,
+    notice-glow 3s ease-in-out 550ms 2;
+}
+
 .reveal-on-scroll {
   opacity: 0;
   transform: translateY(24px);
@@ -86,6 +116,7 @@ button, a {
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up,
+  .notice-toast,
   .reveal-on-scroll {
     animation: none;
     opacity: 1;
