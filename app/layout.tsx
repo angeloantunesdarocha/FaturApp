@@ -25,7 +25,7 @@ export const metadata: Metadata = {
       "Descubra em poucos minutos se você está lucrando ou pagando para trabalhar. Calcule seu lucro real por dia, por km e por hora.",
     images: [
       {
-        url: "/opengraph-image",
+        url: "/opengraph-image?v=2",
         width: 1200,
         height: 630,
         alt: "FaturApp — descubra quanto realmente sobra",
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     title: "FaturApp — Descubra quanto realmente sobra",
     description:
       "Calcule seu lucro real e descubra se você está lucrando ou pagando para trabalhar.",
-    images: ["/opengraph-image"],
+    images: ["/opengraph-image?v=2"],
   },
   icons: {
     icon: [
