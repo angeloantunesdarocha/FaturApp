@@ -10,21 +10,12 @@ import { saveEntry } from "@/app/actions";
 
 type Mode = "withFee" | "net";
 type Props = { initialDate?: string; initialMonthProfit?: number };
-type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null; revenueBase:number; percentageBaseLabel:string };
+type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null; revenueBase:number };
 
 function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigits:1});}
 function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} / km`;}
 function formatLiters(v:number){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3});}
 function formatPercent(v:number){return `${v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}%`;}
-function percentageText(profitPercent:number|null,percentageBaseLabel:string){if(profitPercent===null)return "";const deductions=percentageBaseLabel==="faturamento bruto"?"taxas do app (quando informadas), combustível, manutenção e gastos extras":"combustível, manutenção e gastos extras";const basis=`${percentageBaseLabel}, já descontando ${deductions}`;if(profitPercent>0)return ` Isso representa ${formatPercent(profitPercent)} de lucro líquido sobre ${basis}.`;if(profitPercent<0)return ` Isso representa um prejuízo líquido de ${formatPercent(Math.abs(profitPercent))} sobre ${basis}.`;return ` Resultado de 0,0% sobre ${basis}.`;}
-function verdict(profit:number,km:number,profitPerKm:number|null,costPerKm:number|null,hasLaunch:boolean,profitPercent:number|null,percentageBaseLabel:string){
- const percent=percentageText(profitPercent,percentageBaseLabel);
- if(!hasLaunch)return {tone:"neutral",text:"Lance o dia e descubra se sobrou dinheiro de verdade."};
- if(profit<=0){if(profit===0)return {tone:"amber",text:`🟡 Hoje você ficou no zero a zero: trabalhou pra pagar o carro.${percent}`};let text=`🔴 Hoje você PAGOU PRA TRABALHAR: faltaram ${formatBRL(Math.abs(profit))}.`;if(km>0&&profitPerKm!==null&&costPerKm!==null)text+=` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`;return {tone:"red",text:text+percent};}
- if(km===0||profitPerKm===null||costPerKm===null||profitPerKm>=costPerKm){let text=`🟢 Hoje você LUCROU ${formatBRL(profit)}.`;if(km>0&&profitPerKm!==null&&costPerKm!==null)text+=` Você ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km.`;return {tone:"green",text:text+percent};}
- return {tone:"amber",text:`🟡 Hoje você LUCROU ${formatBRL(profit)}, mas atenção: ganhou ${formatBRL(profitPerKm)}/km e gastou ${formatBRL(costPerKm)}/km. Cuidado para não virar prejuízo.${percent}`};
-}
-
 export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:Props){
  const [mode,setMode]=useState<Mode>("withFee"),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([createRevenueItem()]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[hours,setHours]=useState(0),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null);
 
@@ -51,9 +42,9 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  const profitPerKm=kmDriven>0?dayProfit/kmDriven:null;
  const hasCurrentLaunch=fareNet!==0||totalFuelPurchase!==0||maintenanceTotal!==0||extrasSum!==0||kmDriven>0||fuelConsumption>0;
  const percentageBaseValue=mode==="withFee"?revenueSummary.bruto:fareNet;
- const visibleProfit=savedCard&&!hasCurrentLaunch?savedCard.profit:dayProfit,visibleKm=savedCard&&!hasCurrentLaunch?savedCard.km:kmDriven,visibleProfitPerKm=savedCard&&!hasCurrentLaunch?savedCard.profitPerKm:profitPerKm,visibleCostPerKm=savedCard&&!hasCurrentLaunch?savedCard.costPerKm:totalCostPerKm,visibleHours=savedCard&&!hasCurrentLaunch?savedCard.hours:hours,visibleRevenueBase=savedCard&&!hasCurrentLaunch?savedCard.revenueBase:percentageBaseValue,visiblePercentageBaseLabel=savedCard&&!hasCurrentLaunch?savedCard.percentageBaseLabel:(mode==="withFee"?"faturamento bruto":"receita líquida informada");
+ const visibleProfit=savedCard&&!hasCurrentLaunch?savedCard.profit:dayProfit,visibleKm=savedCard&&!hasCurrentLaunch?savedCard.km:kmDriven,visibleProfitPerKm=savedCard&&!hasCurrentLaunch?savedCard.profitPerKm:profitPerKm,visibleCostPerKm=savedCard&&!hasCurrentLaunch?savedCard.costPerKm:totalCostPerKm,visibleHours=savedCard&&!hasCurrentLaunch?savedCard.hours:hours,visibleRevenueBase=savedCard&&!hasCurrentLaunch?savedCard.revenueBase:percentageBaseValue;
  const profitPercent=visibleRevenueBase>0?(visibleProfit/visibleRevenueBase)*100:null;
- const currentVerdict=verdict(visibleProfit,visibleKm,visibleProfitPerKm,visibleCostPerKm,Boolean(savedCard)||hasCurrentLaunch,profitPercent,visiblePercentageBaseLabel);
+ const summaryTone=visibleProfit>0?"profit":visibleProfit<0?"loss":"neutral";
 
  function updateRevenue(id:string,patch:Partial<RevenueItem>){setRevenueItems(items=>items.map(item=>item.id===id?{...item,...patch}:item));}
  function addRevenue(){setRevenueItems(items=>[...items,createRevenueItem()]);}
@@ -69,7 +60,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
   setStatus("Salvando...");
   const payload={date,gross_amount:mode==="withFee"?revenueSummary.bruto:null,fee_percent:mode==="withFee"?revenueSummary.taxaPercentual:null,net_fare:mode==="net"?netFare:revenueSummary.liquido,revenue_details:mode==="withFee"?revenueItems:undefined,gas_expense:gas,alcohol_expense:alcohol,gasoline_price_per_liter:gasPrice,alcohol_price_per_liter:alcoholPrice,gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,hours_worked:hours,fuel_consumption_km_per_liter:fuelConsumption,fuel_consumed_liters:fuelConsumedLiters,fuel_consumed_cost:fuelConsumedCost,fuel_remaining_liters:fuelRemainingLiters,fuel_remaining_value:fuelRemainingValue,maintenance_expense:maintenanceTotal,maintenance_details:maintenanceItems.filter(m=>m.description.trim()!==""),extra_expenses:extras.filter(e=>e.name.trim()!=="")};
   const res=await saveEntry(payload);
-  if(res.success){setStatus("✅ Lançamento salvo com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,costPerKm:totalCostPerKm,revenueBase:percentageBaseValue,percentageBaseLabel:mode==="withFee"?"faturamento bruto":"receita líquida informada"});setNetFare(0);setRevenueItems([createRevenueItem()]);setGas(0);setAlcohol(0);setGasPrice(0);setAlcoholPrice(0);setKmInitial(0);setKmFinal(0);setFuelConsumption(0);setHours(0);setMaintenanceItems([]);setExtras([]);}else setStatus(`❌ Erro: ${res.error}`);
+  if(res.success){setStatus("✅ Lançamento salvo com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,costPerKm:totalCostPerKm,revenueBase:percentageBaseValue});setNetFare(0);setRevenueItems([createRevenueItem()]);setGas(0);setAlcohol(0);setGasPrice(0);setAlcoholPrice(0);setKmInitial(0);setKmFinal(0);setFuelConsumption(0);setHours(0);setMaintenanceItems([]);setExtras([]);}else setStatus(`❌ Erro: ${res.error}`);
  }
 
  return <div className="space-y-5"><form onSubmit={handleSubmit} className="space-y-5">
@@ -94,6 +85,30 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-200 pt-4"><div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3"><p className="text-xs text-slate-500">Gasto real do percurso</p><p className="text-xl font-bold text-slate-800">{fuelConsumedLiters>0?formatBRL(fuelConsumedCost):"—"}</p><p className="text-xs text-slate-500 mt-1">{fuelConsumedLiters>0?`${formatLiters(fuelConsumedLiters)} L consumidos`:"Informe km/L e abastecimento"}</p></div><div className="rounded-lg bg-blue-50 border border-blue-200 p-3"><p className="text-xs text-slate-500">Saldo restante de combustível</p><p className="text-xl font-bold text-slate-800">{totalPurchasedLiters>0?`${formatLiters(fuelRemainingLiters)} L`:"—"}</p><p className="text-xs text-slate-500 mt-1">{totalPurchasedLiters>0?formatBRL(fuelRemainingValue):"—"}</p></div></div></div>
   <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems}/></div><div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm"><ExtraExpenses extras={extras} onChange={setExtras}/></div><button type="submit" className="btn btn-primary w-full">Salvar e ver meu lucro</button>{status&&<p className="text-sm text-center text-slate-600">{status}</p>}
  </form>
- <div className="space-y-4"><section className={`rounded-xl border p-5 shadow-sm ${currentVerdict.tone==="green"?"border-brand-200 bg-brand-50":currentVerdict.tone==="red"?"border-red-200 bg-red-50":currentVerdict.tone==="amber"?"border-amber-200 bg-amber-50":"border-slate-200 bg-slate-50"}`} aria-live="polite"><p className="text-xs font-bold uppercase tracking-wide text-slate-600">VEREDITO DO DIA</p><p className="mt-2 text-base font-semibold text-slate-800">{currentVerdict.text}</p></section><div className="grid grid-cols-1 sm:grid-cols-2 gap-4"><div className="bg-gradient-to-br from-brand-600 to-brand-700 text-white rounded-xl p-5 shadow-md"><p className="text-xs uppercase tracking-wide opacity-80">Lucro líquido do dia</p><p className="text-3xl font-bold mt-1">{formatBRL(visibleProfit)}</p>{profitPercent!==null&&<p className="mt-1 text-sm font-semibold opacity-95">{profitPercent>0?`Margem de lucro: ${formatPercent(profitPercent)} sobre ${visiblePercentageBaseLabel}`:profitPercent<0?`Prejuízo: ${formatPercent(Math.abs(profitPercent))} sobre ${visiblePercentageBaseLabel}`:"Resultado: 0,0% da receita líquida"}</p>}<div className="text-xs opacity-90 mt-2 space-y-1">{visibleKm>0&&visibleProfitPerKm!==null&&<p><strong>{formatBRL(visibleProfitPerKm)}</strong> por km rodado</p>}{visibleHours>0&&<p><strong>{formatBRL(visibleProfit/visibleHours)}</strong> por hora trabalhada</p>}</div></div><div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Lucro líquido do mês</p><p className="text-3xl font-bold mt-1 text-slate-800">{formatBRL(monthProfit)}</p><p className="text-xs text-slate-500 mt-2">Soma dos lançamentos do mês selecionado</p></div></div></div>
+ <div className="space-y-3">
+  <section className={"rounded-xl border p-3 shadow-sm sm:p-4 " + (summaryTone==="profit"?"border-emerald-200 bg-emerald-50/70":summaryTone==="loss"?"border-red-200 bg-red-50/70":"border-amber-200 bg-amber-50/70")} aria-live="polite" aria-label="Resumo financeiro diário">
+   <div className="flex items-center justify-between gap-3">
+    <div className="min-w-0">
+     <p className="text-[10px] font-black uppercase tracking-[.16em] text-slate-500">RESUMO DIÁRIO</p>
+     <div className="mt-0.5 flex items-baseline gap-2">
+      <p className={"text-2xl font-black tracking-tight sm:text-3xl " + (summaryTone==="profit"?"text-emerald-700":summaryTone==="loss"?"text-red-700":"text-amber-700")}>{formatBRL(visibleProfit)}</p>
+      <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">LUCRO LÍQUIDO</span>
+     </div>
+    </div>
+    {profitPercent!==null&&<span className={"shrink-0 rounded-full px-2.5 py-1 text-xs font-black " + (summaryTone==="profit"?"bg-emerald-100 text-emerald-800":summaryTone==="loss"?"bg-red-100 text-red-800":"bg-amber-100 text-amber-800")}>{summaryTone==="profit"?"↗":summaryTone==="loss"?"↘":"•"} {formatPercent(Math.abs(profitPercent))}<span className="ml-1 text-[9px] font-bold uppercase tracking-wide">MARGEM</span></span>}
+   </div>
+   <div className="mt-3 grid grid-cols-2 divide-x divide-slate-200/80 border-t border-slate-200/80 pt-2.5">
+    <div className="pr-3">
+     <p className={"text-base font-black sm:text-lg " + (visibleProfitPerKm!==null&&visibleProfitPerKm<0?"text-red-700":"text-slate-800")}><span className="mr-1 text-sm">{visibleProfitPerKm!==null&&visibleProfitPerKm<0?"↘":"↗"}</span>{visibleProfitPerKm!==null?formatBRL(Math.abs(visibleProfitPerKm)):"—"}<span className="ml-0.5 text-[10px] font-bold text-slate-500">/km</span></p>
+     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">RECEITA/km</p>
+    </div>
+    <div className="pl-3">
+     <p className="text-base font-black text-slate-800 sm:text-lg"><span className="mr-1 text-sm">⛽</span>{visibleCostPerKm!==null?formatBRL(Math.abs(visibleCostPerKm)):"—"}<span className="ml-0.5 text-[10px] font-bold text-slate-500">/km</span></p>
+     <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">CUSTO/km</p>
+    </div>
+   </div>
+  </section>
+  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Lucro líquido do mês</p><p className="mt-1 text-3xl font-bold text-slate-800">{formatBRL(monthProfit)}</p><p className="mt-2 text-xs text-slate-500">Soma dos lançamentos do mês selecionado</p></div>
+ </div>
  {savedCard&&<CardDeLucro profit={savedCard.profit} km={savedCard.km} profitPerHour={savedCard.hours>0?savedCard.profit/savedCard.hours:null} profitPerKm={savedCard.profitPerKm} costPerKm={savedCard.costPerKm} onClose={()=>setSavedCard(null)}/>}</div>;
 }
