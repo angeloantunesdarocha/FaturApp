@@ -197,8 +197,8 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
       if (response.ok) {
         window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
-        await loadStatus();
         showNotice("sad", "😔 Sentiremos sua falta! A contribuição foi cancelada e o FaturApp continua disponível para você.");
+        await loadStatus();
       }
     } catch {
       setStatus("Não foi possível cancelar agora.");
