@@ -232,7 +232,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
             </div>
 
             <button type="submit" disabled={loading} className="w-full rounded-2xl bg-emerald-500 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-wait disabled:opacity-60">
-              {loading ? "Abrindo pagamento seguro…" : "Pagar com Mercado Pago →"}
+              {loading ? "Abrindo pagamento seguro…" : "Continuar para Confirmar"}
             </button>
             <p className="text-center text-xs leading-5 text-slate-500">A contribuição é opcional, recorrente e cancelável quando quiser. O FaturApp continua gratuito sem ela.</p>
           </form>
