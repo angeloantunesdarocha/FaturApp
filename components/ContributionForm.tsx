@@ -14,7 +14,7 @@ type Contribution = {
 
 const presets = [5, 10, 20, 30];
 const CONTRIBUTION_STARTED_AT_KEY = "faturapp:contribution-started-at";
-const CONTRIBUTION_REMINDER_DELAY_MS = 3 * 60 * 1000;
+const CONTRIBUTION_LAST_REMINDER_AT_KEY = "faturapp:contribution-last-reminder-at";
 const OPEN_CONTRIBUTION_STATUSES = ["pending", "past_due", "paused"];
 type NoticeTone = "warning" | "info" | "success" | "sad";
 
@@ -86,6 +86,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
         (startedAt > 0 || (previousStatus !== null && previousStatus !== "active"))
       ) {
         window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
+        window.localStorage.removeItem(CONTRIBUTION_LAST_REMINDER_AT_KEY);
         showNotice("success", "🎉 Obrigado por contribuir com o FaturApp! Sua contribuição foi confirmada com sucesso. 💚😊");
       } else if (announce && nextContribution && OPEN_CONTRIBUTION_STATUSES.includes(nextContribution.status)) {
         showNotice("info", "⏳ A contribuição ainda não foi finalizada. Ela continua em aberto, aguardando a confirmação do Mercado Pago.");
@@ -121,21 +122,6 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
     return () => window.clearInterval(interval);
   }, [loadStatus, returned]);
-
-  useEffect(() => {
-    if (!contribution || !OPEN_CONTRIBUTION_STATUSES.includes(contribution.status)) return;
-
-    const startedAt = Number(window.localStorage.getItem(CONTRIBUTION_STARTED_AT_KEY) || 0);
-    if (!startedAt) return;
-
-    const remaining = Math.max(0, CONTRIBUTION_REMINDER_DELAY_MS - (Date.now() - startedAt));
-    const timer = window.setTimeout(() => {
-      window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
-      showNotice("warning", "⏰ Sua contribuição ainda está pendente. Quando puder, volte ao Mercado Pago e finalize a confirmação. 💚");
-    }, remaining);
-
-    return () => window.clearTimeout(timer);
-  }, [contribution, showNotice]);
 
   async function startCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -177,6 +163,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
         return;
       }
 
+      window.localStorage.removeItem(CONTRIBUTION_LAST_REMINDER_AT_KEY);
       window.localStorage.setItem(CONTRIBUTION_STARTED_AT_KEY, String(Date.now()));
       window.location.assign(payload.checkoutUrl);
     } catch {
@@ -197,6 +184,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
       if (response.ok) {
         window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
+        window.localStorage.removeItem(CONTRIBUTION_LAST_REMINDER_AT_KEY);
         showNotice("sad", "😔 Sentiremos sua falta! A contribuição foi cancelada e o FaturApp continua disponível para você.");
         await loadStatus();
       }
