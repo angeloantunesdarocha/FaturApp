@@ -7,9 +7,38 @@ import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: "FaturApp — Você está lucrando ou pagando pra trabalhar?",
-  description: "O app do motorista de aplicativo que mostra o lucro real: por dia, por km e por hora. Receita, taxa do app, combustível e manutenção em um só lugar.",
+  metadataBase: new URL("https://fatur-app.vercel.app"),
+  title: {
+    default: "FaturApp — Descubra seu lucro real",
+    template: "%s | FaturApp",
+  },
+  description:
+    "Você sabe quanto realmente sobra? Calcule seu lucro líquido por dia, por km e por hora, descontando taxas, combustível, manutenção e outros custos.",
   manifest: "/manifest.json",
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    url: "https://fatur-app.vercel.app",
+    siteName: "FaturApp",
+    title: "FaturApp — Descubra quanto realmente sobra",
+    description:
+      "Pare de trabalhar no escuro. Veja seu lucro real por dia, por km e por hora, com todos os custos descontados.",
+    images: [
+      {
+        url: "/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "FaturApp — controle seu lucro real",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "FaturApp — Descubra quanto realmente sobra",
+    description:
+      "Calcule seu lucro real e descubra se você está lucrando ou pagando para trabalhar.",
+    images: ["/icon-512x512.png"],
+  },
   icons: {
     icon: [
       { url: "/icon-16x16.png", sizes: "16x16", type: "image/png" },
