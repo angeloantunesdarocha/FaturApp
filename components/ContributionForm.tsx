@@ -214,7 +214,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
     <section className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_70px_rgba(18,59,99,0.12)]">
       {notice && (
         <div
-          className={"fixed inset-x-4 top-4 z-50 mx-auto flex max-w-xl items-start gap-3 rounded-2xl border px-4 py-4 text-sm font-semibold shadow-2xl backdrop-blur sm:inset-x-auto " + (
+          className={"fixed inset-x-4 top-20 z-50 notice-toast mx-auto flex max-w-xl items-start gap-3 rounded-2xl border px-4 py-4 text-sm font-semibold shadow-2xl backdrop-blur sm:inset-x-auto " + (
             notice.tone === "success"
               ? "border-emerald-200 bg-emerald-50 text-emerald-900"
               : notice.tone === "sad"
