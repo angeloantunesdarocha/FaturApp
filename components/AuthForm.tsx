@@ -89,6 +89,13 @@ export default function AuthForm({ mode, oauthError }: Props) {
       return;
     }
 
+    if (isRegister) {
+      const fbq = (window as typeof window & {
+        fbq?: (...args: unknown[]) => void;
+      }).fbq;
+      fbq?.("track", "CompleteRegistration");
+    }
+
     router.push("/");
     router.refresh();
   }
