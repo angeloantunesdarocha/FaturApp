@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Header from "@/components/Header";
+import ContributionPendingReminder from "@/components/ContributionPendingReminder";
 import { getCurrentUser } from "@/lib/auth";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
@@ -40,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="pt-BR">
       <body className="min-h-screen flex flex-col">
         <Header isAuthenticated={!!user} />
+        <ContributionPendingReminder />
         <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
           {children}
         </main>
