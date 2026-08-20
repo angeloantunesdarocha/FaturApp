@@ -82,7 +82,7 @@ export default function OpenGraphImage() {
             borderTop: "1px solid rgba(255,255,255,.25)",
             paddingTop: 24,
             color: "#ffffff",
-            fontSize: 24,
+            fontSize: 21,
           }}
         >
           <span>Você está lucrando ou pagando para trabalhar?</span>
