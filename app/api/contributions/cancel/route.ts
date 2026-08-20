@@ -39,7 +39,8 @@ export async function DELETE() {
         canceled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
-      .eq("id", contribution.id);
+      .eq("id", contribution.id)
+      .eq("user_id", user.user_id);
 
     return NextResponse.json({ success: true });
   } catch (error) {

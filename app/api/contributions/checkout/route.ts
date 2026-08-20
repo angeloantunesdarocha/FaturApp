@@ -85,13 +85,13 @@ export async function POST(request: Request) {
         }),
       });
     } catch (error) {
-      await admin.from("contributions").delete().eq("id", contribution.id);
+      await admin.from("contributions").delete().eq("id", contribution.id).eq("user_id", user.user_id);
       throw error;
     }
 
     const checkoutUrl = subscription.init_point || subscription.sandbox_init_point;
     if (!subscription.id || !checkoutUrl) {
-      await admin.from("contributions").delete().eq("id", contribution.id);
+      await admin.from("contributions").delete().eq("id", contribution.id).eq("user_id", user.user_id);
       throw new Error("O Mercado Pago não retornou um link de checkout.");
     }
 
@@ -102,7 +102,8 @@ export async function POST(request: Request) {
         provider_status: subscription.status || "pending",
         updated_at: new Date().toISOString(),
       })
-      .eq("id", contribution.id);
+      .eq("id", contribution.id)
+      .eq("user_id", user.user_id);
 
     return NextResponse.json({ checkoutUrl });
   } catch (error) {
