@@ -14,7 +14,7 @@ type Contribution = {
 
 const presets = [5, 10, 20, 30];
 const CONTRIBUTION_STARTED_AT_KEY = "faturapp:contribution-started-at";
-const CONTRIBUTION_REMINDER_DELAY_MS = 5 * 60 * 1000;
+const CONTRIBUTION_REMINDER_DELAY_MS = 3 * 60 * 1000;
 const OPEN_CONTRIBUTION_STATUSES = ["pending", "past_due", "paused"];
 type NoticeTone = "warning" | "info" | "success" | "sad";
 
