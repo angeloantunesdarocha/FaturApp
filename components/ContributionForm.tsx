@@ -47,7 +47,6 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   const loadStatus = useCallback(async (announce = false) => {
     if (announce) setCheckingStatus(true);
@@ -97,7 +96,12 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
         return;
       }
 
-      setCheckoutUrl(payload.checkoutUrl);
+      if (!payload.checkoutUrl) {
+        setStatus("Não foi possível obter o link de pagamento. Tente novamente.");
+        return;
+      }
+
+      window.location.assign(payload.checkoutUrl);
     } catch {
       setStatus("Não foi possível conectar ao pagamento. Tente novamente.");
     } finally {
@@ -162,34 +166,6 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
           </div>
         )}
 
-        {checkoutUrl && !active && (
-          <div className="mb-7 rounded-3xl border-2 border-emerald-200 bg-emerald-50 p-5 shadow-sm sm:p-6" role="status" aria-live="polite">
-            <div className="flex items-start gap-3">
-              <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xl font-black text-white">✓</span>
-              <div>
-                <p className="text-lg font-extrabold text-[#123B63]">Seu checkout está pronto</p>
-                <p className="mt-1 text-sm leading-6 text-slate-700">Agora você será levado ao Mercado Pago para confirmar a contribuição mensal de <strong>{formatMoney(Number(amount) || 0)}</strong>.</p>
-              </div>
-            </div>
-            <div className="mt-5 rounded-2xl border border-emerald-200 bg-white p-4">
-              <p className="font-extrabold text-[#123B63]">Na próxima tela, faça exatamente isto:</p>
-              <ol className="mt-3 space-y-3 text-sm leading-6 text-slate-700">
-                <li className="flex gap-2"><strong className="text-emerald-700">1.</strong><span>Toque no cartão ou método de pagamento exibido para selecioná-lo.</span></li>
-                <li className="flex gap-2"><strong className="text-emerald-700">2.</strong><span>Se o botão <strong>Confirmar</strong> continuar cinza, toque em <strong>Alterar</strong> e selecione novamente um método válido.</span></li>
-                <li className="flex gap-2"><strong className="text-emerald-700">3.</strong><span>Quando o botão ficar azul, toque em <strong>Confirmar</strong> para autorizar a assinatura.</span></li>
-              </ol>
-            </div>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <button type="button" onClick={() => window.location.assign(checkoutUrl)} className="w-full rounded-2xl bg-emerald-600 px-5 py-4 text-center font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 sm:flex-1">
-                Ir para o Mercado Pago →
-              </button>
-              <button type="button" onClick={() => setCheckoutUrl(null)} className="rounded-2xl border border-slate-300 bg-white px-5 py-4 font-bold text-slate-700 transition hover:bg-slate-50">
-                Voltar
-              </button>
-            </div>
-          </div>
-        )}
-
         {active ? (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -240,7 +216,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
             </div>
 
             <button type="submit" disabled={loading} className="w-full rounded-2xl bg-emerald-500 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-wait disabled:opacity-60">
-              {loading ? "Preparando confirmação…" : "Continuar para confirmação →"}
+              {loading ? "Redirecionando ao Mercado Pago…" : "Continuar para confirmação →"}
             </button>
             <p className="text-center text-xs leading-5 text-slate-500">A contribuição é opcional, recorrente e cancelável quando quiser. O FaturApp continua gratuito sem ela.</p>
           </form>
