@@ -26,22 +26,13 @@ export default function OpenGraphImage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 20,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#ffffff",
-              color: "#123b63",
-              fontSize: 42,
-              fontWeight: 800,
-            }}
-          >
-            F
-          </div>
+          <img
+            src="https://fatur-app.vercel.app/icon-512x512.png"
+            width="72"
+            height="72"
+            alt="Logo FaturApp"
+            style={{ borderRadius: 20, objectFit: "cover" }}
+          />
           <div style={{ fontSize: 42, fontWeight: 800, letterSpacing: -1 }}>
             FaturApp
           </div>
