@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Contribution = {
   amount: number;
@@ -13,6 +13,10 @@ type Contribution = {
 };
 
 const presets = [5, 10, 20, 30];
+const CONTRIBUTION_STARTED_AT_KEY = "faturapp:contribution-started-at";
+const CONTRIBUTION_REMINDER_DELAY_MS = 5 * 60 * 1000;
+const OPEN_CONTRIBUTION_STATUSES = ["pending", "past_due", "paused"];
+type NoticeTone = "warning" | "info" | "success" | "sad";
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -47,6 +51,22 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(false);
+  const [notice, setNotice] = useState<{ tone: NoticeTone; message: string } | null>(null);
+  const noticeTimerRef = useRef<number | null>(null);
+  const previousStatusRef = useRef<string | null>(null);
+
+  const showNotice = useCallback((tone: NoticeTone, message: string) => {
+    setNotice({ tone, message });
+
+    if (noticeTimerRef.current !== null) {
+      window.clearTimeout(noticeTimerRef.current);
+    }
+
+    noticeTimerRef.current = window.setTimeout(() => {
+      setNotice(null);
+      noticeTimerRef.current = null;
+    }, 7000);
+  }, []);
 
   const loadStatus = useCallback(async (announce = false) => {
     if (announce) setCheckingStatus(true);
@@ -55,10 +75,34 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
       const response = await fetch("/api/contributions/status", { cache: "no-store" });
       if (!response.ok) return;
       const payload = await response.json();
-      setContribution(payload.contribution || null);
+      const nextContribution = payload.contribution || null;
+      const previousStatus = previousStatusRef.current;
+      const startedAt = Number(window.localStorage.getItem(CONTRIBUTION_STARTED_AT_KEY) || 0);
+
+      setContribution(nextContribution);
+
+      if (
+        nextContribution?.status === "active" &&
+        (startedAt > 0 || (previousStatus !== null && previousStatus !== "active"))
+      ) {
+        window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
+        showNotice("success", "🎉 Obrigado por contribuir com o FaturApp! Sua contribuição foi confirmada com sucesso. 💚😊");
+      } else if (announce && nextContribution && OPEN_CONTRIBUTION_STATUSES.includes(nextContribution.status)) {
+        showNotice("info", "⏳ A contribuição ainda não foi finalizada. Ela continua em aberto, aguardando a confirmação do Mercado Pago.");
+      }
+
+      previousStatusRef.current = nextContribution?.status || null;
     } finally {
       if (announce) setCheckingStatus(false);
     }
+  }, [showNotice]);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimerRef.current !== null) {
+        window.clearTimeout(noticeTimerRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -77,6 +121,21 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
     return () => window.clearInterval(interval);
   }, [loadStatus, returned]);
+
+  useEffect(() => {
+    if (!contribution || !OPEN_CONTRIBUTION_STATUSES.includes(contribution.status)) return;
+
+    const startedAt = Number(window.localStorage.getItem(CONTRIBUTION_STARTED_AT_KEY) || 0);
+    if (!startedAt) return;
+
+    const remaining = Math.max(0, CONTRIBUTION_REMINDER_DELAY_MS - (Date.now() - startedAt));
+    const timer = window.setTimeout(() => {
+      window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
+      showNotice("warning", "⏰ Sua contribuição ainda está pendente. Quando puder, volte ao Mercado Pago e finalize a confirmação. 💚");
+    }, remaining);
+
+    return () => window.clearTimeout(timer);
+  }, [contribution, showNotice]);
 
   async function startCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -118,6 +177,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
         return;
       }
 
+      window.localStorage.setItem(CONTRIBUTION_STARTED_AT_KEY, String(Date.now()));
       window.location.assign(payload.checkoutUrl);
     } catch {
       setStatus("Não foi possível conectar ao pagamento. Tente novamente.");
@@ -135,7 +195,11 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
       const payload = await response.json();
       setStatus(response.ok ? "Contribuição cancelada." : payload.error || "Não foi possível cancelar.");
 
-      if (response.ok) await loadStatus();
+      if (response.ok) {
+        window.localStorage.removeItem(CONTRIBUTION_STARTED_AT_KEY);
+        await loadStatus();
+        showNotice("sad", "😔 Sentiremos sua falta! A contribuição foi cancelada e o FaturApp continua disponível para você.");
+      }
     } catch {
       setStatus("Não foi possível cancelar agora.");
     } finally {
@@ -148,6 +212,25 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
   return (
     <section className="relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-[0_24px_70px_rgba(18,59,99,0.12)]">
+      {notice && (
+        <div
+          className={"fixed inset-x-4 top-4 z-50 mx-auto flex max-w-xl items-start gap-3 rounded-2xl border px-4 py-4 text-sm font-semibold shadow-2xl backdrop-blur sm:inset-x-auto " + (
+            notice.tone === "success"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : notice.tone === "sad"
+                ? "border-rose-200 bg-rose-50 text-rose-900"
+                : notice.tone === "warning"
+                  ? "border-amber-200 bg-amber-50 text-amber-900"
+                  : "border-sky-200 bg-sky-50 text-sky-900"
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          <span className="flex-1 leading-6">{notice.message}</span>
+          <button type="button" onClick={() => setNotice(null)} className="shrink-0 text-lg leading-none opacity-70 hover:opacity-100" aria-label="Fechar mensagem">×</button>
+        </div>
+      )}
+
       <div className="relative overflow-hidden bg-gradient-to-br from-[#0b2d4f] via-[#123b63] to-[#087f69] px-6 py-10 text-white sm:px-10 sm:py-12">
         <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-emerald-300/20 blur-3xl" />
         <div className="relative max-w-2xl">
