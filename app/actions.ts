@@ -63,7 +63,28 @@ function normalizeEntry(input: SaveEntryInput) {
  };
 }
 
-export async function saveEntry(input:SaveEntryInput){const user=await requireUser();const token=sessionToken();if(!token)return{success:false,error:"Sessão inválida."};const row=normalizeEntry(input);if(row.km_final<row.km_initial)return{success:false,error:"O km final não pode ser menor que o km inicial."};if(row.gas_expense>0&&row.gasoline_price_per_liter<=0)return{success:false,error:"Informe o preço por litro da gasolina."};if(row.alcohol_expense>0&&row.alcohol_price_per_liter<=0)return{success:false,error:"Informe o preço por litro do álcool."};if(row.gas_expense+row.alcohol_expense>0&&row.km_driven>0&&row.fuel_consumption_km_per_liter<=0)return{success:false,error:"Informe o consumo médio do veículo (Km/L)."};const{error}=await createClientServer().rpc("app_save_entry",{p_token:token,p_entry:row});if(error)return{success:false,error:error.message};const monthProfit=await getMonthProfit(input.date);revalidatePath("/");revalidatePath("/relatorios");return{success:true,monthProfit,userId:user.user_id};}
+export async function saveEntry(input:SaveEntryInput){
+ const user=await requireUser();
+ const token=sessionToken();
+ if(!token)return{success:false,error:"Sessão inválida."};
+ const row=normalizeEntry(input);
+ if(row.km_final<row.km_initial)return{success:false,error:"O km final não pode ser menor que o km inicial."};
+ if(row.gas_expense>0&&row.gasoline_price_per_liter<=0)return{success:false,error:"Informe o preço por litro da gasolina."};
+ if(row.alcohol_expense>0&&row.alcohol_price_per_liter<=0)return{success:false,error:"Informe o preço por litro do álcool."};
+ if(row.gas_expense+row.alcohol_expense>0&&row.km_driven>0&&row.fuel_consumption_km_per_liter<=0)return{success:false,error:"Informe o consumo médio do veículo (Km/L)."};
+ const supabase=createClientServer();
+ const{data:entriesOnDate,error:lookupError}=await supabase.rpc("app_get_entries",{p_token:token,p_from:row.date,p_to:row.date});
+ if(lookupError){console.error("Erro ao verificar lançamento diário:",lookupError.code);return{success:false,error:"Não foi possível verificar o lançamento do dia. Tente novamente."};}
+ const existingEntry=(entriesOnDate??[]).find((entry:{id?:string;date?:string})=>entry.date?.slice(0,10)===row.date&&entry.id&&UUID_PATTERN.test(entry.id));
+ const{error}=existingEntry
+  ?await supabase.rpc("app_update_entry",{p_token:token,p_entry_id:existingEntry.id,p_entry:row})
+  :await supabase.rpc("app_save_entry",{p_token:token,p_entry:row});
+ if(error){console.error("Erro ao consolidar lançamento diário:",error.code);return{success:false,error:"Não foi possível registrar o dia. Tente novamente."};}
+ const monthProfit=await getMonthProfit(input.date);
+ revalidatePath("/");
+ revalidatePath("/relatorios");
+ return{success:true,monthProfit,userId:user.user_id};
+}
 export async function updateEntry(id:string,input:SaveEntryInput){await requireUser();const token=sessionToken();if(!token)return{success:false,error:"Sessão inválida."};if(!UUID_PATTERN.test(id))return{success:false,error:GENERIC_RESOURCE_ERROR};const row=normalizeEntry(input);if(row.km_final<row.km_initial)return{success:false,error:"O km final não pode ser menor que o km inicial."};if(row.gas_expense>0&&row.gasoline_price_per_liter<=0)return{success:false,error:"Informe o preço por litro da gasolina."};if(row.alcohol_expense>0&&row.alcohol_price_per_liter<=0)return{success:false,error:"Informe o preço por litro do álcool."};if(row.gas_expense+row.alcohol_expense>0&&row.km_driven>0&&row.fuel_consumption_km_per_liter<=0)return{success:false,error:"Informe o consumo médio do veículo (Km/L)."};const{error}=await createClientServer().rpc("app_update_entry",{p_token:token,p_entry_id:id,p_entry:row});if(error){console.error("Erro ao atualizar lançamento:",error.code);return{success:false,error:GENERIC_RESOURCE_ERROR};}revalidatePath("/");revalidatePath("/relatorios");return{success:true};}
 export async function getMonthProfit(dateISO:string):Promise<number>{await requireUser();const token=sessionToken();if(!token)return 0;const[y,m]=dateISO.split("-");const from=`${y}-${m}-01`;const last=new Date(Number(y),Number(m),0).getDate();const to=`${y}-${m}-${String(last).padStart(2,"0")}`;const{data,error}=await createClientServer().rpc("app_get_month_profit",{p_token:token,p_from:from,p_to:to});if(error||data==null)return 0;return Number(data)||0;}
 export async function getEntriesInRange(from:string,to:string){await requireUser();const token=sessionToken();if(!token)return[];const{data,error}=await createClientServer().rpc("app_get_entries",{p_token:token,p_from:from,p_to:to});if(error)throw new Error(error.message);return(data??[])as any[];}
