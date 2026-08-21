@@ -10,14 +10,31 @@ import { saveEntry } from "@/app/actions";
 
 type Mode = "withFee" | "net";
 type Props = { initialDate?: string; initialMonthProfit?: number };
-type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null; revenueBase:number };\ntype DraftState = { date:string; mode:Mode; netFare:number; revenueItems:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; kmInitial:number; kmFinal:number; fuelConsumption:number; hours:number; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
+type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null; revenueBase:number };
+type DraftState = { date:string; mode:Mode; netFare:number; revenueItems:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; kmInitial:number; kmFinal:number; fuelConsumption:number; hours:number; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
 
 function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigits:1});}
 function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} / km`;}
 function formatLiters(v:number){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3});}
 function formatPercent(v:number){return `${v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}%`;}
 export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:Props){
- const [mode,setMode]=useState<Mode>("withFee"),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([createRevenueItem()]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[hours,setHours]=useState(0),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null);\n useEffect(()=>{\n  try {\n   const raw=window.localStorage.getItem("faturapp:dia-aberto:"+initialDate);\n   if(!raw)return;\n   const d=JSON.parse(raw) as DraftState;\n   setDate(d.date||initialDate); setMode(d.mode||"withFee"); setNetFare(d.netFare||0); setRevenueItems(d.revenueItems?.length?d.revenueItems:[createRevenueItem()]); setGas(d.gas||0); setAlcohol(d.alcohol||0); setGasPrice(d.gasPrice||0); setAlcoholPrice(d.alcoholPrice||0); setKmInitial(d.kmInitial||0); setKmFinal(d.kmFinal||0); setFuelConsumption(d.fuelConsumption||0); setHours(d.hours||0); setMaintenanceItems(d.maintenanceItems||[]); setExtras(d.extras||[]); setStatus("Rascunho do dia aberto carregado. Você pode continuar editando.");\n  } catch { /* rascunho inválido: mantém formulário vazio */ }\n },[initialDate]);\n\n function saveDraft(){\n  const draft:DraftState={date,mode,netFare,revenueItems,gas,alcohol,gasPrice,alcoholPrice,kmInitial,kmFinal,fuelConsumption,hours,maintenanceItems,extras};\n  window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft));\n  setStatus("✅ Dia salvo e permanece aberto para novos lançamentos.");\n }\n\n
+ const [mode,setMode]=useState<Mode>("withFee"),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([createRevenueItem()]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[hours,setHours]=useState(0),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null);
+ useEffect(()=>{
+  try {
+   const raw=window.localStorage.getItem("faturapp:dia-aberto:"+initialDate);
+   if(!raw)return;
+   const d=JSON.parse(raw) as DraftState;
+   setDate(d.date||initialDate); setMode(d.mode||"withFee"); setNetFare(d.netFare||0); setRevenueItems(d.revenueItems?.length?d.revenueItems:[createRevenueItem()]); setGas(d.gas||0); setAlcohol(d.alcohol||0); setGasPrice(d.gasPrice||0); setAlcoholPrice(d.alcoholPrice||0); setKmInitial(d.kmInitial||0); setKmFinal(d.kmFinal||0); setFuelConsumption(d.fuelConsumption||0); setHours(d.hours||0); setMaintenanceItems(d.maintenanceItems||[]); setExtras(d.extras||[]); setStatus("Rascunho do dia aberto carregado. Você pode continuar editando.");
+  } catch { /* rascunho inválido: mantém formulário vazio */ }
+ },[initialDate]);
+
+ function saveDraft(){
+  const draft:DraftState={date,mode,netFare,revenueItems,gas,alcohol,gasPrice,alcoholPrice,kmInitial,kmFinal,fuelConsumption,hours,maintenanceItems,extras};
+  window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft));
+  setStatus("✅ Dia salvo e permanece aberto para novos lançamentos.");
+ }
+
+
 
  const revenueSummary=useMemo(()=>summarizeRevenue(revenueItems),[revenueItems]);
  const fareNet=mode==="withFee"?revenueSummary.liquido:netFare;
