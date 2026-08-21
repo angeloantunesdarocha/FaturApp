@@ -10,10 +10,7 @@ type Props = {
 };
 
 export default function MaintenanceExpenses({ items, onChange }: Props) {
-  const canAdd = items.length < 5;
-
   function addItem() {
-    if (!canAdd) return;
     onChange([...items, { description: "", value: 0 }]);
   }
 
@@ -30,20 +27,16 @@ export default function MaintenanceExpenses({ items, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-700">
-          Manutenções (máx. 5)
-        </h3>
-        <span className="text-sm text-slate-500">
-          Total: {formatBRL(totalItems)}
-        </span>
-      </div>
+      <div className="flex items-center justify-between text-xs"><span className="font-semibold text-slate-600">{items.length} lançamento{items.length===1?"":"s"}</span><strong className="text-slate-800">{formatBRL(totalItems)}</strong></div>
 
       {items.map((item, i) => (
-        <div
+        <details
           key={i}
-          className="grid grid-cols-12 gap-2 items-end bg-white rounded-lg border border-slate-200 p-2"
+          open={!item.description || !item.value ? true : undefined}
+          className="group rounded-lg border border-slate-200 bg-white"
         >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm"><span className="truncate font-medium text-slate-700">{item.description||"Nova manutenção"}</span><strong className="shrink-0 text-slate-800">{formatBRL(item.value)}</strong></summary>
+          <div className="grid grid-cols-12 gap-2 items-end border-t border-slate-100 p-2">
           <div className="col-span-12 sm:col-span-7">
             <label className="label">Descrição</label>
             <input
@@ -80,13 +73,13 @@ export default function MaintenanceExpenses({ items, onChange }: Props) {
               ✕
             </button>
           </div>
-        </div>
+          </div>
+        </details>
       ))}
 
       <button
         type="button"
         onClick={addItem}
-        disabled={!canAdd}
         className="btn btn-secondary w-full"
       >
         + Adicionar manutenção
