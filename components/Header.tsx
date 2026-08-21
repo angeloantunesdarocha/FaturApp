@@ -12,11 +12,12 @@ const baseNav = "rounded-full px-4 py-2.5 text-sm font-semibold shadow-sm transi
 const activeNav = "bg-[#10B981] text-white shadow-sm hover:bg-[#059669] focus:ring-[#10B981]/30";
 const inactiveNav = "border border-slate-200 bg-white text-[#123B63] hover:border-[#123B63] hover:bg-slate-50 focus:ring-[#123B63]/20";
 
-export default function Header({ isAuthenticated }: { isAuthenticated: boolean }) {
+export default function Header({ isAuthenticated, isAdmin = false }: { isAuthenticated: boolean; isAdmin?: boolean }) {
   const pathname = usePathname();
   const isReports = pathname === "/relatorios";
   const isSupport = pathname === "/apoie";
   const isLanding = pathname === "/comece";
+  const isAdminPage = pathname === "/admin";
 
   return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:flex-nowrap sm:px-4">
     <Link href="/" aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
@@ -32,6 +33,7 @@ export default function Header({ isAuthenticated }: { isAuthenticated: boolean }
       <Link href="/" aria-current={!isReports && !isSupport ? "page" : undefined} className={baseNav + " " + (!isReports && !isSupport ? activeNav : inactiveNav)}>Lançar dia</Link>
       <Link href="/relatorios" aria-current={isReports ? "page" : undefined} className={baseNav + " " + (isReports ? activeNav : inactiveNav)}>Relatórios</Link>
       <Link href="/apoie" aria-current={isSupport ? "page" : undefined} className={baseNav + " " + (isSupport ? activeNav : inactiveNav)}>Apoiar</Link>
+      {isAdmin && <Link href="/admin" aria-current={isAdminPage ? "page" : undefined} className={baseNav + " " + (isAdminPage ? activeNav : inactiveNav)}>Admin</Link>}
       <div className="relative -top-0.5"><LogoutButton /></div>
     </nav>}
   </div></header>;
