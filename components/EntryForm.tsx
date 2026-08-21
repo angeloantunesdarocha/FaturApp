@@ -52,7 +52,10 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  const totalPurchasedLiters=gasLiters+alcoholLiters;
  const totalFuelPurchase=gas+alcohol;
  const weightedFuelPrice=totalPurchasedLiters>0?totalFuelPurchase/totalPurchasedLiters:0;
- const effectiveFuelConsumption=fuelConsumption>0?fuelConsumption:(kmDriven>0&&totalPurchasedLiters>0?kmDriven/totalPurchasedLiters:0);\n const fuelPrice=(gas>0&&gasPrice>0?gasPrice:alcohol>0&&alcoholPrice>0?alcoholPrice:weightedFuelPrice);\n const fuelConsumedLiters=kmDriven>0&&effectiveFuelConsumption>0?kmDriven/effectiveFuelConsumption:0;\n const fuelConsumedCost=fuelConsumedLiters*fuelPrice;
+ const effectiveFuelConsumption=fuelConsumption>0?fuelConsumption:(kmDriven>0&&totalPurchasedLiters>0?kmDriven/totalPurchasedLiters:0);
+ const fuelPrice=(gas>0&&gasPrice>0?gasPrice:alcohol>0&&alcoholPrice>0?alcoholPrice:weightedFuelPrice);
+ const fuelConsumedLiters=kmDriven>0&&effectiveFuelConsumption>0?kmDriven/effectiveFuelConsumption:0;
+ const fuelConsumedCost=fuelConsumedLiters*fuelPrice;
  const fuelRemainingLiters=Math.max(0,totalPurchasedLiters-fuelConsumedLiters);
  const fuelRemainingValue=fuelRemainingLiters*fuelPrice;
  const fuelCostForProfit=effectiveFuelConsumption>0&&totalPurchasedLiters>0?fuelConsumedCost:totalFuelPurchase;
