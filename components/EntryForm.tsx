@@ -10,17 +10,17 @@ import { saveEntry } from "@/app/actions";
 
 type Mode = "withFee" | "net";
 type Props = { initialDate?: string; initialMonthProfit?: number };
-type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null; revenueBase:number };
+type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; revenuePerKm:number|null; costPerKm:number|null; revenueBase:number };
 type TimeSegment = { start:string; end:string };
 type FuelPurchase = { id:string; type:"gasoline"|"alcohol"; amount:number; pricePerLiter:number };
-type DraftState = { date:string; mode:Mode; netFare:number; netApp:RevenueAppName; netCustomApp:string; revenueItems:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; fuelPurchases?:FuelPurchase[]; kmInitial:number; kmFinal:number; fuelConsumption:number; hoursSegments:TimeSegment[]; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
+type DraftState = { date:string; mode:Mode; netFare:number; netApp:RevenueAppName; netCustomApp:string; revenueItems:RevenueItem[]; netRevenueItems?:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; fuelPurchases?:FuelPurchase[]; kmInitial:number; kmFinal:number; fuelConsumption:number; hoursSegments:TimeSegment[]; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
 
 function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigits:1});}
 function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} / km`;}
 function formatLiters(v:number){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3});}
 function formatPercent(v:number){return `${v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}%`;}
 export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:Props){
- const [mode,setMode]=useState<Mode>("withFee"),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[netApp,setNetApp]=useState<RevenueAppName>("Uber"),[netCustomApp,setNetCustomApp]=useState(""),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([createRevenueItem()]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[fuelPurchases,setFuelPurchases]=useState<FuelPurchase[]>([]),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[hoursSegments,setHoursSegments]=useState<TimeSegment[]>([{start:"",end:""}]),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null),[draftReady,setDraftReady]=useState(false);
+ const [mode,setMode]=useState<Mode>("withFee"),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[netApp,setNetApp]=useState<RevenueAppName>("Uber"),[netCustomApp,setNetCustomApp]=useState(""),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([createRevenueItem()]),[netRevenueItems,setNetRevenueItems]=useState<RevenueItem[]>([]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[fuelPurchases,setFuelPurchases]=useState<FuelPurchase[]>([]),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[hoursSegments,setHoursSegments]=useState<TimeSegment[]>([{start:"",end:""}]),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null),[draftReady,setDraftReady]=useState(false);
 
  function restoreDraft(selectedDate:string){
   let draft:Partial<DraftState>={};
@@ -28,7 +28,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
    const raw=window.localStorage.getItem("faturapp:dia-aberto:"+selectedDate);
    if(raw)draft=JSON.parse(raw) as DraftState;
   } catch { /* rascunho inválido: inicia um dia limpo */ }
-  setDate(selectedDate); setMode(draft.mode||"withFee"); setNetFare(draft.netFare||0); setNetApp(draft.netApp||"Uber"); setNetCustomApp(draft.netCustomApp||""); setRevenueItems(draft.revenueItems?.length?draft.revenueItems:[createRevenueItem()]); setGas(draft.gas||0); setAlcohol(draft.alcohol||0); setGasPrice(draft.gasPrice||0); setAlcoholPrice(draft.alcoholPrice||0); setFuelPurchases(draft.fuelPurchases||[]); setKmInitial(draft.kmInitial||0); setKmFinal(draft.kmFinal||0); setFuelConsumption(draft.fuelConsumption||0); setHoursSegments(draft.hoursSegments?.length?draft.hoursSegments:[{start:"",end:""}]); setMaintenanceItems(draft.maintenanceItems||[]); setExtras(draft.extras||[]); setSavedCard(null);
+  setDate(selectedDate); setMode(draft.mode||"withFee"); setNetFare(draft.netFare||0); setNetApp(draft.netApp||"Uber"); setNetCustomApp(draft.netCustomApp||""); setRevenueItems(draft.revenueItems?.length?draft.revenueItems:[createRevenueItem()]); setNetRevenueItems(draft.netRevenueItems||[]); setGas(draft.gas||0); setAlcohol(draft.alcohol||0); setGasPrice(draft.gasPrice||0); setAlcoholPrice(draft.alcoholPrice||0); setFuelPurchases(draft.fuelPurchases||[]); setKmInitial(draft.kmInitial||0); setKmFinal(draft.kmFinal||0); setFuelConsumption(draft.fuelConsumption||0); setHoursSegments(draft.hoursSegments?.length?draft.hoursSegments:[{start:"",end:""}]); setMaintenanceItems(draft.maintenanceItems||[]); setExtras(draft.extras||[]); setSavedCard(null);
   setStatus(draft.date?"Rascunho do dia aberto carregado. Você pode continuar editando.":"");
  }
 
@@ -41,12 +41,12 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
 
  useEffect(()=>{
   if(!draftReady)return;
-  const hasDraftData=netFare>0||netCustomApp.trim()!==""||revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||gas>0||alcohol>0||gasPrice>0||alcoholPrice>0||fuelPurchases.length>0||kmInitial>0||kmFinal>0||fuelConsumption>0||hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||maintenanceItems.length>0||extras.length>0;
+  const hasDraftData=netFare>0||netCustomApp.trim()!==""||revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||netRevenueItems.length>0||gas>0||alcohol>0||gasPrice>0||alcoholPrice>0||fuelPurchases.length>0||kmInitial>0||kmFinal>0||fuelConsumption>0||hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||maintenanceItems.length>0||extras.length>0;
   if(!hasDraftData)return;
-  const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
+  const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
   try { window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft)); }
   catch { setStatus("Não foi possível salvar o rascunho neste aparelho."); }
- },[draftReady,date,mode,netFare,netApp,netCustomApp,revenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras]);
+ },[draftReady,date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras]);
 
  function hoursFromSegments(){ return hoursSegments.reduce((total,segment)=>{ if(!segment.start||!segment.end)return total; const [sh,sm]=segment.start.split(":").map(Number); const [eh,em]=segment.end.split(":").map(Number); let minutes=(eh*60+em)-(sh*60+sm); if(minutes<0)minutes+=1440; return total+minutes/60; },0); }
  const hours=hoursFromSegments();
@@ -56,7 +56,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  function updateFuelPurchase(id:string,patch:Partial<FuelPurchase>){setFuelPurchases(items=>items.map(item=>item.id===id?{...item,...patch}:item));}
  function removeFuelPurchase(id:string){setFuelPurchases(items=>items.filter(item=>item.id!==id));}
  function saveDraft(){
-  const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
+  const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
   try {
    window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft));
    setStatus("✅ Dia salvo e permanece aberto para novos lançamentos.");
@@ -66,8 +66,9 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
 
 
  const revenueSummary=useMemo(()=>summarizeRevenue(revenueItems),[revenueItems]);
- const fareNet=mode==="withFee"?revenueSummary.liquido:netFare;
- const feeAmount=mode==="withFee"?revenueSummary.taxaValor:0;
+ const additionalNetRevenue=netRevenueItems.reduce((total,item)=>total+toNumber(item.bruto),0);
+ const fareNet=revenueSummary.liquido+netFare+additionalNetRevenue;
+ const feeAmount=revenueSummary.taxaValor;
  const extrasSum=extras.reduce((a,e)=>a+toNumber(e.value),0);
  const maintenanceTotal=maintenanceItems.reduce((a,m)=>a+toNumber(m.value),0);
  const kmDriven=Math.max(0,kmFinal-kmInitial);
@@ -93,15 +94,19 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  const dayProfit=fareNet-totalExpenses;
  const totalCostPerKm=kmDriven>0?totalExpenses/kmDriven:null;
  const profitPerKm=kmDriven>0?dayProfit/kmDriven:null;
+ const revenuePerKm=kmDriven>0?fareNet/kmDriven:null;
  const hasCurrentLaunch=fareNet!==0||totalFuelPurchase!==0||maintenanceTotal!==0||extrasSum!==0||kmDriven>0||fuelConsumption>0;
- const percentageBaseValue=mode==="withFee"?revenueSummary.bruto:fareNet;
- const visibleProfit=savedCard&&!hasCurrentLaunch?savedCard.profit:dayProfit,visibleKm=savedCard&&!hasCurrentLaunch?savedCard.km:kmDriven,visibleProfitPerKm=savedCard&&!hasCurrentLaunch?savedCard.profitPerKm:profitPerKm,visibleCostPerKm=savedCard&&!hasCurrentLaunch?savedCard.costPerKm:totalCostPerKm,visibleHours=savedCard&&!hasCurrentLaunch?savedCard.hours:hours,visibleRevenueBase=savedCard&&!hasCurrentLaunch?savedCard.revenueBase:percentageBaseValue;
+ const percentageBaseValue=revenueSummary.bruto+netFare+additionalNetRevenue;
+ const visibleProfit=savedCard&&!hasCurrentLaunch?savedCard.profit:dayProfit,visibleKm=savedCard&&!hasCurrentLaunch?savedCard.km:kmDriven,visibleProfitPerKm=savedCard&&!hasCurrentLaunch?savedCard.profitPerKm:profitPerKm,visibleRevenuePerKm=savedCard&&!hasCurrentLaunch?savedCard.revenuePerKm:revenuePerKm,visibleCostPerKm=savedCard&&!hasCurrentLaunch?savedCard.costPerKm:totalCostPerKm,visibleHours=savedCard&&!hasCurrentLaunch?savedCard.hours:hours,visibleRevenueBase=savedCard&&!hasCurrentLaunch?savedCard.revenueBase:percentageBaseValue;
  const profitPercent=visibleRevenueBase>0?(visibleProfit/visibleRevenueBase)*100:null;
  const summaryTone=visibleProfit>0?"profit":visibleProfit<0?"loss":"neutral";
 
  function updateRevenue(id:string,patch:Partial<RevenueItem>){setRevenueItems(items=>items.map(item=>item.id===id?{...item,...patch}:item));}
  function addRevenue(){setRevenueItems(items=>[...items,createRevenueItem()]);}
  function removeRevenue(id:string){setRevenueItems(items=>items.length>1?items.filter(item=>item.id!==id):items);}
+ function addNetRevenue(){setNetRevenueItems(items=>[...items,{...createRevenueItem(),taxa:0}]);}
+ function updateNetRevenue(id:string,patch:Partial<RevenueItem>){setNetRevenueItems(items=>items.map(item=>item.id===id?{...item,...patch,taxa:0}:item));}
+ function removeNetRevenue(id:string){setNetRevenueItems(items=>items.filter(item=>item.id!==id));}
 
  async function handleSubmit(e:FormEvent){
   e.preventDefault();
@@ -111,12 +116,15 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
   if(fuelPurchases.some(item=>item.amount<0||item.pricePerLiter<0)){setStatus("❌ Os valores dos abastecimentos não podem ser negativos.");return;}
   if(fuelPurchases.some(item=>item.amount>0&&item.pricePerLiter<=0)){setStatus("❌ Informe o preço por litro em cada novo abastecimento.");return;}
   if(totalFuelPurchase>0&&kmDriven>0&&effectiveFuelConsumption<=0){setStatus("❌ Informe o km/L ou registre o preço e o valor do abastecimento para calcular automaticamente.");return;}
-  if(mode==="withFee"&&revenueSummary.normalized.some(item=>item.app==="Outro"&&!item.nomeAppPersonalizado)){setStatus("❌ Informe o nome do aplicativo quando selecionar Outro.");return;}
-  if(mode==="net"&&netApp==="Outro"&&!netCustomApp.trim()){setStatus("❌ Informe o nome do aplicativo quando selecionar Outro.");return;}
+  if(revenueSummary.normalized.some(item=>item.bruto>0&&item.app==="Outro"&&!item.nomeAppPersonalizado)){setStatus("❌ Informe o nome do aplicativo quando selecionar Outro.");return;}
+  if(netFare>0&&netApp==="Outro"&&!netCustomApp.trim()){setStatus("❌ Informe o nome do aplicativo quando selecionar Outro.");return;}
+  if(netRevenueItems.some(item=>item.bruto>0&&item.app==="Outro"&&!item.nomeAppPersonalizado.trim())){setStatus("❌ Informe o nome do aplicativo em cada receita líquida.");return;}
   setStatus("Salvando...");
-  const payload={date,gross_amount:mode==="withFee"?revenueSummary.bruto:null,fee_percent:mode==="withFee"?revenueSummary.taxaPercentual:null,net_fare:mode==="net"?netFare:revenueSummary.liquido,revenue_details:mode==="withFee"?revenueItems:[{...createRevenueItem(),app:netApp,nomeAppPersonalizado:netApp==="Outro"?netCustomApp.trim():"",bruto:netFare,taxa:0}],gas_expense:totalGasExpense,alcohol_expense:totalAlcoholExpense,gasoline_price_per_liter:averageGasPrice,alcohol_price_per_liter:averageAlcoholPrice,gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,hours_worked:hours,fuel_consumption_km_per_liter:effectiveFuelConsumption,fuel_consumed_liters:fuelConsumedLiters,fuel_consumed_cost:fuelConsumedCost,fuel_remaining_liters:fuelRemainingLiters,fuel_remaining_value:fuelRemainingValue,maintenance_expense:maintenanceTotal,maintenance_details:maintenanceItems.filter(m=>m.description.trim()!==""),extra_expenses:extras.filter(e=>e.name.trim()!=="")};
+  const combinedRevenueItems=[...revenueItems.filter(item=>item.bruto>0),...(netFare>0?[{...createRevenueItem(),app:netApp,nomeAppPersonalizado:netApp==="Outro"?netCustomApp.trim():"",bruto:netFare,taxa:0}]:[]),...netRevenueItems.filter(item=>item.bruto>0)];
+  const combinedRevenueSummary=summarizeRevenue(combinedRevenueItems);
+  const payload={date,gross_amount:combinedRevenueSummary.bruto,fee_percent:combinedRevenueSummary.taxaPercentual,net_fare:combinedRevenueSummary.liquido,revenue_details:combinedRevenueItems,gas_expense:totalGasExpense,alcohol_expense:totalAlcoholExpense,gasoline_price_per_liter:averageGasPrice,alcohol_price_per_liter:averageAlcoholPrice,gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,hours_worked:hours,fuel_consumption_km_per_liter:effectiveFuelConsumption,fuel_consumed_liters:fuelConsumedLiters,fuel_consumed_cost:fuelConsumedCost,fuel_remaining_liters:fuelRemainingLiters,fuel_remaining_value:fuelRemainingValue,maintenance_expense:maintenanceTotal,maintenance_details:maintenanceItems.filter(m=>m.description.trim()!==""),extra_expenses:extras.filter(e=>e.name.trim()!=="")};
   const res=await saveEntry(payload);
-  if(res.success){window.localStorage.removeItem("faturapp:dia-aberto:"+date);setStatus("✅ Dia registrado e fechado com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,costPerKm:totalCostPerKm,revenueBase:percentageBaseValue});setNetFare(0);setNetCustomApp("");setRevenueItems([createRevenueItem()]);setGas(0);setAlcohol(0);setGasPrice(0);setAlcoholPrice(0);setFuelPurchases([]);setKmInitial(0);setKmFinal(0);setFuelConsumption(0);setHoursSegments([{start:"",end:""}]);setMaintenanceItems([]);setExtras([]);}else setStatus(`❌ Erro: ${res.error}`);
+  if(res.success){window.localStorage.removeItem("faturapp:dia-aberto:"+date);setStatus("✅ Dia registrado e fechado com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,revenuePerKm,costPerKm:totalCostPerKm,revenueBase:percentageBaseValue});setNetFare(0);setNetCustomApp("");setRevenueItems([createRevenueItem()]);setNetRevenueItems([]);setGas(0);setAlcohol(0);setGasPrice(0);setAlcoholPrice(0);setFuelPurchases([]);setKmInitial(0);setKmFinal(0);setFuelConsumption(0);setHoursSegments([{start:"",end:""}]);setMaintenanceItems([]);setExtras([]);}else setStatus(`❌ Erro: ${res.error}`);
  }
 
  return <div className="space-y-5"><form onSubmit={handleSubmit} className="space-y-5">
@@ -131,7 +139,11 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
    </div>)}</div>
    <button type="button" onClick={addRevenue} className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:border-emerald-400 hover:bg-emerald-50">+ Adicionar receita de outro App</button>
    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 space-y-2"><div className="flex items-center justify-between"><span className="text-sm font-semibold text-emerald-700">Receita líquida total do dia</span><strong className="text-xl font-black text-emerald-800">{formatBRL(revenueSummary.liquido)}</strong></div><div className="flex justify-between border-t border-emerald-200 pt-2 text-xs text-emerald-700"><span>Bruto {formatBRL(revenueSummary.bruto)}</span><span>Taxas {formatBRL(revenueSummary.taxaValor)}</span></div></div></>}
-   {mode==="net"&&<div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Aplicativo</label><select className="input" value={netApp} onChange={e=>setNetApp(e.target.value as RevenueAppName)}>{REVENUE_APPS.map(app=><option key={app} value={app}>{app}</option>)}</select>{netApp==="Outro"&&<input className="input mt-2" value={netCustomApp} onChange={e=>setNetCustomApp(e.target.value)} placeholder="Nome do aplicativo"/>}</div><div><label className="label">Valor líquido recebido (R$)</label><input type="number" step="0.01" min="0" className="input" value={netFare||""} onChange={e=>setNetFare(toNumber(e.target.value))} placeholder="Ex.: 250,00"/></div><p className="mt-1 text-xs text-slate-500 sm:col-span-2">Use este modo quando o valor já estiver líquido das taxas.</p></div>}
+   {mode==="net"&&<div className="space-y-3"><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Aplicativo</label><select className="input" value={netApp} onChange={e=>setNetApp(e.target.value as RevenueAppName)}>{REVENUE_APPS.map(app=><option key={app} value={app}>{app}</option>)}</select>{netApp==="Outro"&&<input className="input mt-2" value={netCustomApp} onChange={e=>setNetCustomApp(e.target.value)} placeholder="Nome do aplicativo"/>}</div><div><label className="label">Valor líquido recebido (R$)</label><input type="number" step="0.01" min="0" className="input" value={netFare||""} onChange={e=>setNetFare(toNumber(e.target.value))} placeholder="Ex.: 250,00"/></div></div>
+    {netRevenueItems.map((item,index)=><div key={item.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-3"><div className="flex items-center justify-between gap-2"><span className="text-xs font-bold text-slate-600">Ganho líquido adicional {index+1}</span><button type="button" onClick={()=>removeNetRevenue(item.id)} className="rounded-lg bg-rose-50 px-3 py-1 text-xs font-bold text-rose-600">Remover</button></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Aplicativo</label><select className="input" value={item.app} onChange={e=>updateNetRevenue(item.id,{app:e.target.value as RevenueAppName,nomeAppPersonalizado:e.target.value==="Outro"?item.nomeAppPersonalizado:""})}>{REVENUE_APPS.map(app=><option key={app} value={app}>{app}</option>)}</select>{item.app==="Outro"&&<input className="input mt-2" value={item.nomeAppPersonalizado} onChange={e=>updateNetRevenue(item.id,{nomeAppPersonalizado:e.target.value})} placeholder="Nome do aplicativo"/>}</div><div><label className="label">Valor líquido recebido (R$)</label><input type="number" step="0.01" min="0" className="input" value={item.bruto||""} onChange={e=>updateNetRevenue(item.id,{bruto:toNumber(e.target.value)})} placeholder="Ex.: 40,00"/></div></div></div>)}
+    <button type="button" onClick={addNetRevenue} className="btn btn-secondary w-full">+ Adicionar outro ganho líquido</button><p className="text-xs text-slate-500">Novos ganhos são somados às receitas anteriores do dia.</p>
+   </div>}
+   <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-emerald-700">Ganhos líquidos acumulados</span><strong className="text-sm text-emerald-800">{formatBRL(fareNet)}</strong></div>{feeAmount>0&&<p className="mt-1 text-xs text-emerald-700">Taxas descontadas: {formatBRL(feeAmount)}</p>}</div>
    <div className="rounded-lg border border-brand-200 bg-brand-50 p-3 space-y-2"><div className="flex items-center justify-between"><label className="label">Horas trabalhadas (opcional)</label><span className="text-xs font-bold text-slate-600">Total: {hours.toLocaleString("pt-BR",{maximumFractionDigits:2})} h</span></div>{hoursSegments.map((segment,index)=><div key={index} className="grid grid-cols-[1fr_auto_1fr] items-end gap-2"><div><label className="text-xs text-slate-500">Início</label><input type="time" className="input" value={segment.start} onChange={e=>updateSegment(index,{start:e.target.value})}/></div><span className="pb-3 text-slate-500">até</span><div><label className="text-xs text-slate-500">Fim</label><input type="time" className="input" value={segment.end} onChange={e=>updateSegment(index,{end:e.target.value})}/></div></div>)}<button type="button" onClick={addSegment} className="btn btn-secondary w-full">+ Adicionar outro período</button><p className="text-xs text-slate-500">Ex.: de 08:25 até 11:33. Os períodos são somados.</p></div>
   </div>
   <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-4"><div><h3 className="text-base font-bold text-slate-800">Quilometragem e combustível</h3><p className="text-xs text-slate-500 mt-1">Informe o hodômetro e o abastecimento. O consumo médio permite calcular quanto do combustível foi realmente consumido no percurso.</p></div><div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div><label className="label">Km inicial</label><input type="number" step="0.1" min="0" className="input" value={kmInitial||""} onChange={e=>setKmInitial(toNumber(e.target.value))} placeholder="Ex.: 52.340"/></div><div><label className="label">Km final</label><input type="number" step="0.1" min="0" className="input" value={kmFinal||""} onChange={e=>setKmFinal(toNumber(e.target.value))} placeholder="Ex.: 52.520"/></div></div><div className="rounded-lg bg-slate-50 border border-slate-200 p-3 flex items-center"><div><p className="text-xs text-slate-500">Quantidade de km rodados</p><p className="text-2xl font-bold text-slate-800">{formatKm(kmDriven)} km</p></div></div>
@@ -165,7 +177,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
    </div>
    <div className="mt-3 grid grid-cols-2 divide-x divide-slate-200/80 border-t border-slate-200/80 pt-2.5">
     <div className="pr-3">
-     <p className={"text-base font-black sm:text-lg " + (visibleProfitPerKm!==null&&visibleProfitPerKm<0?"text-red-700":"text-slate-800")}><span className="mr-1 text-sm">{visibleProfitPerKm!==null&&visibleProfitPerKm<0?"↘":"↗"}</span>{visibleProfitPerKm!==null?formatBRL(Math.abs(visibleProfitPerKm)):"—"}<span className="ml-0.5 text-[10px] font-bold text-slate-500">/km</span></p>
+     <p className="text-base font-black text-slate-800 sm:text-lg"><span className="mr-1 text-sm">↗</span>{visibleRevenuePerKm!==null?formatBRL(visibleRevenuePerKm):"—"}<span className="ml-0.5 text-[10px] font-bold text-slate-500">/km</span></p>
      <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">RECEITA/km</p>
     </div>
     <div className="pl-3">
@@ -173,6 +185,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
      <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">CUSTO/km</p>
     </div>
    </div>
+   {visibleHours>0&&<div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-2 text-xs"><span className="font-semibold text-slate-500">{visibleHours.toLocaleString("pt-BR",{maximumFractionDigits:2})} h trabalhadas</span><strong className={visibleProfit<0?"text-red-700":"text-emerald-700"}>{formatBRL(visibleProfit/visibleHours)}/h</strong></div>}
   </section>
   <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs uppercase tracking-wide text-slate-500">Lucro líquido do mês</p><p className="mt-1 text-3xl font-bold text-slate-800">{formatBRL(monthProfit)}</p><p className="mt-2 text-xs text-slate-500">Soma dos lançamentos do mês selecionado</p></div>
  </div>
