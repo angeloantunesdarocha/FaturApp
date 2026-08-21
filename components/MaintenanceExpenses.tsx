@@ -32,7 +32,7 @@ export default function MaintenanceExpenses({ items, onChange }: Props) {
       {items.map((item, i) => (
         <details
           key={i}
-          open={!item.description || !item.value ? true : undefined}
+          open={i === items.length - 1 ? true : undefined}
           className="group rounded-lg border border-slate-200 bg-white"
         >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm"><span className="truncate font-medium text-slate-700">{item.description||"Nova manutenção"}</span><strong className="shrink-0 text-slate-800">{formatBRL(item.value)}</strong></summary>

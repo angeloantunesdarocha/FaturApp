@@ -30,7 +30,7 @@ export default function ExtraExpenses({ extras, onChange }: Props) {
       {extras.map((extra, i) => (
         <details
           key={i}
-          open={!extra.name || !extra.value ? true : undefined}
+          open={i === extras.length - 1 ? true : undefined}
           className="group rounded-lg border border-slate-200 bg-white"
         >
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm"><span className="truncate font-medium text-slate-700">{extra.name||"Novo gasto"}</span><strong className="shrink-0 text-slate-800">{formatBRL(extra.value)}</strong></summary>
