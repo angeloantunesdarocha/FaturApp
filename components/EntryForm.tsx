@@ -12,7 +12,7 @@ type Mode = "withFee" | "net";
 type Props = { initialDate?: string; initialMonthProfit?: number };
 type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; costPerKm:number|null; revenueBase:number };
 type TimeSegment = { start:string; end:string };
-type DraftState = { date:string; mode:Mode; netFare:number; netApp:RevenueAppName; revenueItems:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; kmInitial:number; kmFinal:number; fuelConsumption:number; hoursSegments:TimeSegment[]; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] }; mode:Mode; netFare:number; revenueItems:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; kmInitial:number; kmFinal:number; fuelConsumption:number; hours:number; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
+type DraftState = { date:string; mode:Mode; netFare:number; netApp:RevenueAppName; revenueItems:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; kmInitial:number; kmFinal:number; fuelConsumption:number; hoursSegments:TimeSegment[]; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
 
 function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigits:1});}
 function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} / km`;}
