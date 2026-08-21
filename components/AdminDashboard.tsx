@@ -77,7 +77,7 @@ export default function AdminDashboard({ data }: Props) {
       <label className="text-xs font-bold text-slate-500">De<input name="from" type="date" defaultValue={dashboard.range.from} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800" /></label>
       <label className="text-xs font-bold text-slate-500">Até<input name="to" type="date" defaultValue={dashboard.range.to} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800" /></label>
       <button className="rounded-lg bg-[#123B63] px-4 py-2.5 text-sm font-bold text-white">Aplicar período</button>
-      <span className="text-xs text-slate-500">Online = atividade nos últimos 5 minutos.</span>
+      <span className="text-xs text-slate-500">Online agora = heartbeat nos últimos 45 segundos.</span>
     </form>
 
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
