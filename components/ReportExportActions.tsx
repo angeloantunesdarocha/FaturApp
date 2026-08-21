@@ -365,15 +365,24 @@ export default function ReportExportActions({ entries, from, to }: Props) {
       const file = new File([blob], `FaturApp_Relatorio_${from}_${to}.pdf`, { type: "application/pdf" });
       if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
         await navigator.share({ title: "Relatório FaturApp", text: `Relatório de ${formatDateBR(from)} até ${formatDateBR(to)}`, files: [file] });
+        track("report_shared");
         return;
       }
       doc.save(file.name);
+      track("report_pdf");
       window.location.href = `mailto:?subject=${encodeURIComponent("Relatório FaturApp")}&body=${encodeURIComponent(text)}`;
     } finally { setBusy(false); }
   }
 
-  function downloadPdf() { makePdf(rows, from, to).save(`FaturApp_Relatorio_Completo_${from}_${to}.pdf`); }
-  function whatsapp() { window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer"); }
+  function track(event: "report_pdf" | "report_shared") {
+    void fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event, path: window.location.pathname, metadata: { from, to, entries: rows.length } }),
+    });
+  }
+  function downloadPdf() { makePdf(rows, from, to).save(`FaturApp_Relatorio_Completo_${from}_${to}.pdf`); track("report_pdf"); }
+  function whatsapp() { window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer"); track("report_shared"); }
 
   return (
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
