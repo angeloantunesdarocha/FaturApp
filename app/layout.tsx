@@ -65,6 +65,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
   return (
     <html lang="pt-BR">
@@ -79,6 +80,28 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <p className="mt-1">Desenvolvido por: Ângelo Antunes</p>
         </footer>
         <Analytics />
+        {gaMeasurementId ? (
+          <>
+            <Script
+              async
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
+            />
+            <Script
+              id="google-analytics"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${gaMeasurementId}', {
+                    page_path: window.location.pathname,
+                  });
+                `,
+              }}
+            />
+          </>
+        ) : null}
         <Script
           id="meta-pixel"
           strategy="afterInteractive"
