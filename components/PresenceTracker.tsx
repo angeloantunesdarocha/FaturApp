@@ -14,7 +14,7 @@ function send(event: "access" | "heartbeat") {
 export default function PresenceTracker() {
   useEffect(() => {
     void send("access");
-    const timer = window.setInterval(() => void send("heartbeat"), 60_000);
+    const timer = window.setInterval(() => void send("heartbeat"), 15_000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") void send("heartbeat");
     };
