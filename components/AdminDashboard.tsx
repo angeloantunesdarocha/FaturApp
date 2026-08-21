@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { createAdminUser, deleteAdminUser } from "@/app/admin/actions";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { createAdminUser, deleteAdminUser, getAdminDashboard } from "@/app/admin/actions";
 
 type User = {
   id: string; login: string; email: string | null; role: string; created_at: string;
-  last_seen_at: string | null; last_path: string | null; online: boolean;
+  last_seen_at: string | null; last_path: string | null; online: boolean; session_active: boolean;
   entries_count: number; reports_count: number; contributions_count: number; contributions_amount: number;
 };
 type Activity = { id: number; event_type: string; event_at: string; path: string | null; login: string | null; };
@@ -21,11 +21,25 @@ const labels: Record<string, string> = {
 };
 
 export default function AdminDashboard({ data }: Props) {
+  const [liveData, setLiveData] = useState(data);
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [pending, startTransition] = useTransition();
-  const users = useMemo(() => data.users.filter((user) =>
-    [user.login, user.email || ""].join(" ").toLowerCase().includes(query.toLowerCase())), [data.users, query]);
+
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () => {
+      void getAdminDashboard(liveData.range.from, liveData.range.to)
+        .then((next) => { if (mounted) setLiveData(next); })
+        .catch(() => undefined);
+    };
+    const timer = window.setInterval(refresh, 10_000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, [liveData.range.from, liveData.range.to]);
+
+  const dashboard = liveData;
+  const users = useMemo(() => dashboard.users.filter((user) =>
+    [user.login, user.email || ""].join(" ").toLowerCase().includes(query.toLowerCase())), [dashboard.users, query]);
 
   function createUser(form: HTMLFormElement) {
     const fd = new FormData(form);
@@ -47,9 +61,9 @@ export default function AdminDashboard({ data }: Props) {
   }
 
   const cards = [
-    ["Usuários", data.summary.users_total], ["Online agora", data.summary.users_online],
-    ["Acessos", data.summary.accesses], ["Lançamentos", data.summary.entries_created],
-    ["Relatórios", data.summary.reports_emitted], ["Apoios ativos", money.format(Number(data.summary.contribution_amount || 0))],
+    ["Usuários", dashboard.summary.users_total], ["Online agora", dashboard.summary.users_online],
+    ["Acessos", dashboard.summary.accesses], ["Lançamentos", dashboard.summary.entries_created],
+    ["Relatórios", dashboard.summary.reports_emitted], ["Apoios ativos", money.format(Number(dashboard.summary.contribution_amount || 0))],
   ];
 
   return <div className="space-y-5 pb-12">
@@ -60,8 +74,8 @@ export default function AdminDashboard({ data }: Props) {
     </section>
 
     <form className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4" action="/admin">
-      <label className="text-xs font-bold text-slate-500">De<input name="from" type="date" defaultValue={data.range.from} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800" /></label>
-      <label className="text-xs font-bold text-slate-500">Até<input name="to" type="date" defaultValue={data.range.to} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800" /></label>
+      <label className="text-xs font-bold text-slate-500">De<input name="from" type="date" defaultValue={dashboard.range.from} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800" /></label>
+      <label className="text-xs font-bold text-slate-500">Até<input name="to" type="date" defaultValue={dashboard.range.to} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800" /></label>
       <button className="rounded-lg bg-[#123B63] px-4 py-2.5 text-sm font-bold text-white">Aplicar período</button>
       <span className="text-xs text-slate-500">Online = atividade nos últimos 5 minutos.</span>
     </form>
@@ -89,9 +103,9 @@ export default function AdminDashboard({ data }: Props) {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar usuário ou e-mail" className="rounded-xl border border-slate-200 px-3 py-2 text-sm" />
       </div>
       <div className="overflow-x-auto"><table className="min-w-[1100px] w-full text-sm"><thead className="bg-slate-50 text-left text-[11px] uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Usuário</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Última atividade</th><th className="px-4 py-3 text-right">Lanç.</th><th className="px-4 py-3 text-right">Relat.</th><th className="px-4 py-3 text-right">Apoios</th><th className="px-4 py-3 text-right">Ação</th></tr></thead>
-      <tbody>{users.map((user) => <tr key={user.id} className="border-t border-slate-100"><td className="px-4 py-4"><p className="font-bold text-slate-800">{user.login}</p><p className="text-xs text-slate-500">{user.email || "Sem e-mail"}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${user.online ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>{user.online ? "Online" : "Offline"}</span><p className="mt-1 text-xs text-slate-500">{user.role}</p></td><td className="px-4 py-4 text-xs text-slate-600">{dt(user.last_seen_at)}<p className="mt-1 text-slate-400">{user.last_path || "—"}</p></td><td className="px-4 py-4 text-right font-bold">{number.format(user.entries_count)}</td><td className="px-4 py-4 text-right font-bold">{number.format(user.reports_count)}</td><td className="px-4 py-4 text-right"><p className="font-bold">{number.format(user.contributions_count)}</p><p className="text-xs text-slate-500">{money.format(Number(user.contributions_amount || 0))}</p></td><td className="px-4 py-4 text-right">{user.role === "admin" ? <span className="text-xs font-bold text-slate-400">Protegido</span> : <button disabled={pending} onClick={() => removeUser(user)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50">Excluir</button>}</td></tr>)}</tbody></table></div>
+      <tbody>{users.map((user) => <tr key={user.id} className="border-t border-slate-100"><td className="px-4 py-4"><p className="font-bold text-slate-800">{user.login}</p><p className="text-xs text-slate-500">{user.email || "Sem e-mail"}</p></td><td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${user.online ? "bg-emerald-100 text-emerald-700" : user.session_active ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>{user.online ? "Online agora" : user.session_active ? "Sessão ativa" : "Offline"}</span><p className="mt-1 text-xs text-slate-500">{user.role}</p></td><td className="px-4 py-4 text-xs text-slate-600">{dt(user.last_seen_at)}<p className="mt-1 text-slate-400">{user.last_path || "—"}</p></td><td className="px-4 py-4 text-right font-bold">{number.format(user.entries_count)}</td><td className="px-4 py-4 text-right font-bold">{number.format(user.reports_count)}</td><td className="px-4 py-4 text-right"><p className="font-bold">{number.format(user.contributions_count)}</p><p className="text-xs text-slate-500">{money.format(Number(user.contributions_amount || 0))}</p></td><td className="px-4 py-4 text-right">{user.role === "admin" ? <span className="text-xs font-bold text-slate-400">Protegido</span> : <button disabled={pending} onClick={() => removeUser(user)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-50 disabled:opacity-50">Excluir</button>}</td></tr>)}</tbody></table></div>
     </section>
 
-    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-[.16em] text-emerald-600">Auditoria</p><h2 className="mt-1 text-xl font-black text-slate-900">Atividade recente</h2><div className="mt-4 space-y-2">{data.recent_activity.map((event) => <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-3 text-sm"><span><b>{event.login || "Sistema"}</b> · {labels[event.event_type] || event.event_type}</span><span className="text-xs text-slate-500">{dt(event.event_at)} {event.path ? `· ${event.path}` : ""}</span></div>)}{!data.recent_activity.length && <p className="text-sm text-slate-500">Ainda não há eventos registrados.</p>}</div></section>
+    <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-black uppercase tracking-[.16em] text-emerald-600">Auditoria</p><h2 className="mt-1 text-xl font-black text-slate-900">Atividade recente</h2><div className="mt-4 space-y-2">{dashboard.recent_activity.map((event) => <div key={event.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-3 text-sm"><span><b>{event.login || "Sistema"}</b> · {labels[event.event_type] || event.event_type}</span><span className="text-xs text-slate-500">{dt(event.event_at)} {event.path ? `· ${event.path}` : ""}</span></div>)}{!dashboard.recent_activity.length && <p className="text-sm text-slate-500">Ainda não há eventos registrados.</p>}</div></section>
   </div>;
 }
