@@ -8,10 +8,7 @@ type Props = {
 };
 
 export default function ExtraExpenses({ extras, onChange }: Props) {
-  const canAdd = extras.length < 5;
-
   function addExtra() {
-    if (!canAdd) return;
     onChange([...extras, { name: "", value: 0 }]);
   }
 
@@ -30,7 +27,7 @@ export default function ExtraExpenses({ extras, onChange }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">
-          Gastos extras (máx. 5)
+          Gastos extras
         </h3>
         <span className="text-sm text-slate-500">
           Total: {formatBRL(totalExtras)}
@@ -82,7 +79,6 @@ export default function ExtraExpenses({ extras, onChange }: Props) {
       <button
         type="button"
         onClick={addExtra}
-        disabled={!canAdd}
         className="btn btn-secondary w-full"
       >
         + Adicionar gasto extra
