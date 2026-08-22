@@ -12,12 +12,17 @@ export function toNumber(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+const FATURAPP_TIME_ZONE = "America/Sao_Paulo";
+
 export function todayISO(): string {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: FATURAPP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
 }
 
 export function formatDateBR(iso: string): string {
@@ -117,3 +122,4 @@ export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_p
   const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
   return net - computeFuelCostForProfit(entry) - maintenance - extras;
 }
+
