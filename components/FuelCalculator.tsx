@@ -5,7 +5,6 @@ import {
   getFuelRecords,
   saveFuelRecord,
   type FuelRecord,
-  type FuelRecordMode,
 } from "@/app/actions";
 
 type FuelCalculatorProps = {
@@ -20,7 +19,6 @@ type FuelResults = {
   purchasedLiters: number;
   efficiency: number;
   costPerKilometer: number;
-  costPerHundredKilometers: number;
   consumedLiters: number;
   consumedCost: number;
   remainingLiters: number;
@@ -96,9 +94,6 @@ export default function FuelCalculator({
   initialEfficiency = 0,
   onUseEfficiency,
 }: FuelCalculatorProps) {
-  const [mode, setMode] = useState<FuelRecordMode>(
-    initialEfficiency > 0 ? "monitoramento" : "consumo",
-  );
   const [amount, setAmount] = useState(displayInput(initialAmount));
   const [price, setPrice] = useState(displayInput(initialPricePerLiter));
   const [distance, setDistance] = useState(displayInput(initialKilometers));
@@ -151,13 +146,12 @@ export default function FuelCalculator({
     numericAmount > 0 &&
     numericPrice > 0 &&
     numericDistance > 0 &&
-    (mode === "consumo" || numericEfficiency > 0);
+    numericEfficiency > 0;
 
   const results = useMemo<FuelResults | null>(() => {
     if (!isValid) return null;
     const purchasedLiters = numericAmount / numericPrice;
-    const efficiency =
-      mode === "consumo" ? numericDistance / purchasedLiters : numericEfficiency;
+    const efficiency = numericEfficiency;
     const costPerKilometer = numericPrice / efficiency;
     const consumedLiters = numericDistance / efficiency;
     const remainingLiters = Math.max(0, purchasedLiters - consumedLiters);
@@ -167,23 +161,16 @@ export default function FuelCalculator({
       purchasedLiters,
       efficiency,
       costPerKilometer,
-      costPerHundredKilometers: 100 * costPerKilometer,
       consumedLiters,
       consumedCost,
       remainingLiters,
       remainingValue: Math.max(0, numericAmount - consumedCost),
       remainingRange: remainingLiters * efficiency,
     };
-  }, [isValid, mode, numericAmount, numericDistance, numericEfficiency, numericPrice]);
+  }, [isValid, numericAmount, numericDistance, numericEfficiency, numericPrice]);
 
   function fieldError(field: string, value: number): string {
     return touched[field] && value <= 0 ? "Informe um valor maior que zero." : "";
-  }
-
-  function switchMode(nextMode: FuelRecordMode) {
-    setMode(nextMode);
-    setCalculated(false);
-    setStatus("");
   }
 
   function calculate() {
@@ -191,6 +178,7 @@ export default function FuelCalculator({
     if (isValid) {
       setCalculated(true);
       setStatus("");
+      onUseEfficiency?.(numericEfficiency);
     }
   }
 
@@ -201,7 +189,7 @@ export default function FuelCalculator({
 
     try {
       const response = await saveFuelRecord({
-        modo: mode,
+        modo: "monitoramento",
         valor_abastecido: numericAmount,
         preco_litro: numericPrice,
         km_rodados: numericDistance,
@@ -212,10 +200,6 @@ export default function FuelCalculator({
       if (!response.success) {
         setStatus(response.error);
         return;
-      }
-
-      if (mode === "consumo" && onUseEfficiency) {
-        onUseEfficiency(response.efficiency);
       }
 
       const history = await getFuelRecords(5);
@@ -231,38 +215,15 @@ export default function FuelCalculator({
   const simulatedKilometers = numberFromInput(simulatedDistance);
   const simulatedCost = results ? simulatedKilometers * results.costPerKilometer : 0;
   const exceedsTank =
-    mode === "monitoramento" &&
-    results !== null &&
-    results.consumedLiters > results.purchasedLiters;
+    results !== null && results.consumedLiters > results.purchasedLiters;
 
   return (
     <section className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
       <div className="mb-3">
-        <h3 className="text-sm font-black text-slate-800">Calculadora de combustível</h3>
+        <h3 className="text-sm font-black text-slate-800">Monitorar abastecimento</h3>
         <p className="mt-0.5 text-xs text-slate-500">
-          Descubra o consumo ou acompanhe o saldo do tanque.
+          Informe o consumo médio do veículo e acompanhe o saldo do tanque.
         </p>
-      </div>
-
-      <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-200/70 p-1">
-        {([
-          ["consumo", "Calcular consumo"],
-          ["monitoramento", "Monitorar tanque"],
-        ] as const).map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => switchMode(value)}
-            className={
-              "rounded-lg px-2 py-2 text-[11px] font-bold transition " +
-              (mode === value
-                ? "bg-white text-emerald-700 shadow-sm"
-                : "text-slate-600 hover:text-slate-800")
-            }
-          >
-            {label}
-          </button>
-        ))}
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -326,52 +287,37 @@ export default function FuelCalculator({
           )}
         </label>
 
-        {mode === "monitoramento" ? (
-          <label className="text-xs font-semibold text-slate-600">
-            Consumo (km/L)
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0.1"
-              step="0.1"
-              className="input mt-1"
-              value={efficiencyInput}
-              onChange={(event) => setEfficiencyInput(event.target.value)}
-              onBlur={() => setTouched((current) => ({ ...current, efficiency: true }))}
-              placeholder="10"
-            />
-            {fieldError("efficiency", numericEfficiency) && (
-              <span className="mt-1 block text-[10px] text-rose-600">
-                {fieldError("efficiency", numericEfficiency)}
-              </span>
-            )}
-          </label>
-        ) : (
-          <label className="text-xs font-semibold text-slate-600">
-            Veículo (opcional)
-            <input
-              className="input mt-1"
-              value={vehicleName}
-              maxLength={100}
-              onChange={(event) => setVehicleName(event.target.value)}
-              placeholder="Moto ou carro"
-            />
-          </label>
-        )}
+        <label className="text-xs font-semibold text-slate-600">
+          Consumo informado (km/L)
+          <input
+            type="number"
+            inputMode="decimal"
+            min="0.1"
+            step="0.1"
+            className="input mt-1"
+            value={efficiencyInput}
+            onChange={(event) => setEfficiencyInput(event.target.value)}
+            onBlur={() => setTouched((current) => ({ ...current, efficiency: true }))}
+            placeholder="10"
+          />
+          {fieldError("efficiency", numericEfficiency) && (
+            <span className="mt-1 block text-[10px] text-rose-600">
+              {fieldError("efficiency", numericEfficiency)}
+            </span>
+          )}
+        </label>
       </div>
 
-      {mode === "monitoramento" && (
-        <label className="mt-3 block text-xs font-semibold text-slate-600">
-          Veículo (opcional)
-          <input
-            className="input mt-1"
-            value={vehicleName}
-            maxLength={100}
-            onChange={(event) => setVehicleName(event.target.value)}
-            placeholder="Ex.: Moto Honda"
-          />
-        </label>
-      )}
+      <label className="mt-3 block text-xs font-semibold text-slate-600">
+        Veículo (opcional)
+        <input
+          className="input mt-1"
+          value={vehicleName}
+          maxLength={100}
+          onChange={(event) => setVehicleName(event.target.value)}
+          placeholder="Ex.: Moto Honda"
+        />
+      </label>
 
       <button
         type="button"
@@ -390,7 +336,7 @@ export default function FuelCalculator({
               value={`${decimal(results.purchasedLiters)} L`}
             />
             <ResultCard
-              label="Consumo médio"
+              label="Consumo informado"
               value={`${decimal(results.efficiency)} km/L`}
               emphasis
             />
@@ -398,33 +344,21 @@ export default function FuelCalculator({
               label="Custo por km"
               value={`${moneyFormatter.format(results.costPerKilometer)}/km`}
             />
-            {mode === "consumo" ? (
-              <ResultCard
-                label="Custo para 100 km"
-                value={moneyFormatter.format(results.costPerHundredKilometers)}
-              />
-            ) : (
-              <ResultCard
-                label={`Gasto em ${kilometers(numericDistance)} km`}
-                value={moneyFormatter.format(results.consumedCost)}
-                detail={`${decimal(results.consumedLiters)} L consumidos`}
-              />
-            )}
-
-            {mode === "monitoramento" && (
-              <>
-                <ResultCard
-                  label="Restante no tanque"
-                  value={`${decimal(results.remainingLiters)} L`}
-                  detail={moneyFormatter.format(results.remainingValue)}
-                  emphasis
-                />
-                <ResultCard
-                  label="Autonomia restante"
-                  value={`${kilometers(results.remainingRange)} km`}
-                />
-              </>
-            )}
+            <ResultCard
+              label={`Gasto em ${kilometers(numericDistance)} km`}
+              value={moneyFormatter.format(results.consumedCost)}
+              detail={`${decimal(results.consumedLiters)} L consumidos`}
+            />
+            <ResultCard
+              label="Restante no tanque"
+              value={`${decimal(results.remainingLiters)} L`}
+              detail={moneyFormatter.format(results.remainingValue)}
+              emphasis
+            />
+            <ResultCard
+              label="Autonomia restante"
+              value={`${kilometers(results.remainingRange)} km`}
+            />
           </div>
 
           {exceedsTank && (
@@ -458,19 +392,6 @@ export default function FuelCalculator({
             </div>
           )}
 
-          {mode === "consumo" && onUseEfficiency && (
-            <button
-              type="button"
-              onClick={() => {
-                onUseEfficiency(results.efficiency);
-                setStatus("✅ Consumo aplicado aos cálculos do dia.");
-              }}
-              className="w-full rounded-xl border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-700"
-            >
-              Usar {decimal(results.efficiency)} km/L nos cálculos do dia
-            </button>
-          )}
-
           <button
             type="button"
             onClick={() => void saveCalculation()}
@@ -494,8 +415,7 @@ export default function FuelCalculator({
               <div key={record.id} className="flex items-center justify-between px-3 py-2">
                 <div>
                   <p className="text-xs font-semibold text-slate-700">
-                    {record.veiculo_nome ||
-                      (record.modo === "consumo" ? "Consumo calculado" : "Tanque monitorado")}
+                    {record.veiculo_nome || "Tanque monitorado"}
                   </p>
                   <p className="text-[10px] text-slate-500">
                     {new Date(record.data_registro).toLocaleDateString("pt-BR")} ·{" "}
