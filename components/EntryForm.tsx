@@ -78,8 +78,6 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
   const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
   try {
    window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft));
-   // Mantém o resultado visível no resumo e limpa somente os controles do novo lançamento.
-   setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,revenuePerKm,costPerKm:totalCostPerKm,revenueBase:percentageBaseValue});
    resetForm();
    setStatus("✅ Dia salvo. Formulário limpo para um novo lançamento.");
   } catch { setStatus("❌ Não foi possível salvar o dia neste aparelho."); }
