@@ -27,6 +27,9 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  function resetForm(){
   setMode(null); setNetApp(""); setNetCustomApp(""); setNetFare(0);
   setRevenueItems([]); setNetRevenueItems([]);
+  setGas(0); setAlcohol(0); setGasPrice(0); setAlcoholPrice(0); setFuelPurchases([]);
+  setKmInitial(0); setKmFinal(0); setFuelConsumption(0);
+  setHoursSegments([{start:"",end:""}]); setMaintenanceItems([]); setExtras([]);
  }
 
  function restoreDraft(selectedDate:string){
@@ -48,12 +51,6 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  // O carregamento inicial acontece somente quando a data recebida do servidor muda.
  // eslint-disable-next-line react-hooks/exhaustive-deps
  },[initialDate]);
-
- useEffect(()=>{
-  const resetRevenueOnReturn=()=>resetForm();
-  window.addEventListener("focus",resetRevenueOnReturn);
-  return ()=>window.removeEventListener("focus",resetRevenueOnReturn);
- },[]);
 
  useEffect(()=>{
   if(!draftReady)return;
@@ -81,7 +78,10 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
   const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
   try {
    window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft));
-   setStatus("✅ Dia salvo e permanece aberto para novos lançamentos.");
+   // Mantém o resultado visível no resumo e limpa somente os controles do novo lançamento.
+   setSavedCard({profit:dayProfit,km:kmDriven,hours,profitPerKm,revenuePerKm,costPerKm:totalCostPerKm,revenueBase:percentageBaseValue});
+   resetForm();
+   setStatus("✅ Dia salvo. Formulário limpo para um novo lançamento.");
   } catch { setStatus("❌ Não foi possível salvar o dia neste aparelho."); }
  }
 
