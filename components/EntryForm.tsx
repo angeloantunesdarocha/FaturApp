@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { formatBRL, toNumber, todayISO } from "@/lib/utils";
 import { createRevenueItem, REVENUE_APPS, summarizeRevenue, type RevenueAppName, type RevenueItem } from "@/lib/revenue";
 import ExtraExpenses from "./ExtraExpenses";
+import FuelCalculator from "./FuelCalculator";
 import MaintenanceExpenses, { type MaintenanceItem } from "./MaintenanceExpenses";
 import CardDeLucro from "./CardDeLucro";
 import { saveEntry } from "@/app/actions";
@@ -101,7 +102,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
  const fuelConsumedLiters=kmDriven>0&&effectiveFuelConsumption>0?kmDriven/effectiveFuelConsumption:0;
  const fuelConsumedCost=fuelConsumedLiters*fuelPrice;
  const fuelRemainingLiters=Math.max(0,totalPurchasedLiters-fuelConsumedLiters);
- const fuelRemainingValue=fuelRemainingLiters*fuelPrice;
+ const fuelRemainingValue=Math.max(0,totalFuelPurchase-fuelConsumedCost);
  const fuelCostForProfit=informedFuelConsumption>0&&totalPurchasedLiters>0?fuelConsumedCost:totalFuelPurchase;
  const totalExpenses=fuelCostForProfit+maintenanceTotal+extrasSum;
  const dayProfit=fareNet-totalExpenses;
@@ -169,6 +170,7 @@ export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:
     </div></details>)}
     <button type="button" onClick={addFuelPurchase} className="btn btn-secondary w-full">+ Adicionar novo abastecimento</button>
     {fuelPurchases.length>0&&<div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-emerald-700">Total abastecido no dia</span><strong className="text-sm text-emerald-800">{formatBRL(totalFuelPurchase)}</strong></div><p className="mt-1 text-xs text-emerald-700">{formatLiters(totalPurchasedLiters)} L · preço médio {formatBRL(weightedFuelPrice)}/L</p></div>}
+    <details className="rounded-xl border border-emerald-200 bg-emerald-50/50"><summary className="cursor-pointer px-3 py-2 text-xs font-bold text-emerald-800">Calculadora de combustível e histórico</summary><FuelCalculator initialAmount={totalFuelPurchase} initialPricePerLiter={weightedFuelPrice} initialKilometers={kmDriven} initialEfficiency={informedFuelConsumption} onUseEfficiency={updateVehicleConsumption}/></details>
    </div></details>
   <details className="group rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-bold text-slate-800">🔧 Manutenção <span className="ml-1 text-xs font-normal text-slate-500">{maintenanceItems.length} lanç.</span></span><span className="flex items-center"><strong className="text-sm text-slate-700">{formatBRL(maintenanceTotal)}</strong><DisclosureChevron/></span></summary><div className="border-t border-slate-100 p-3"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems}/></div></details>
   <details className="group rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-bold text-slate-800">🧾 Gastos extras <span className="ml-1 text-xs font-normal text-slate-500">{extras.length} lanç.</span></span><span className="flex items-center"><strong className="text-sm text-slate-700">{formatBRL(extrasSum)}</strong><DisclosureChevron/></span></summary><div className="border-t border-slate-100 p-3"><ExtraExpenses extras={extras} onChange={setExtras}/></div></details>
