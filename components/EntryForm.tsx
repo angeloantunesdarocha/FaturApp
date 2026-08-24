@@ -16,9 +16,11 @@ type TimeSegment = { start:string; end:string };
 type FuelPurchase = { id:string; type:"gasoline"|"alcohol"; amount:number; pricePerLiter:number };
 type DraftState = { date:string; mode:Mode|null; netFare:number; netApp:RevenueAppName|""; netCustomApp:string; revenueItems:RevenueItem[]; netRevenueItems?:RevenueItem[]; gas:number; alcohol:number; gasPrice:number; alcoholPrice:number; fuelPurchases?:FuelPurchase[]; kmInitial:number; kmFinal:number; fuelConsumption:number; hoursSegments:TimeSegment[]; maintenanceItems:MaintenanceItem[]; extras:{name:string;value:number}[] };
 type LaunchRecord = { id:string; number:number; date:string; createdAt:string; draft:DraftState };
+type DayReopenRecord = { at:string };
 
 const LAUNCHES_KEY = "faturapp:lancamentos-dia:";
 const CLOSED_DAY_KEY = "faturapp:dia-fechado:";
+const REOPEN_HISTORY_KEY = "faturapp:dia-reaberto:";
 const NEXT_LAUNCH_NUMBER_KEY = "faturapp:proximo-numero-lancamento";
 
 function draftHasData(draft:DraftState){return draft.netFare>0||draft.netCustomApp.trim()!==""||draft.revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||(draft.netRevenueItems??[]).some(item=>item.bruto>0)||draft.gas>0||draft.alcohol>0||draft.gasPrice>0||draft.alcoholPrice>0||(draft.fuelPurchases??[]).length>0||draft.kmInitial>0||draft.kmFinal>0||draft.fuelConsumption>0||draft.hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||draft.maintenanceItems.length>0||draft.extras.length>0;}
@@ -159,6 +161,28 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
 
 
 
+ function reopenDay(){
+  if(!dayClosed)return;
+  if(!window.confirm("Deseja reabrir este dia para adicionar ou editar lançamentos?"))return;
+  try {
+   const key=REOPEN_HISTORY_KEY+date;
+   let history:DayReopenRecord[]=[];
+   const raw=window.localStorage.getItem(key);
+   if(raw){
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))history=parsed as DayReopenRecord[];
+   }
+   history.push({at:new Date().toISOString()});
+   window.localStorage.setItem(key,JSON.stringify(history));
+  } catch { /* o histórico é opcional; a reabertura ainda pode prosseguir */ }
+  try {
+   window.localStorage.removeItem(CLOSED_DAY_KEY+date);
+   setDayClosed(false);
+   setEditingLaunchId(null);
+   setStatus("Dia reaberto. Você pode adicionar ou editar lançamentos.");
+  } catch { setStatus("❌ Não foi possível reabrir este dia neste aparelho."); }
+ }
+
  const revenueSummary=useMemo(()=>summarizeRevenue(revenueItems),[revenueItems]);
  const additionalNetRevenue=netRevenueItems.reduce((total,item)=>total+toNumber(item.bruto),0);
  const fareNet=revenueSummary.liquido+netFare+additionalNetRevenue;
@@ -294,8 +318,9 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
    </div></details>
   <details className="group rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-bold text-slate-800">🔧 Manutenção <span className="ml-1 text-xs font-normal text-slate-500">{maintenanceItems.length} lanç.</span></span><span className="flex items-center"><strong className="text-sm text-slate-700">{formatBRL(maintenanceTotal)}</strong><DisclosureChevron/></span></summary><div className="border-t border-slate-100 p-3"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems}/></div></details>
   <details className="group rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-bold text-slate-800">🧾 Gastos extras <span className="ml-1 text-xs font-normal text-slate-500">{extras.length} lanç.</span></span><span className="flex items-center"><strong className="text-sm text-slate-700">{formatBRL(extrasSum)}</strong><DisclosureChevron/></span></summary><div className="border-t border-slate-100 p-3"><ExtraExpenses extras={extras} onChange={setExtras}/></div></details>
-  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" onClick={saveDraft} className="btn btn-secondary w-full">Salvar Lançamento</button><button type="submit" className="btn btn-primary w-full">Registrar e fechar dia</button></div>{(status||inheritedConsumptionNotice)&&<p className={"text-sm text-center " + (editingLaunchId||(!status&&inheritedConsumptionNotice)?"font-bold text-amber-700":"text-slate-600")}>{status||inheritedConsumptionNotice}</p>}
+  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" onClick={saveDraft} className="btn btn-secondary w-full">Salvar Lançamento</button><button type="submit" className="btn btn-primary w-full">Registrar e fechar dia</button></div>{(status||inheritedConsumptionNotice)&&<p className={"text-sm text-center " + (status.startsWith("Dia reaberto.")?"rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-bold text-emerald-700":editingLaunchId||(!status&&inheritedConsumptionNotice)?"font-bold text-amber-700":"text-slate-600")}>{status||inheritedConsumptionNotice}</p>}
  </fieldset></form>
+ {dayClosed&&<div className="order-2 -mt-2 flex justify-center"><button type="button" onClick={reopenDay} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-extrabold text-amber-800 transition hover:bg-amber-100">Reabrir dia</button></div>}
  <section className="order-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Lançamentos do dia aberto">
   <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-slate-800">Lançamentos salvos</p><p className="text-xs text-slate-500">{dayClosed?"Dia fechado · somente leitura":"Use o botão editar para alterar um registro"}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{savedLaunches.length}</span></div>
   {savedLaunches.length===0?<p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-500">Nenhum lançamento salvo ainda.</p>:<div className="mt-3 space-y-2">{savedLaunches.slice().sort((a,b)=>a.number-b.number).map(record=>{const chainIndex=savedLaunches.findIndex(item=>item.id===record.id),summary=draftFinancialSummary(record.draft,displaySavedChainedMetrics[chainIndex]),created=new Date(record.createdAt),isEditing=editingLaunchId===record.id;return <div key={record.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><div className="flex items-center justify-between gap-2"><strong className="text-sm text-slate-800">#{String(record.number).padStart(3,"0")}</strong><div className="flex items-center gap-2"><span className="text-xs font-medium text-slate-500">{created.toLocaleDateString("pt-BR")} · {created.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span><button type="button" disabled={dayClosed} onClick={()=>isEditing?saveDraft():loadLaunchIntoForm(record)} className="rounded-md border border-emerald-200 bg-white px-2 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50">{isEditing?"salvar":"editar"}</button></div></div><p className="mt-1 text-xs text-slate-600">Lucro líquido <span className="inline-flex items-center gap-1 font-bold"><span aria-hidden="true" className={"h-1.5 w-1.5 rounded-full " + (summary.profit<0?"bg-red-600":"bg-emerald-600")}></span><span className={summary.profit<0?"text-red-600":"text-emerald-600"}>{formatBRL(summary.profit)}</span></span> · Combustível gasto {summary.fuelConsumedLiters>0?formatLiters(summary.fuelConsumedLiters)+" L ("+formatBRL(summary.fuelConsumedCost)+")":"—"} · Restante no tanque {summary.remainingLiters>0||summary.remainingValue>0?formatLiters(summary.remainingLiters)+" L ("+formatBRL(summary.remainingValue)+")":"—"}</p></div>})}</div>}
