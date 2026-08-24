@@ -9,7 +9,7 @@ import CardDeLucro from "./CardDeLucro";
 import { saveEntry } from "@/app/actions";
 
 type Mode = "withFee" | "net";
-type Props = { initialDate?: string; initialMonthProfit?: number };
+type Props = { initialDate?: string; initialMonthProfit?: number; userId: string };
 type SavedCard = { profit:number; km:number; hours:number; profitPerKm:number|null; revenuePerKm:number|null; costPerKm:number|null; revenueBase:number };
 type TimeSegment = { start:string; end:string };
 type FuelPurchase = { id:string; type:"gasoline"|"alcohol"; amount:number; pricePerLiter:number };
@@ -17,18 +17,16 @@ type DraftState = { date:string; mode:Mode|null; netFare:number; netApp:RevenueA
 type LaunchRecord = { id:string; number:number; date:string; createdAt:string; draft:DraftState };
 type DayReopenRecord = { at:string };
 
-const LAUNCHES_KEY = "faturapp:lancamentos-dia:";
-const CLOSED_DAY_KEY = "faturapp:dia-fechado:";
-const REOPEN_HISTORY_KEY = "faturapp:dia-reaberto:";
-const NEXT_LAUNCH_NUMBER_KEY = "faturapp:proximo-numero-lancamento";
+function scopedStorageKey(userId:string, key:string){return `faturapp:user:${userId}:${key}`;}
 
 function draftHasData(draft:DraftState){return draft.netFare>0||draft.netCustomApp.trim()!==""||draft.revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||(draft.netRevenueItems??[]).some(item=>item.bruto>0)||draft.gas>0||draft.alcohol>0||draft.gasPrice>0||draft.alcoholPrice>0||(draft.fuelPurchases??[]).length>0||draft.kmInitial>0||draft.kmFinal>0||draft.fuelConsumption>0||draft.hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||draft.maintenanceItems.length>0||draft.extras.length>0;}
+function draftDistance(draft:DraftState){return Math.max(0,draft.kmFinal-draft.kmInitial);}
 function mergeDrafts(date:string,drafts:DraftState[]):DraftState{
  const withFee=drafts.flatMap(d=>d.revenueItems.filter(item=>item.bruto>0));
  const net=drafts.flatMap(d=>[...(d.netRevenueItems??[]).filter(item=>item.bruto>0),...(d.mode==="net"&&d.netFare>0?[{...createRevenueItem(),app:d.netApp as RevenueAppName,nomeAppPersonalizado:d.netApp==="Outro"?d.netCustomApp.trim():"",bruto:d.netFare,taxa:0}]:[])]);
  const sum=(pick:(draft:DraftState)=>number)=>drafts.reduce((total,draft)=>total+pick(draft),0);
  const gas=sum(draft=>draft.gas),alcohol=sum(draft=>draft.alcohol),gasPriceBase=gas>0?sum(draft=>draft.gasPrice*draft.gas)/gas:0,alcoholPriceBase=alcohol>0?sum(draft=>draft.alcoholPrice*draft.alcohol)/alcohol:0;
- const totalKm=drafts.reduce((total,draft)=>total+Math.max(0,draft.kmFinal-draft.kmInitial),0),firstKmInitial=drafts.find(draft=>draft.kmInitial>0)?.kmInitial??0;
+ const totalKm=drafts.reduce((total,draft)=>total+draftDistance(draft),0),firstKmInitial=drafts.find(draft=>draft.kmInitial>0)?.kmInitial??0;
  return {date,mode:withFee.length>0?"withFee":net.length>0?"net":null,netFare:0,netApp:"",netCustomApp:"",revenueItems:withFee,netRevenueItems:net,gas,alcohol,gasPrice:gasPriceBase,alcoholPrice:alcoholPriceBase,fuelPurchases:drafts.flatMap(d=>d.fuelPurchases??[]),kmInitial:firstKmInitial,kmFinal:firstKmInitial+totalKm,fuelConsumption:[...drafts].reverse().find(d=>d.fuelConsumption>0)?.fuelConsumption??0,hoursSegments:drafts.flatMap(d=>d.hoursSegments.filter(segment=>segment.start&&segment.end)),maintenanceItems:drafts.flatMap(d=>d.maintenanceItems),extras:drafts.flatMap(d=>d.extras)};
 }
 function draftMetrics(draft:DraftState){
@@ -43,11 +41,12 @@ function draftMetrics(draft:DraftState){
 type DraftMetric = ReturnType<typeof draftMetrics>;
 function aggregateDraftMetrics(date:string,drafts:DraftState[]):DraftMetric{
  const metrics=draftMetrics(mergeDrafts(date,drafts));
- const km=drafts.reduce((total,draft)=>total+Math.max(0,draft.kmFinal-draft.kmInitial),0);
+ const km=drafts.reduce((total,draft)=>total+draftDistance(draft),0);
+ const totalLiters=drafts.reduce((total,draft)=>total+draftMetrics(draft).totalLiters,0);
  const manualConsumption=[...drafts].reverse().find(draft=>draft.fuelConsumption>0)?.fuelConsumption??0;
- const consumption=manualConsumption>0?manualConsumption:km>0&&metrics.totalLiters>0?km/metrics.totalLiters:0;
+ const consumption=manualConsumption>0?manualConsumption:km>0&&totalLiters>0?km/totalLiters:0;
  const consumed=km>0&&consumption>0?km/consumption:0;
- return {...metrics,km,kmFinal:metrics.kmInitial+km,consumption,consumptionMode:manualConsumption>0?"manual":"automatic",consumed,consumedCost:consumed*metrics.weightedPrice,costPerKm:km>0?metrics.totalFuel/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null};
+ return {...metrics,totalLiters,km,kmFinal:metrics.kmInitial+km,consumption,consumptionMode:manualConsumption>0?"manual":"automatic",consumed,consumedCost:consumed*metrics.weightedPrice,costPerKm:km>0?metrics.totalFuel/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null};
 }
 function profitFromMetrics(metrics:DraftMetric){return metrics.profit;}
 function draftFinancialSummary(draft:DraftState,providedMetrics?:DraftMetric){
@@ -60,8 +59,9 @@ function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} /
 function formatLiters(v:number){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3});}
 function formatPercent(v:number){return `${v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}%`;}
 function DisclosureChevron(){return <span aria-hidden="true" className="ml-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 shadow-sm transition-transform duration-200 ease-out group-open:rotate-180"><svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 8 4 4 4-4"/></svg></span>}
-export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit=0}:Props){
+export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit=0,userId}:Props){
  const [mode,setMode]=useState<Mode|null>(null),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[netApp,setNetApp]=useState<RevenueAppName|"">(""),[netCustomApp,setNetCustomApp]=useState(""),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([]),[netRevenueItems,setNetRevenueItems]=useState<RevenueItem[]>([]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[fuelPurchases,setFuelPurchases]=useState<FuelPurchase[]>([]),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[hoursSegments,setHoursSegments]=useState<TimeSegment[]>([{start:"",end:""}]),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null),[savedLaunches,setSavedLaunches]=useState<LaunchRecord[]>([]),[editingLaunchId,setEditingLaunchId]=useState<string|null>(null),[dayClosed,setDayClosed]=useState(false),[draftReady,setDraftReady]=useState(false);
+ const launchesKey=(day:string)=>scopedStorageKey(userId,`lancamentos-dia:${day}`),openDayKey=(day:string)=>scopedStorageKey(userId,`dia-aberto:${day}`),closedDayKey=(day:string)=>scopedStorageKey(userId,`dia-fechado:${day}`),reopenHistoryKey=(day:string)=>scopedStorageKey(userId,`dia-reaberto:${day}`),nextLaunchNumberKey=scopedStorageKey(userId,"proximo-numero-lancamento");
 
  function resetForm(){
   setMode(null); setNetApp(""); setNetCustomApp(""); setNetFare(0);
@@ -72,9 +72,9 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  }
 
  function currentDraft():DraftState{return {date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};}
- function persistLaunches(next:LaunchRecord[]){window.localStorage.setItem(LAUNCHES_KEY+date,JSON.stringify(next));setSavedLaunches(next);}
+ function persistLaunches(next:LaunchRecord[]){window.localStorage.setItem(launchesKey(date),JSON.stringify(next));setSavedLaunches(next);}
  function loadLaunchIntoForm(record:LaunchRecord){
-  try { window.localStorage.removeItem("faturapp:dia-aberto:"+date); } catch { /* descarta alterações não salvas */ }
+  try { window.localStorage.removeItem(openDayKey(date)); } catch { /* descarta alterações não salvas */ }
   const draft=record.draft;
   setSavedCard(null);
   setEditingLaunchId(record.id);setMode(draft.mode);setNetFare(draft.netFare);setNetApp(draft.netApp);setNetCustomApp(draft.netCustomApp);setRevenueItems(draft.revenueItems??[]);setNetRevenueItems(draft.netRevenueItems??[]);setGas(draft.gas||0);setAlcohol(draft.alcohol||0);setGasPrice(draft.gasPrice||0);setAlcoholPrice(draft.alcoholPrice||0);setFuelPurchases(draft.fuelPurchases??[]);setKmInitial(draft.kmInitial||0);setKmFinal(draft.kmFinal||0);setFuelConsumption(draft.fuelConsumption||0);setHoursSegments(draft.hoursSegments?.length?draft.hoursSegments:[{start:"",end:""}]);setMaintenanceItems(draft.maintenanceItems??[]);setExtras(draft.extras??[]);setStatus("Rascunho aberto para editar. Depois de editar, salve o lançamento.");
@@ -85,11 +85,11 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
   let launches:LaunchRecord[]=[];
   let closed=false;
   try {
-   const raw=window.localStorage.getItem("faturapp:dia-aberto:"+selectedDate);
+   const raw=window.localStorage.getItem(openDayKey(selectedDate));
    if(raw)draft=JSON.parse(raw) as DraftState;
-   const rawLaunches=window.localStorage.getItem(LAUNCHES_KEY+selectedDate);
+   const rawLaunches=window.localStorage.getItem(launchesKey(selectedDate));
    if(rawLaunches)launches=JSON.parse(rawLaunches) as LaunchRecord[];
-   closed=window.localStorage.getItem(CLOSED_DAY_KEY+selectedDate)==="1";
+   closed=window.localStorage.getItem(closedDayKey(selectedDate))==="1";
   } catch { /* rascunho inválido: inicia um dia limpo */ }
   const selectedLaunches=launches.filter(record=>record.date===selectedDate);
   setDate(selectedDate); setSavedLaunches(selectedLaunches); setDayClosed(closed); setEditingLaunchId(null); resetForm(); setMode(draft.mode??null); setNetFare(draft.netFare||0); setNetApp(draft.netApp||""); setNetCustomApp(draft.netCustomApp||""); setRevenueItems(draft.revenueItems||[]); setNetRevenueItems(draft.netRevenueItems||[]); setGas(draft.gas||0); setAlcohol(draft.alcohol||0); setGasPrice(draft.gasPrice||0); setAlcoholPrice(draft.alcoholPrice||0); setFuelPurchases(draft.fuelPurchases||[]); setKmInitial(draft.kmInitial||0); setKmFinal(draft.kmFinal||0); setFuelConsumption(draft.fuelConsumption||0); setHoursSegments(draft.hoursSegments?.length?draft.hoursSegments:[{start:"",end:""}]); setMaintenanceItems(draft.maintenanceItems||[]); setExtras(draft.extras||[]); setSavedCard(null);
@@ -108,7 +108,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
   const hasDraftData=netFare>0||netCustomApp.trim()!==""||revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||netRevenueItems.length>0||gas>0||alcohol>0||gasPrice>0||alcoholPrice>0||fuelPurchases.length>0||kmInitial>0||kmFinal>0||fuelConsumption>0||hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||maintenanceItems.length>0||extras.length>0;
   if(!hasDraftData)return;
   const draft:DraftState={date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras};
-  try { window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft)); }
+  try { window.localStorage.setItem(openDayKey(date),JSON.stringify(draft)); }
   catch { setStatus("Não foi possível salvar o rascunho neste aparelho."); }
  },[draftReady,dayClosed,date,mode,netFare,netApp,netCustomApp,revenueItems,netRevenueItems,gas,alcohol,gasPrice,alcoholPrice,fuelPurchases,kmInitial,kmFinal,fuelConsumption,hoursSegments,maintenanceItems,extras]);
 
@@ -128,13 +128,13 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
   const draft=currentDraft();
   if(!draftHasData(draft)){setStatus("Nenhum dado preenchido para salvar.");return;}
   try {
-   window.localStorage.setItem("faturapp:dia-aberto:"+date,JSON.stringify(draft));
-   const nextNumber=Number(window.localStorage.getItem(NEXT_LAUNCH_NUMBER_KEY)||"1");
+   window.localStorage.setItem(openDayKey(date),JSON.stringify(draft));
+   const nextNumber=Number(window.localStorage.getItem(nextLaunchNumberKey)||"1");
    const record:LaunchRecord={id:editingLaunchId??`launch-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,number:editingLaunchId?(savedLaunches.find(item=>item.id===editingLaunchId)?.number??nextNumber):nextNumber,date,createdAt:new Date().toISOString(),draft};
-   if(!editingLaunchId)window.localStorage.setItem(NEXT_LAUNCH_NUMBER_KEY,String(nextNumber+1));
+   if(!editingLaunchId)window.localStorage.setItem(nextLaunchNumberKey,String(nextNumber+1));
    const next=editingLaunchId?savedLaunches.map(item=>item.id===editingLaunchId?record:item):[...savedLaunches,record];
    persistLaunches(next);
-   window.localStorage.removeItem("faturapp:dia-aberto:"+date);
+   window.localStorage.removeItem(openDayKey(date));
    setEditingLaunchId(null);
    resetForm();
    setStatus(editingLaunchId?`✅ Registro #${String(record.number).padStart(3,"0")} atualizado.`:"✅ Dia salvo. Registro criado para um novo lançamento.");
@@ -145,7 +145,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
   if(!dayClosed)return;
   if(!window.confirm("Deseja reabrir este dia para adicionar ou editar lançamentos?"))return;
   try {
-   const key=REOPEN_HISTORY_KEY+date;
+   const key=reopenHistoryKey(date);
    let history:DayReopenRecord[]=[];
    const raw=window.localStorage.getItem(key);
    if(raw){const parsed=JSON.parse(raw);if(Array.isArray(parsed))history=parsed as DayReopenRecord[];}
@@ -153,7 +153,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
    window.localStorage.setItem(key,JSON.stringify(history));
   } catch { /* o histórico é opcional; a reabertura ainda pode prosseguir */ }
   try {
-   window.localStorage.removeItem(CLOSED_DAY_KEY+date);
+   window.localStorage.removeItem(closedDayKey(date));
    setDayClosed(false);setEditingLaunchId(null);setStatus("Dia reaberto. Você pode adicionar ou editar lançamentos.");
   } catch { setStatus("❌ Não foi possível reabrir este dia neste aparelho."); }
  }
@@ -235,7 +235,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
   setStatus("Salvando...");
   const payload={date,gross_amount:consolidated.revenue.bruto,fee_percent:consolidated.revenue.taxaPercentual,net_fare:consolidated.revenue.liquido,revenue_details:consolidated.revenueItems,gas_expense:consolidated.gas,alcohol_expense:consolidated.alcohol,gasoline_price_per_liter:consolidated.gasPrice,alcohol_price_per_liter:consolidated.alcoholPrice,gasoline_liters:consolidated.gasLiters,alcohol_liters:consolidated.alcoholLiters,km_initial:consolidated.kmInitial,km_final:consolidated.kmFinal,km_driven:consolidated.km,hours_worked:consolidated.hours,fuel_consumption_km_per_liter:consolidated.consumption,fuel_consumed_liters:consolidated.consumed,fuel_consumed_cost:consolidated.consumedCost,maintenance_expense:consolidated.maintenanceTotal,maintenance_details:consolidated.maintenance,extra_expenses:consolidated.extras};
   const res=await saveEntry(payload);
-  if(res.success){window.localStorage.removeItem("faturapp:dia-aberto:"+date);window.localStorage.setItem(CLOSED_DAY_KEY+date,"1");setDayClosed(true);setEditingLaunchId(null);setStatus("✅ Dia registrado e fechado com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);const consolidatedProfit=profitFromMetrics(consolidated);setSavedCard({profit:consolidatedProfit,km:consolidated.km,hours:consolidated.hours,profitPerKm:consolidated.profitPerKm,revenuePerKm:consolidated.grossPerKm,costPerKm:consolidated.costPerKm,revenueBase:consolidated.revenue.bruto});resetForm();}else setStatus(`❌ Erro: ${res.error}`);
+  if(res.success){window.localStorage.removeItem(openDayKey(date));window.localStorage.setItem(closedDayKey(date),"1");setDayClosed(true);setEditingLaunchId(null);setStatus("✅ Dia registrado e fechado com sucesso!");if(typeof res.monthProfit==="number")setMonthProfit(res.monthProfit);const consolidatedProfit=profitFromMetrics(consolidated);setSavedCard({profit:consolidatedProfit,km:consolidated.km,hours:consolidated.hours,profitPerKm:consolidated.profitPerKm,revenuePerKm:consolidated.grossPerKm,costPerKm:consolidated.costPerKm,revenueBase:consolidated.revenue.bruto});resetForm();}else setStatus(`❌ Erro: ${res.error}`);
  }
 
  return <div className="flex flex-col gap-4"><form onSubmit={handleSubmit} className="order-2 space-y-3">
