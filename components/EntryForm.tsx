@@ -166,7 +166,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  const feeAmount=revenueSummary.taxaValor;
  const extrasSum=extras.reduce((a,e)=>a+toNumber(e.value),0);
  const maintenanceTotal=maintenanceItems.reduce((a,m)=>a+toNumber(m.value),0);
- const calculationLaunches=useMemo(()=>{if(!editingLaunchId)return savedLaunches;const index=savedLaunches.findIndex(record=>record.id===editingLaunchId);return index<0?savedLaunches:savedLaunches.slice(0,index);},[savedLaunches,editingLaunchId]);
+ const calculationLaunches=useMemo(()=>editingLaunchId?savedLaunches.filter(record=>record.id!==editingLaunchId):savedLaunches,[savedLaunches,editingLaunchId]);
  const savedDrafts=useMemo(()=>calculationLaunches.map(record=>record.draft).filter(draftHasData),[calculationLaunches]);
  const savedMetrics=useMemo(()=>savedDrafts.map(draft=>draftMetrics(draft)),[savedDrafts]);
  const displaySavedMetrics=useMemo(()=>savedLaunches.map(record=>draftMetrics(record.draft)),[savedLaunches]);
