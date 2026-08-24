@@ -14,8 +14,12 @@ export function toNumber(v: string | number | null | undefined): number {
 
 const FATURAPP_TIME_ZONE = "America/Sao_Paulo";
 
-export function todayISO(): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
+/**
+ * Retorna a data atual no fuso oficial do FaturApp.
+ * O formato ISO é mantido para uso seguro em inputs date e filtros.
+ */
+export function hojeBrasilia(): string {
+  const parts = new Intl.DateTimeFormat("pt-BR", {
     timeZone: FATURAPP_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
@@ -23,6 +27,11 @@ export function todayISO(): string {
   }).formatToParts(new Date());
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
   return `${values.year}-${values.month}-${values.day}`;
+}
+
+/** Compatibilidade com chamadas existentes; use hojeBrasilia() em código novo. */
+export function todayISO(): string {
+  return hojeBrasilia();
 }
 
 export function formatDateBR(iso: string): string {
