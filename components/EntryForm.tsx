@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { formatBRL, toNumber, todayISO } from "@/lib/utils";
+import { formatBRL, hojeBrasilia, toNumber } from "@/lib/utils";
 import { createRevenueItem, REVENUE_APPS, summarizeRevenue, type RevenueAppName, type RevenueItem } from "@/lib/revenue";
 import ExtraExpenses from "./ExtraExpenses";
 import FuelCalculator from "./FuelCalculator";
@@ -68,7 +68,7 @@ function formatCostPerKm(v:number|null){return v===null?"—":`${formatBRL(v)} /
 function formatLiters(v:number){return v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:3});}
 function formatPercent(v:number){return `${v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}%`;}
 function DisclosureChevron(){return <span aria-hidden="true" className="ml-2 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 shadow-sm transition-transform duration-200 ease-out group-open:rotate-180"><svg viewBox="0 0 20 20" fill="none" className="h-4 w-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 8 4 4 4-4"/></svg></span>}
-export default function EntryForm({initialDate=todayISO(),initialMonthProfit=0}:Props){
+export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit=0}:Props){
  const [mode,setMode]=useState<Mode|null>(null),[date,setDate]=useState(initialDate),[netFare,setNetFare]=useState(0),[netApp,setNetApp]=useState<RevenueAppName|"">(""),[netCustomApp,setNetCustomApp]=useState(""),[revenueItems,setRevenueItems]=useState<RevenueItem[]>([]),[netRevenueItems,setNetRevenueItems]=useState<RevenueItem[]>([]),[gas,setGas]=useState(0),[alcohol,setAlcohol]=useState(0),[gasPrice,setGasPrice]=useState(0),[alcoholPrice,setAlcoholPrice]=useState(0),[fuelPurchases,setFuelPurchases]=useState<FuelPurchase[]>([]),[kmInitial,setKmInitial]=useState(0),[kmFinal,setKmFinal]=useState(0),[fuelConsumption,setFuelConsumption]=useState(0),[vehicleConsumptionReference,setVehicleConsumptionReference]=useState(0),[fuelReference,setFuelReference]=useState<FuelReference>({consumption:0,pricePerLiter:0,remainingLiters:0,remainingValue:0}),[hoursSegments,setHoursSegments]=useState<TimeSegment[]>([{start:"",end:""}]),[maintenanceItems,setMaintenanceItems]=useState<MaintenanceItem[]>([]),[extras,setExtras]=useState<{name:string;value:number}[]>([]),[monthProfit,setMonthProfit]=useState(initialMonthProfit),[status,setStatus]=useState(""),[savedCard,setSavedCard]=useState<SavedCard|null>(null),[savedLaunches,setSavedLaunches]=useState<LaunchRecord[]>([]),[editingLaunchId,setEditingLaunchId]=useState<string|null>(null),[dayClosed,setDayClosed]=useState(false),[draftReady,setDraftReady]=useState(false);
 
  function resetForm(){
