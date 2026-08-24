@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { computeFuelCostPerKm, formatBRL, formatDateBR, todayISO, type DailyEntry } from "@/lib/utils";
+import { computeFuelCostPerKm, formatBRL, formatDateBR, hojeBrasilia, type DailyEntry } from "@/lib/utils";
 
 type Props = { entries: DailyEntry[]; initialFrom: string; initialTo: string };
 
@@ -53,7 +53,7 @@ export default function FuelMetricsReport({ entries, initialFrom, initialTo }: P
   }, { km: 0, gas: 0, alcohol: 0, total: 0 }), [dailyRows]);
 
   const monthToDate = useMemo(() => {
-    const today = todayISO();
+    const today = hojeBrasilia();
     const [year, month] = today.split("-");
     const monthRows = entries.filter((entry) => entry.date.startsWith(`${year}-${month}-`) && entry.date <= today);
     return monthRows.reduce((total, entry) => total + Math.max(0, Number(entry.km_driven) || 0), 0);
