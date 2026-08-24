@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClientServer } from "@/lib/supabase";
 import { getCurrentUser } from "@/lib/auth";
+import { hojeBrasilia } from "@/lib/utils";
 
 function sessionToken() {
   return cookies().get("faturapp_session")?.value ?? null;
@@ -20,10 +21,11 @@ async function requireAdmin() {
 
 export async function getAdminDashboard(from?: string, to?: string) {
   const token = await requireAdmin();
+  const today = hojeBrasilia();
   const { data, error } = await createClientServer().rpc("app_admin_dashboard", {
     p_token: token,
-    p_from: from || null,
-    p_to: to || null,
+    p_from: from || today,
+    p_to: to || today,
   });
   if (error) throw new Error("Não foi possível carregar o painel administrativo.");
   return data;
