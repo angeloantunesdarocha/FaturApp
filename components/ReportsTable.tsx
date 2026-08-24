@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { computeFeeAmount, computeNetFare, formatBRL, formatDateBR, todayISO, toNumber, type DailyEntry } from "@/lib/utils";
+import { computeFeeAmount, computeNetFare, formatBRL, formatDateBR, hojeBrasilia, toNumber, type DailyEntry } from "@/lib/utils";
 
 type Props = { entries: DailyEntry[]; initialFrom: string; initialTo: string };
 type Categories = { gas: boolean; alcohol: boolean; maintenance: boolean; extras: boolean };
@@ -25,7 +25,7 @@ function DetailList({items,total,emptyLabel}:{items:string[];total:number;emptyL
 
 export default function ReportsTable({entries,initialFrom,initialTo}:Props) {
   const [from,setFrom]=useState(initialFrom); const [to,setTo]=useState(initialTo); const [cats,setCats]=useState<Categories>(DEFAULT_CATEGORIES);
-  const today=todayISO(); const [year,month]=today.split("-"); const monthStart=`${year}-${month}-01`; const weekStart=startOfWeekISO(today);
+  const today=hojeBrasilia(); const [year,month]=today.split("-"); const monthStart=`${year}-${month}-01`; const weekStart=startOfWeekISO(today);
   const filtered=useMemo(()=>entries.filter(e=>e.date>=from&&e.date<=to),[entries,from,to]);
   const monthToDate=useMemo(()=>entries.filter(e=>e.date>=monthStart&&e.date<=today),[entries,monthStart,today]);
 
