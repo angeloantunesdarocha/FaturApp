@@ -23,12 +23,13 @@ const REOPEN_HISTORY_KEY = "faturapp:dia-reaberto:";
 const NEXT_LAUNCH_NUMBER_KEY = "faturapp:proximo-numero-lancamento";
 
 function draftHasData(draft:DraftState){return draft.netFare>0||draft.netCustomApp.trim()!==""||draft.revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||(draft.netRevenueItems??[]).some(item=>item.bruto>0)||draft.gas>0||draft.alcohol>0||draft.gasPrice>0||draft.alcoholPrice>0||(draft.fuelPurchases??[]).length>0||draft.kmInitial>0||draft.kmFinal>0||draft.fuelConsumption>0||draft.hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||draft.maintenanceItems.length>0||draft.extras.length>0;}
+function draftDistance(draft:DraftState){return Math.max(0,draft.kmFinal-draft.kmInitial);}
 function mergeDrafts(date:string,drafts:DraftState[]):DraftState{
  const withFee=drafts.flatMap(d=>d.revenueItems.filter(item=>item.bruto>0));
  const net=drafts.flatMap(d=>[...(d.netRevenueItems??[]).filter(item=>item.bruto>0),...(d.mode==="net"&&d.netFare>0?[{...createRevenueItem(),app:d.netApp as RevenueAppName,nomeAppPersonalizado:d.netApp==="Outro"?d.netCustomApp.trim():"",bruto:d.netFare,taxa:0}]:[])]);
  const sum=(pick:(draft:DraftState)=>number)=>drafts.reduce((total,draft)=>total+pick(draft),0);
  const gas=sum(draft=>draft.gas),alcohol=sum(draft=>draft.alcohol),gasPriceBase=gas>0?sum(draft=>draft.gasPrice*draft.gas)/gas:0,alcoholPriceBase=alcohol>0?sum(draft=>draft.alcoholPrice*draft.alcohol)/alcohol:0;
- const totalKm=drafts.reduce((total,draft)=>total+Math.max(0,draft.kmFinal-draft.kmInitial),0),firstKmInitial=drafts.find(draft=>draft.kmInitial>0)?.kmInitial??0;
+ const totalKm=drafts.reduce((total,draft)=>total+draftDistance(draft),0),firstKmInitial=drafts.find(draft=>draft.kmInitial>0)?.kmInitial??0;
  return {date,mode:withFee.length>0?"withFee":net.length>0?"net":null,netFare:0,netApp:"",netCustomApp:"",revenueItems:withFee,netRevenueItems:net,gas,alcohol,gasPrice:gasPriceBase,alcoholPrice:alcoholPriceBase,fuelPurchases:drafts.flatMap(d=>d.fuelPurchases??[]),kmInitial:firstKmInitial,kmFinal:firstKmInitial+totalKm,fuelConsumption:[...drafts].reverse().find(d=>d.fuelConsumption>0)?.fuelConsumption??0,hoursSegments:drafts.flatMap(d=>d.hoursSegments.filter(segment=>segment.start&&segment.end)),maintenanceItems:drafts.flatMap(d=>d.maintenanceItems),extras:drafts.flatMap(d=>d.extras)};
 }
 function draftMetrics(draft:DraftState){
@@ -43,11 +44,12 @@ function draftMetrics(draft:DraftState){
 type DraftMetric = ReturnType<typeof draftMetrics>;
 function aggregateDraftMetrics(date:string,drafts:DraftState[]):DraftMetric{
  const metrics=draftMetrics(mergeDrafts(date,drafts));
- const km=drafts.reduce((total,draft)=>total+Math.max(0,draft.kmFinal-draft.kmInitial),0);
+ const km=drafts.reduce((total,draft)=>total+draftDistance(draft),0);
+ const totalLiters=drafts.reduce((total,draft)=>total+draftMetrics(draft).totalLiters,0);
  const manualConsumption=[...drafts].reverse().find(draft=>draft.fuelConsumption>0)?.fuelConsumption??0;
- const consumption=manualConsumption>0?manualConsumption:km>0&&metrics.totalLiters>0?km/metrics.totalLiters:0;
+ const consumption=manualConsumption>0?manualConsumption:km>0&&totalLiters>0?km/totalLiters:0;
  const consumed=km>0&&consumption>0?km/consumption:0;
- return {...metrics,km,kmFinal:metrics.kmInitial+km,consumption,consumptionMode:manualConsumption>0?"manual":"automatic",consumed,consumedCost:consumed*metrics.weightedPrice,costPerKm:km>0?metrics.totalFuel/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null};
+ return {...metrics,totalLiters,km,kmFinal:metrics.kmInitial+km,consumption,consumptionMode:manualConsumption>0?"manual":"automatic",consumed,consumedCost:consumed*metrics.weightedPrice,costPerKm:km>0?metrics.totalFuel/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null};
 }
 function profitFromMetrics(metrics:DraftMetric){return metrics.profit;}
 function draftFinancialSummary(draft:DraftState,providedMetrics?:DraftMetric){
