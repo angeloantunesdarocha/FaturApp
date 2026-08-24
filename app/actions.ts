@@ -50,12 +50,12 @@ function normalizeEntry(input: SaveEntryInput) {
  return {
    date:input.date,
    gross_amount:revenue?revenue.bruto:(input.gross_amount==null?null:Math.max(0,Number(input.gross_amount)||0)),
-   fee_percent:revenue?revenue.taxaPercentual:(input.fee_percent==null?null:Math.max(0,Number(input.fee_percent)||0)),
-   net_fare:revenue?revenue.liquido:(input.net_fare==null?null:Number(input.net_fare)||0),
+   fee_percent:revenue?revenue.taxaPercentual:(input.fee_percent==null?null:Math.min(100,Math.max(0,Number(input.fee_percent)||0))),
+   net_fare:revenue?revenue.liquido:(input.net_fare==null?null:Math.max(0,Number(input.net_fare)||0)),
    ...(revenue ? {revenue_details:revenue.normalized} : {}),
    gas_expense:gasCost,alcohol_expense:alcoholCost,gasoline_price_per_liter:gasPrice,alcohol_price_per_liter:alcoholPrice,
    gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,hours_worked:hoursWorked,
-   fuel_consumption_km_per_liter:consumption,fuel_consumed_liters:Math.max(0,Number(input.fuel_consumed_liters)||consumed),fuel_consumed_cost:Math.max(0,Number(input.fuel_consumed_cost)||consumedCost),
+   fuel_consumption_km_per_liter:consumption,fuel_consumed_liters:consumed,fuel_consumed_cost:consumedCost,
    maintenance_expense:maintenanceDetails.reduce((sum,item)=>sum+item.value,0),maintenance_details:maintenanceDetails,
    extra_expenses:(input.extra_expenses??[]).map(item=>({name:String(item.name||"").trim(),value:Math.max(0,Number(item.value)||0)})).filter(item=>item.name||item.value>0)
  };

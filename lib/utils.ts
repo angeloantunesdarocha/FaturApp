@@ -69,7 +69,9 @@ export type DailyEntry = {
   hours_worked: number;
   maintenance_expense: number;
   maintenance_details?: MaintenanceItem[];
+  manutencao_itens?: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
+  extras_itens?: ExtraExpense[];
   fuel_consumption_km_per_liter?: number;
   fuel_consumed_liters?: number;
   fuel_consumed_cost?: number;
@@ -118,14 +120,17 @@ export function computeFuelCostPerKm(expense: number, km: number): number | null
 }
 
 export function computeFuelCostForProfit(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense"> & Partial<Pick<DailyEntry, "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {
-  const measuredCost = Number(entry.fuel_consumed_cost);
-  if (Number.isFinite(measuredCost) && measuredCost > 0) return measuredCost;
+  // O lucro líquido segue a regra financeira do app: combustível comprado
+  // no dia é despesa. O custo exato do combustível consumido para a distância
+  // continua disponível em fuel_consumed_cost como uma métrica operacional.
   return computeFuelCost(entry);
 }
 
-export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses"> & Partial<Pick<DailyEntry, "revenue_details" | "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {
+export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses"> & Partial<Pick<DailyEntry, "revenue_details" | "fuel_consumed_cost" | "fuel_consumption_km_per_liter" | "manutencao_itens" | "extras_itens">>): number {
   const net = computeNetFare(entry);
-  const maintenance = (entry.maintenance_details || []).reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
-  const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
+  const maintenanceItems = entry.maintenance_details?.length ? entry.maintenance_details : (entry.manutencao_itens || []);
+  const extraItems = entry.extra_expenses?.length ? entry.extra_expenses : (entry.extras_itens || []);
+  const maintenance = maintenanceItems.reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
+  const extras = extraItems.reduce((sum, item) => sum + toNumber(item.value), 0);
   return net - computeFuelCostForProfit(entry) - maintenance - extras;
 }
