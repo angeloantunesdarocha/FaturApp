@@ -73,8 +73,6 @@ export type DailyEntry = {
   fuel_consumption_km_per_liter?: number;
   fuel_consumed_liters?: number;
   fuel_consumed_cost?: number;
-  fuel_remaining_liters?: number;
-  fuel_remaining_value?: number;
 };
 
 export function computeFeeAmount(entry: { gross_amount: number | null; fee_percent: number | null }): number {
@@ -131,4 +129,3 @@ export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_p
   const extras = (entry.extra_expenses || []).reduce((sum, item) => sum + toNumber(item.value), 0);
   return net - computeFuelCostForProfit(entry) - maintenance - extras;
 }
-
