@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { computeFeeAmount, computeFuelLiters, computeNetFare, formatBRL, formatDateBR, toNumber, type DailyEntry } from "@/lib/utils";
+import { computeFeeAmount, computeFuelLiters, computeNetFare, formatBRL, formatDateBR, hojeBrasilia, toNumber, type DailyEntry } from "@/lib/utils";
 
 type Props = { entries: DailyEntry[]; initialFrom: string; initialTo: string };
 type CategoryKey = "gas" | "alcohol" | "maintenance" | "extras";
@@ -129,7 +129,7 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   const profitPerHour = totals.hours ? totals.profit / totals.hours : null;
 
   function setQuick(kind: "today" | "week" | "month") {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = hojeBrasilia();
     if (kind === "today") { setFrom(today); setTo(today); }
     if (kind === "week") { setFrom(startOfWeek(today)); setTo(today); }
     if (kind === "month") { setFrom(`${today.slice(0, 7)}-01`); setTo(endOfMonth(today)); }
