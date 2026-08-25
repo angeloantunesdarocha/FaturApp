@@ -21,6 +21,11 @@ function scopedStorageKey(userId:string, key:string){return `faturapp:user:${use
 
 function draftHasData(draft:DraftState){return draft.netFare>0||draft.netCustomApp.trim()!==""||draft.revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||(draft.netRevenueItems??[]).some(item=>item.bruto>0)||draft.gas>0||draft.alcohol>0||draft.gasPrice>0||draft.alcoholPrice>0||(draft.fuelPurchases??[]).length>0||draft.kmInitial>0||draft.kmFinal>0||draft.fuelConsumption>0||draft.hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||draft.maintenanceItems.length>0||draft.extras.length>0;}
 function draftDistance(draft:DraftState){return Math.max(0,draft.kmFinal-draft.kmInitial);}
+function resolveConsumption(km:number,totalLiters:number,manualConsumption:number){
+ if(km>0&&totalLiters>0)return {consumption:km/totalLiters,consumptionMode:"automatic" as const};
+ if(manualConsumption>0)return {consumption:manualConsumption,consumptionMode:"manual" as const};
+ return {consumption:0,consumptionMode:"automatic" as const};
+}
 function mergeDrafts(date:string,drafts:DraftState[]):DraftState{
  const withFee=drafts.flatMap(d=>d.revenueItems.filter(item=>item.bruto>0));
  const net=drafts.flatMap(d=>[...(d.netRevenueItems??[]).filter(item=>item.bruto>0),...(d.mode==="net"&&d.netFare>0?[{...createRevenueItem(),app:d.netApp as RevenueAppName,nomeAppPersonalizado:d.netApp==="Outro"?d.netCustomApp.trim():"",bruto:d.netFare,taxa:0}]:[])]);
@@ -35,7 +40,7 @@ function draftMetrics(draft:DraftState){
  const gasPurchases=(draft.fuelPurchases??[]).filter(item=>item.type==="gasoline"),alcoholPurchases=(draft.fuelPurchases??[]).filter(item=>item.type==="alcohol");
  const gas=draft.gas+gasPurchases.reduce((total,item)=>total+toNumber(item.amount),0),alcohol=draft.alcohol+alcoholPurchases.reduce((total,item)=>total+toNumber(item.amount),0);
  const gasLiters=(draft.gasPrice>0?draft.gas/draft.gasPrice:0)+gasPurchases.reduce((total,item)=>total+(item.pricePerLiter>0?item.amount/item.pricePerLiter:0),0),alcoholLiters=(draft.alcoholPrice>0?draft.alcohol/draft.alcoholPrice:0)+alcoholPurchases.reduce((total,item)=>total+(item.pricePerLiter>0?item.amount/item.pricePerLiter:0),0),totalLiters=gasLiters+alcoholLiters,totalFuel=gas+alcohol,weightedPrice=totalLiters>0?totalFuel/totalLiters:0;
- const km=Math.max(0,draft.kmFinal-draft.kmInitial),manualConsumption=draft.fuelConsumption>0?draft.fuelConsumption:0,automaticConsumption=km>0&&totalLiters>0?km/totalLiters:0,consumption=manualConsumption>0?manualConsumption:automaticConsumption,consumptionMode=manualConsumption>0?"manual":"automatic",consumed=km>0&&consumption>0?km/consumption:0,consumedCost=consumed*weightedPrice,maintenance=draft.maintenanceItems.filter(item=>item.description.trim()!==""),extras=draft.extras.filter(item=>item.name.trim()!==""),maintenanceTotal=maintenance.reduce((total,item)=>total+toNumber(item.value),0),extrasTotal=extras.reduce((total,item)=>total+toNumber(item.value),0),expensesTotal=revenue.taxaValor+totalFuel+maintenanceTotal+extrasTotal,profit=revenue.bruto-expensesTotal,totalCost=expensesTotal,costPerKm=km>0?totalCost/km:null,grossPerKm=km>0?revenue.bruto/km:null,profitPerKm=km>0?profit/km:null,hours=draft.hoursSegments.reduce((total,segment)=>{const [sh,sm]=segment.start.split(":").map(Number),[eh,em]=segment.end.split(":").map(Number);let minutes=(eh*60+em)-(sh*60+sm);if(minutes<0)minutes+=1440;return total+minutes/60;},0);
+ const km=Math.max(0,draft.kmFinal-draft.kmInitial),manualConsumption=draft.fuelConsumption>0?draft.fuelConsumption:0,{consumption,consumptionMode}=resolveConsumption(km,totalLiters,manualConsumption),consumed=km>0&&consumption>0?km/consumption:0,consumedCost=consumed*weightedPrice,maintenance=draft.maintenanceItems.filter(item=>item.description.trim()!==""),extras=draft.extras.filter(item=>item.name.trim()!==""),maintenanceTotal=maintenance.reduce((total,item)=>total+toNumber(item.value),0),extrasTotal=extras.reduce((total,item)=>total+toNumber(item.value),0),expensesTotal=revenue.taxaValor+totalFuel+maintenanceTotal+extrasTotal,profit=revenue.bruto-expensesTotal,totalCost=expensesTotal,costPerKm=km>0?totalCost/km:null,grossPerKm=km>0?revenue.bruto/km:null,profitPerKm=km>0?profit/km:null,hours=draft.hoursSegments.reduce((total,segment)=>{const [sh,sm]=segment.start.split(":").map(Number),[eh,em]=segment.end.split(":").map(Number);let minutes=(eh*60+em)-(sh*60+sm);if(minutes<0)minutes+=1440;return total+minutes/60;},0);
  return {revenueItems,revenue,gas,alcohol,gasPrice:gasLiters>0?gas/gasLiters:0,alcoholPrice:alcoholLiters>0?alcohol/alcoholLiters:0,gasLiters,alcoholLiters,totalLiters,totalFuel,weightedPrice,km,kmInitial:draft.kmInitial,kmFinal:draft.kmFinal,hours,consumption,consumptionMode,consumed,consumedCost,maintenance,maintenanceTotal,extras,extrasTotal,expensesTotal,totalCost,profit,costPerKm,grossPerKm,profitPerKm};
 }
 type DraftMetric = ReturnType<typeof draftMetrics>;
@@ -44,9 +49,9 @@ function aggregateDraftMetrics(date:string,drafts:DraftState[]):DraftMetric{
  const km=drafts.reduce((total,draft)=>total+draftDistance(draft),0);
  const totalLiters=drafts.reduce((total,draft)=>total+draftMetrics(draft).totalLiters,0);
  const manualConsumption=[...drafts].reverse().find(draft=>draft.fuelConsumption>0)?.fuelConsumption??0;
- const consumption=manualConsumption>0?manualConsumption:km>0&&totalLiters>0?km/totalLiters:0;
+ const {consumption,consumptionMode}=resolveConsumption(km,totalLiters,manualConsumption);
  const consumed=km>0&&consumption>0?km/consumption:0;
- return {...metrics,totalLiters,km,kmFinal:metrics.kmInitial+km,consumption,consumptionMode:manualConsumption>0?"manual":"automatic",consumed,consumedCost:consumed*metrics.weightedPrice,costPerKm:km>0?metrics.totalCost/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null};
+ return {...metrics,totalLiters,km,kmFinal:metrics.kmInitial+km,consumption,consumptionMode,consumed,consumedCost:consumed*metrics.weightedPrice,costPerKm:km>0?metrics.totalCost/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null};
 }
 function profitFromMetrics(metrics:DraftMetric){return metrics.profit;}
 function draftFinancialSummary(draft:DraftState,providedMetrics?:DraftMetric){
@@ -198,6 +203,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  const dailyGrossPerKm=dailyMetrics.grossPerKm;
  const dailyProfitPerKm=dailyMetrics.profitPerKm;
  const dailyConsumption=dailyMetrics.consumption;
+ const dailyConsumptionMode=dailyMetrics.consumptionMode;
  const visibleProfit=savedCard&&!hasCurrentLaunch?savedCard.profit:dailyProfit,visibleKm=savedCard&&!hasCurrentLaunch?savedCard.km:dailyKm,visibleProfitPerKm=savedCard&&!hasCurrentLaunch?savedCard.profitPerKm:dailyProfitPerKm,visibleRevenuePerKm=savedCard&&!hasCurrentLaunch?savedCard.revenueBase/Math.max(savedCard.km,1):dailyGrossPerKm,visibleCostPerKm=savedCard&&!hasCurrentLaunch?savedCard.costPerKm:dailyCostPerKm,visibleHours=savedCard&&!hasCurrentLaunch?savedCard.hours:dailyHours,visibleRevenueBase=savedCard&&!hasCurrentLaunch?savedCard.revenueBase:dailyRevenueBase;
  const profitPercent=visibleRevenueBase>0?(visibleProfit/visibleRevenueBase)*100:null;
  const summaryTone=visibleProfit>0?"profit":visibleProfit<0?"loss":"neutral";
@@ -308,7 +314,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
      <div className="sm:px-2">
      <p className="text-sm font-semibold leading-snug text-slate-700"><span className="mr-1 text-sm">💸</span><strong className="font-black text-slate-900">{formatBRL(Math.abs(visibleCostPerKm??0))}</strong> de custo total por cada KM rodado</p>
     </div>
-    <div className="sm:pl-2"><p className="text-sm font-semibold leading-snug text-slate-700">Seu carro faz a média de <strong className="font-black text-slate-900">{dailyConsumption>0?formatKm(dailyConsumption):"0"} km</strong> por litro de combustível</p></div>
+    <div className="sm:pl-2"><p className="text-sm font-semibold leading-snug text-slate-700">{dailyConsumptionMode==="automatic"&&dailyConsumption>0?<>O consumo real do seu carro hoje é de <strong className="font-black text-slate-900">{formatKm(dailyConsumption)} km/L</strong></>:<>Seu carro faz a média de <strong className="font-black text-slate-900">{dailyConsumption>0?formatKm(dailyConsumption):"0"} km/L</strong></>}</p></div>
     <div className="sm:pl-2"><p className="text-sm font-semibold leading-snug text-slate-700"><strong className="font-black text-slate-900">{formatBRL(Math.abs(dailyProfitPerKm??0))}</strong> de lucro por cada KM rodado</p></div>
    </div>
    {visibleHours>0&&<div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-2 text-xs"><span className="font-semibold text-slate-500">{visibleHours.toLocaleString("pt-BR",{maximumFractionDigits:2})} h trabalhadas</span><strong className={visibleProfit<0?"text-red-700":"text-emerald-700"}>{formatBRL(visibleProfit/visibleHours)}/h</strong></div>}
