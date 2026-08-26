@@ -47,8 +47,9 @@ export function calculatePerUnit(value: number, units: number): number | null {
  * chamado de “consumo real”, porque um abastecimento pode abastecer o
  * tanque e ser consumido ao longo de vários dias. O consumo real exige a
  * medição tanque-a-tanque (odômetro entre dois abastecimentos completos).
- * A referência informada pelo motorista só é usada quando ainda não há
- * litros para estimar o trecho.
+ * Quando o motorista informa uma referência, ela é uma escolha explícita e
+ * passa a ser usada para estimar os litros consumidos no trecho. Se o campo
+ * ficar vazio, usamos km ÷ litros abastecidos como estimativa operacional.
  */
 export function calculateFuelMetrics(input: FuelMetricsInput): FuelMetrics {
   const distanceKm = toFiniteNonNegative(input.distanceKm);
@@ -61,19 +62,6 @@ export function calculateFuelMetrics(input: FuelMetricsInput): FuelMetrics {
   const totalFuelCost = gasCost + alcoholCost;
   const weightedPricePerLiter = totalLiters > 0 ? totalFuelCost / totalLiters : 0;
 
-  if (distanceKm > 0 && totalLiters > 0) {
-    return {
-      distanceKm,
-      totalLiters,
-      totalFuelCost,
-      weightedPricePerLiter,
-      kmPerLiter: distanceKm / totalLiters,
-      source: "automatic",
-      consumedLiters: totalLiters,
-      consumedCost: totalFuelCost,
-    };
-  }
-
   if (distanceKm > 0 && referenceConsumption > 0) {
     const consumedLiters = distanceKm / referenceConsumption;
     return {
@@ -85,6 +73,19 @@ export function calculateFuelMetrics(input: FuelMetricsInput): FuelMetrics {
       source: "reference",
       consumedLiters,
       consumedCost: consumedLiters * weightedPricePerLiter,
+    };
+  }
+
+  if (distanceKm > 0 && totalLiters > 0) {
+    return {
+      distanceKm,
+      totalLiters,
+      totalFuelCost,
+      weightedPricePerLiter,
+      kmPerLiter: distanceKm / totalLiters,
+      source: "automatic",
+      consumedLiters: totalLiters,
+      consumedCost: totalFuelCost,
     };
   }
 
