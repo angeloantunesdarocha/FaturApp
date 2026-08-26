@@ -127,6 +127,11 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
   const periodLabel = from === to ? dateLabel(from) : `${dateLabel(from)} — ${dateLabel(to)}`;
   const profitPerKm = totals.km ? totals.profit / totals.km : null;
   const profitPerHour = totals.hours ? totals.profit / totals.hours : null;
+  // Mesma metodologia usada no card diário (EntryForm): ganho = receita bruta / km,
+  // custo total = (custos operacionais + taxa dos apps) / km. Isso garante que
+  // ganhoPerKm - custoPerKm === profitPerKm em qualquer período, sem drift de arredondamento.
+  const custoPerKm = totals.km ? (totals.costs + totals.feeAmount) / totals.km : null;
+  const ganhoPerKm = totals.km ? totals.gross / totals.km : null;
 
   function setQuick(kind: "today" | "week" | "month") {
     const today = hojeBrasilia();
@@ -193,6 +198,12 @@ export default function ReportsDashboard({ entries, initialFrom, initialTo }: Pr
       <MetricCard title="Receita líquida" value={formatBRL(totals.net)} icon="money" tone="blue" detail={`Taxas dos apps: ${formatBRL(totals.feeAmount)}`} />
       <MetricCard title="Quilômetros" value={`${num(totals.km, 0)} km`} icon="km" tone="gray" detail={`Lucro/km: ${money(profitPerKm)}`} />
       <MetricCard title="Horas trabalhadas" value={`${hours(totals.hours)} h`} icon="clock" tone="orange" detail={`Lucro/h: ${money(profitPerHour)}`} />
+    </section>
+
+    <section className="grid gap-3 sm:grid-cols-3">
+      <MetricCard title="Ganho por KM" value={money(ganhoPerKm)} icon="money" tone="blue" detail="Receita bruta ÷ km rodados no período" />
+      <MetricCard title="Custo por KM" value={money(custoPerKm)} icon="km" tone="orange" detail="(Custos operacionais + taxas dos apps) ÷ km" />
+      <MetricCard title="Lucro por KM" value={money(profitPerKm)} icon="trend" tone="green" detail="Ganho por km − custo por km" />
     </section>
 
     <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
