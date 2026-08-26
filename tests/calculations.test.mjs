@@ -37,18 +37,19 @@ test("usa média ponderada e custo exato para combustível misto", () => {
   assert.equal(metrics.consumedCost, 100);
 });
 
-test("o cálculo automático prevalece sobre a referência manual", () => {
+test("uma referência manual explícita prevalece sobre a estimativa dos litros", () => {
   const metrics = calculateFuelMetrics({
     distanceKm: 240,
     gasCost: 120,
     gasLiters: 20,
     referenceConsumptionKmPerLiter: 99,
   });
-  assert.equal(metrics.kmPerLiter, 12);
-  assert.equal(metrics.source, "automatic");
+  assert.equal(metrics.kmPerLiter, 99);
+  assert.equal(metrics.source, "reference");
+  assert.equal(metrics.consumedLiters, 240 / 99);
 });
 
-test("usa a referência somente quando não há litros", () => {
+test("usa a referência quando não há litros", () => {
   const metrics = calculateFuelMetrics({ distanceKm: 150, referenceConsumptionKmPerLiter: 10 });
   assert.equal(metrics.kmPerLiter, 10);
   assert.equal(metrics.source, "reference");
