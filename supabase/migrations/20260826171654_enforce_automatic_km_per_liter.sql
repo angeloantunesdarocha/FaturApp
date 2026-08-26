@@ -46,14 +46,14 @@ begin
   v_reference_consumption := greatest(coalesce(new.fuel_consumption_km_per_liter, 0), 0);
   v_weighted_price := case when v_total_liters > 0 then v_total_fuel / v_total_liters else 0 end;
 
-  if new.km_driven > 0 and v_total_liters > 0 then
-    new.fuel_consumption_km_per_liter := new.km_driven / v_total_liters;
-    new.fuel_consumed_liters := v_total_liters;
-    new.fuel_consumed_cost := v_total_fuel;
-  elsif new.km_driven > 0 and v_reference_consumption > 0 then
+  if new.km_driven > 0 and v_reference_consumption > 0 then
     new.fuel_consumption_km_per_liter := v_reference_consumption;
     new.fuel_consumed_liters := new.km_driven / v_reference_consumption;
     new.fuel_consumed_cost := new.fuel_consumed_liters * v_weighted_price;
+  elsif new.km_driven > 0 and v_total_liters > 0 then
+    new.fuel_consumption_km_per_liter := new.km_driven / v_total_liters;
+    new.fuel_consumed_liters := v_total_liters;
+    new.fuel_consumed_cost := v_total_fuel;
   else
     new.fuel_consumption_km_per_liter := 0;
     new.fuel_consumed_liters := 0;
