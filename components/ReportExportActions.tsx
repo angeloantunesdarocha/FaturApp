@@ -305,7 +305,7 @@ function makeText(rows: Row[], from: string, to: string): string {
   rows.forEach((r) => {
     lines.push(`📆 *${formatDateBR(r.entry.date)}*`);
     lines.push(`⏱ Horas: ${nfmt(r.hours)} h   🛣 Km: ${nfmt(r.km, 0)} km`);
-    if (r.kmPerLiter > 0) lines.push(`⛽ Consumo real: ${nfmt(r.kmPerLiter)} km/L · ${nfmt(r.fuelLiters, 3)} L`);
+    if (r.kmPerLiter > 0) lines.push(`⛽ Estimativa km/L: ${nfmt(r.kmPerLiter)} km/L · ${nfmt(r.fuelLiters, 3)} L abastecidos (não é consumo real)`);
     lines.push(`💰 Receita bruta: ${formatBRL(r.gross)}`);
     r.revenueDetails.forEach((x) => lines.push(`   • ${x.app}: ${formatBRL(x.gross)} − ${x.feePercent.toFixed(2)}% (${formatBRL(x.feeAmount)}) = ${formatBRL(x.net)}`));
     lines.push(`✅ Receita líquida: ${formatBRL(r.net)}`);
@@ -326,7 +326,7 @@ function makeText(rows: Row[], from: string, to: string): string {
   lines.push(`✅ Receita líquida total: *${formatBRL(t.net)}*`);
   lines.push(`⛽ Total de combustível: *${formatBRL(t.fuel)}*`);
   lines.push(`⛽ Total abastecido: *${nfmt(t.fuelLiters, 3)} L*`);
-  if (kmPerLiterAvg !== null) lines.push(`🚙 Consumo real do período: *${nfmt(kmPerLiterAvg)} km/L*`);
+  if (kmPerLiterAvg !== null) lines.push(`🚙 Estimativa km/L do período: *${nfmt(kmPerLiterAvg)} km/L* (km ÷ litros abastecidos; não é consumo real)`);
   lines.push(`🔩 Total de manutenção: *${formatBRL(t.maintenance)}*`);
   lines.push(`📦 Total de gastos extras: *${formatBRL(t.extras)}*`);
   lines.push(`🔴 Total de custos: *${formatBRL(t.costs)}*`);
