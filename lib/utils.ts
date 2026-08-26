@@ -1,3 +1,5 @@
+import { calculateFuelLiters, calculatePerUnit } from "@/lib/calculations";
+
 export function formatBRL(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -111,12 +113,11 @@ export function computeFuelLiters(entry: Pick<DailyEntry, "gasoline_liters" | "a
 }
 
 export function computeLitersFromPurchase(amount: number, pricePerLiter: number): number {
-  if (amount <= 0 || pricePerLiter <= 0) return 0;
-  return amount / pricePerLiter;
+  return calculateFuelLiters(amount, pricePerLiter);
 }
 
 export function computeFuelCostPerKm(expense: number, km: number): number | null {
-  return km > 0 ? expense / km : null;
+  return calculatePerUnit(expense, km);
 }
 
 export function computeFuelCostForProfit(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense"> & Partial<Pick<DailyEntry, "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {

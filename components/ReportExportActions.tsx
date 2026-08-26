@@ -6,12 +6,14 @@ import autoTable from "jspdf-autotable";
 import {
   computeFeeAmount,
   computeFuelCostForProfit,
+  computeFuelLiters,
   computeNetFare,
   formatBRL,
   formatDateBR,
   toNumber,
   type DailyEntry,
 } from "@/lib/utils";
+import { calculateFuelMetrics } from "@/lib/calculations";
 
 type Props = { entries: DailyEntry[]; from: string; to: string };
 type DetailItem = { description: string; value: number };
@@ -39,6 +41,8 @@ type Row = {
   maintenanceTotal: number;
   extrasTotal: number;
   fuelTotal: number;
+  fuelLiters: number;
+  kmPerLiter: number;
   revenueDetails: RevenueDetail[];
 };
 
@@ -53,6 +57,7 @@ type Totals = {
   maintenance: number;
   extras: number;
   fuel: number;
+  fuelLiters: number;
 };
 
 const money = (n: number | null) => n === null ? "—" : formatBRL(n);
@@ -102,12 +107,14 @@ function calcTotals(rows: Row[]): Totals {
     maintenance: acc.maintenance + safe(r.maintenanceTotal),
     extras: acc.extras + safe(r.extrasTotal),
     fuel: acc.fuel + safe(r.fuelTotal),
-  }), { gross: 0, fee: 0, net: 0, costs: 0, profit: 0, km: 0, hours: 0, maintenance: 0, extras: 0, fuel: 0 });
+    fuelLiters: acc.fuelLiters + safe(r.fuelLiters),
+  }), { gross: 0, fee: 0, net: 0, costs: 0, profit: 0, km: 0, hours: 0, maintenance: 0, extras: 0, fuel: 0, fuelLiters: 0 });
 }
 
 function makePdf(rows: Row[], from: string, to: string): jsPDF {
   const t = calcTotals(rows);
   const profitKmAvg = t.km > 0 ? t.profit / t.km : null;
+  const kmPerLiterAvg = t.km > 0 && t.fuelLiters > 0 ? t.km / t.fuelLiters : null;
   const doc = new jsPDF("landscape", "mm", "a4");
 
   doc.setFontSize(18);
@@ -119,11 +126,12 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
 
   // Resumo do dia: sem taxa única, pois agora cada aplicativo pode ter sua própria taxa.
   autoTable(doc, {
-    head: [["Data", "Horas", "Km", "Receita Bruta Total", "Receita Líquida Total", "Custos Totais", "Lucro Líquido", "Lucro/km"]],
+    head: [["Data", "Horas", "Km", "Km/L", "Receita Bruta Total", "Receita Líquida Total", "Custos Totais", "Lucro Líquido", "Lucro/km"]],
     body: rows.map((r) => [
       formatDateBR(r.entry.date),
       `${nfmt(r.hours)} h`,
       `${nfmt(r.km, 0)} km`,
+      r.kmPerLiter > 0 ? `${nfmt(r.kmPerLiter)} km/L` : "—",
       formatBRL(r.gross),
       formatBRL(r.net),
       formatBRL(r.costs),
@@ -134,6 +142,7 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
       { content: "TOTAL", styles: { halign: "left" } },
       { content: `${nfmt(t.hours)} h`, styles: { halign: "right" } },
       { content: `${nfmt(t.km, 0)} km`, styles: { halign: "right" } },
+      { content: kmPerLiterAvg === null ? "—" : `${nfmt(kmPerLiterAvg)} km/L`, styles: { halign: "right" } },
       { content: formatBRL(t.gross), styles: { halign: "right" } },
       { content: formatBRL(t.net), styles: { halign: "right" } },
       { content: formatBRL(t.costs), styles: { halign: "right" } },
@@ -150,11 +159,12 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
       0: { cellWidth: 25, halign: "left" },
       1: { cellWidth: 20, halign: "right" },
       2: { cellWidth: 20, halign: "right" },
-      3: { cellWidth: 32, halign: "right" },
-      4: { cellWidth: 34, halign: "right" },
-      5: { cellWidth: 30, halign: "right" },
-      6: { cellWidth: 32, halign: "right" },
-      7: { cellWidth: 27, halign: "right" },
+      3: { cellWidth: 22, halign: "right" },
+      4: { cellWidth: 30, halign: "right" },
+      5: { cellWidth: 31, halign: "right" },
+      6: { cellWidth: 28, halign: "right" },
+      7: { cellWidth: 30, halign: "right" },
+      8: { cellWidth: 24, halign: "right" },
     },
   });
 
@@ -287,6 +297,7 @@ function makePdf(rows: Row[], from: string, to: string): jsPDF {
 function makeText(rows: Row[], from: string, to: string): string {
   const t = calcTotals(rows);
   const profitKmAvg = t.km > 0 ? t.profit / t.km : null;
+  const kmPerLiterAvg = t.km > 0 && t.fuelLiters > 0 ? t.km / t.fuelLiters : null;
   const period = from === to ? formatDateBR(from) : `${formatDateBR(from)} até ${formatDateBR(to)}`;
   const sep = "━━━━━━━━━━━━━━━━━━━━━━";
   const lines: string[] = ["🚗 *FaturApp — Relatório Completo*", `📅 Período: ${period}`, `📊 ${rows.length} dia(s) analisado(s)`, "", sep, "📋 *LANÇAMENTOS DIÁRIOS*", sep, ""];
@@ -294,6 +305,7 @@ function makeText(rows: Row[], from: string, to: string): string {
   rows.forEach((r) => {
     lines.push(`📆 *${formatDateBR(r.entry.date)}*`);
     lines.push(`⏱ Horas: ${nfmt(r.hours)} h   🛣 Km: ${nfmt(r.km, 0)} km`);
+    if (r.kmPerLiter > 0) lines.push(`⛽ Consumo real: ${nfmt(r.kmPerLiter)} km/L · ${nfmt(r.fuelLiters, 3)} L`);
     lines.push(`💰 Receita bruta: ${formatBRL(r.gross)}`);
     r.revenueDetails.forEach((x) => lines.push(`   • ${x.app}: ${formatBRL(x.gross)} − ${x.feePercent.toFixed(2)}% (${formatBRL(x.feeAmount)}) = ${formatBRL(x.net)}`));
     lines.push(`✅ Receita líquida: ${formatBRL(r.net)}`);
@@ -313,6 +325,8 @@ function makeText(rows: Row[], from: string, to: string): string {
   lines.push(`💸 Total de taxas (app): *${formatBRL(t.fee)}*`);
   lines.push(`✅ Receita líquida total: *${formatBRL(t.net)}*`);
   lines.push(`⛽ Total de combustível: *${formatBRL(t.fuel)}*`);
+  lines.push(`⛽ Total abastecido: *${nfmt(t.fuelLiters, 3)} L*`);
+  if (kmPerLiterAvg !== null) lines.push(`🚙 Consumo real do período: *${nfmt(kmPerLiterAvg)} km/L*`);
   lines.push(`🔩 Total de manutenção: *${formatBRL(t.maintenance)}*`);
   lines.push(`📦 Total de gastos extras: *${formatBRL(t.extras)}*`);
   lines.push(`🔴 Total de custos: *${formatBRL(t.costs)}*`);
@@ -348,11 +362,13 @@ export default function ReportExportActions({ entries, from, to }: Props) {
     const maintenanceTotal = maint.reduce((s, x) => s + x.value, 0) || Math.max(0, Number(entry.maintenance_expense) || 0);
     const extrasTotal = extr.reduce((s, x) => s + x.value, 0);
     const fuelTotal = computeFuelCostForProfit(entry);
+    const fuelLiters = computeFuelLiters(entry);
     const costs = fuelTotal + maintenanceTotal + extrasTotal;
     const km = Math.max(0, Number(entry.km_driven) || 0);
+    const fuelMetrics = calculateFuelMetrics({distanceKm:km,gasCost:gas,alcoholCost:alcohol,gasLiters:Math.max(0,Number(entry.gasoline_liters)||0),alcoholLiters:Math.max(0,Number(entry.alcohol_liters)||0),referenceConsumptionKmPerLiter:Number(entry.fuel_consumption_km_per_liter)||0});
     const hours = Math.max(0, Number(entry.hours_worked) || 0);
     const profit = net - costs;
-    return { entry, gross, feePercent, feeAmount, net, costs, profit, km, hours, profitKm: km ? profit / km : null, maintenance: maint, extras: extr, maintenanceTotal, extrasTotal, fuelTotal, revenueDetails: revenue };
+    return { entry, gross, feePercent, feeAmount, net, costs, profit, km, hours, profitKm: km ? profit / km : null, maintenance: maint, extras: extr, maintenanceTotal, extrasTotal, fuelTotal, fuelLiters, kmPerLiter:fuelMetrics.kmPerLiter, revenueDetails: revenue };
   }), [entries, from, to]);
 
   const text = useMemo(() => makeText(rows, from, to), [rows, from, to]);
