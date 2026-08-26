@@ -48,8 +48,8 @@ export function calculatePerUnit(value: number, units: number): number | null {
  * tanque e ser consumido ao longo de vários dias. O consumo real exige a
  * medição tanque-a-tanque (odômetro entre dois abastecimentos completos).
  * Quando o motorista informa uma referência, ela é uma escolha explícita e
- * passa a ser usada para estimar os litros consumidos no trecho. Se o campo
- * ficar vazio, usamos km ÷ litros abastecidos como estimativa operacional.
+ * passa a ser usada na fórmula litros consumidos = km rodados ÷ km/L. Se o
+ * campo ficar vazio, usamos km ÷ litros abastecidos como estimativa operacional.
  */
 export function calculateFuelMetrics(input: FuelMetricsInput): FuelMetrics {
   const distanceKm = toFiniteNonNegative(input.distanceKm);
