@@ -42,9 +42,13 @@ export function calculatePerUnit(value: number, units: number): number | null {
 /**
  * Regra canônica do FaturApp para consumo de combustível.
  *
- * Quando distância e litros estão disponíveis, o consumo real sempre é
- * calculado automaticamente: km rodados / total de litros. A referência
- * informada pelo motorista só é usada quando ainda não há litros suficientes.
+ * Quando distância e litros abastecidos estão disponíveis, calculamos uma
+ * estimativa operacional: km rodados / litros abastecidos. Isso não é
+ * chamado de “consumo real”, porque um abastecimento pode abastecer o
+ * tanque e ser consumido ao longo de vários dias. O consumo real exige a
+ * medição tanque-a-tanque (odômetro entre dois abastecimentos completos).
+ * A referência informada pelo motorista só é usada quando ainda não há
+ * litros para estimar o trecho.
  */
 export function calculateFuelMetrics(input: FuelMetricsInput): FuelMetrics {
   const distanceKm = toFiniteNonNegative(input.distanceKm);
