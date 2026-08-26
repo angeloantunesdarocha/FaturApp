@@ -49,6 +49,18 @@ test("uma referência manual explícita prevalece sobre a estimativa dos litros"
   assert.equal(metrics.consumedLiters, 240 / 99);
 });
 
+test("usa exatamente km rodados dividido pelo km/L informado", () => {
+  const metrics = calculateFuelMetrics({
+    distanceKm: 25,
+    gasCost: 50,
+    gasLiters: 50 / 6.19,
+    referenceConsumptionKmPerLiter: 12.2,
+  });
+  assert.equal(metrics.kmPerLiter, 12.2);
+  assert.ok(Math.abs(metrics.consumedLiters - (25 / 12.2)) < 1e-12);
+  assert.ok(Math.abs(metrics.consumedCost - ((25 / 12.2) * 6.19)) < 1e-12);
+});
+
 test("usa a referência quando não há litros", () => {
   const metrics = calculateFuelMetrics({ distanceKm: 150, referenceConsumptionKmPerLiter: 10 });
   assert.equal(metrics.kmPerLiter, 10);
