@@ -184,15 +184,17 @@ const savedLaunchEvents = [
 ];
 const afterInsert = recalculateDaySummary(savedLaunchEvents);
 closeTo(afterInsert.acumuladoDia.horas_trabalhadas, 3, "inclusão atualiza horas sem F5");
-closeTo(afterInsert.acumuladoDia.gasto_combustivel_rodagem, 12.78, "abastecimento posterior recalcula km salvo");
-closeTo(afterInsert.acumuladoDia.lucro_liquido_dia, 67.22, "inclusão atualiza o resumo");
+closeTo(afterInsert.lancamentos[1].gasto_combustivel_rodagem, 30, "abastecimento isolado vira despesa direta");
+closeTo(afterInsert.lancamentos[1].lucro_liquido_dia, -30, "abastecimento isolado fica negativo");
+closeTo(afterInsert.acumuladoDia.gasto_combustivel_rodagem, 42.78, "despesa de abastecimento entra no acumulado");
+closeTo(afterInsert.acumuladoDia.lucro_liquido_dia, 37.22, "inclusão atualiza o resumo");
 
 const afterEdit = recalculateDaySummary(savedLaunchEvents.map((item,index)=>index===2?{...item,manutencao:25}:item));
-closeTo(afterEdit.acumuladoDia.lucro_liquido_dia, 57.22, "edição atualiza o resumo");
+closeTo(afterEdit.acumuladoDia.lucro_liquido_dia, 27.22, "edição atualiza o resumo");
 
 const afterRemove = recalculateDaySummary(savedLaunchEvents.filter((_,index)=>index!==2));
 closeTo(afterRemove.acumuladoDia.horas_trabalhadas, 2, "remoção atualiza horas");
-closeTo(afterRemove.acumuladoDia.lucro_liquido_dia, 87.22, "remoção atualiza o resumo");
+closeTo(afterRemove.acumuladoDia.lucro_liquido_dia, 57.22, "remoção atualiza o resumo");
 
 const zero = calculateFinancialMetrics({});
 for (const key of ["custo_por_km", "lucro_por_km", "lucro_por_hora", "margem_lucro_percentual"]) {

@@ -129,7 +129,10 @@ function calculateLaunch(
   const { consumo, modo, exato } = resolveConsumption(input, context, kmFinal, litrosAbastecidos);
   const precoAplicado = precoInformado > 0 ? precoInformado : context.ultimoPrecoPorLitro;
   const litrosConsumidos = safeDivide(kmRodados, consumo);
-  const gastoCombustivel = litrosConsumidos * precoAplicado;
+  const custoCombustivelRodagem = litrosConsumidos * precoAplicado;
+  const gastoCombustivel = kmRodados <= 0 && valorAbastecido > 0
+    ? valorAbastecido
+    : custoCombustivelRodagem;
   const manutencao = finiteNonNegative(input.manutencao);
   const extras = finiteNonNegative(input.gastosExtras);
   const custoTotal = gastoCombustivel + manutencao + extras;
@@ -203,10 +206,13 @@ export function recalculateDaySummary(
   // O resumo do dia usa uma única referência vigente. Assim, quando o consumo
   // ou o preço mais recente muda, todos os quilômetros do dia são recalculados
   // pela mesma regra e os lançamentos deixam de carregar custos obsoletos.
-  const results = calculatedLaunches.map(result => {
+  const results = calculatedLaunches.map((result, index) => {
     const revenue = result.lucro_liquido_dia + result.custo_total_dia;
     const consumedLiters = safeDivide(result.km_rodados, consumption);
-    const fuelCost = consumedLiters * price;
+    const directFuelExpense = result.km_rodados <= 0
+      ? finiteNonNegative(launches[index]?.valorAbastecido)
+      : 0;
+    const fuelCost = directFuelExpense > 0 ? directFuelExpense : consumedLiters * price;
     const cost = fuelCost + result.gasto_manutencao + result.gastos_extras;
     const profit = revenue - cost;
 
