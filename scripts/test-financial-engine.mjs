@@ -3,6 +3,7 @@ import {
   calculateFinancialChain,
   calculateFinancialMetrics,
   recalculateCompleteDay,
+  recalculateDaySummary,
 } from "../lib/financial-engine.ts";
 
 const closeTo = (actual, expected, message) => {
@@ -158,6 +159,40 @@ const repricedDay = recalculateCompleteDay([
 ]);
 closeTo(repricedDay.acumuladoDia.gasto_combustivel_rodagem, 35, "novo preço recalcula toda a rodagem");
 closeTo(repricedDay.acumuladoDia.lucro_liquido_dia, 100, "novo preço atualiza o lucro imediatamente");
+
+const costsWithoutDescriptions = recalculateDaySummary([
+  {
+    receitaLiquida: 80,
+    horasTrabalhadas: 2,
+    kmInicial: 0,
+    kmFinal: 20,
+    precoPorLitro: 6.39,
+    valorAbastecido: 30,
+    consumoPerfilKmL: 10,
+    manutencao: 15,
+    gastosExtras: 5,
+  },
+]);
+closeTo(costsWithoutDescriptions.acumuladoDia.gasto_combustivel_rodagem, 12.78, "combustível efetivo capturado");
+closeTo(costsWithoutDescriptions.acumuladoDia.custo_total_dia, 32.78, "manutenção e extras capturados");
+closeTo(costsWithoutDescriptions.acumuladoDia.lucro_liquido_dia, 47.22, "lucro do lançamento completo");
+
+const savedLaunchEvents = [
+  { receitaLiquida: 100, horasTrabalhadas: 2, kmInicial: 100, kmFinal: 120, consumoPerfilKmL: 10 },
+  { valorAbastecido: 30, precoPorLitro: 6.39 },
+  { manutencao: 15, gastosExtras: 5, horasTrabalhadas: 1 },
+];
+const afterInsert = recalculateDaySummary(savedLaunchEvents);
+closeTo(afterInsert.acumuladoDia.horas_trabalhadas, 3, "inclusão atualiza horas sem F5");
+closeTo(afterInsert.acumuladoDia.gasto_combustivel_rodagem, 12.78, "abastecimento posterior recalcula km salvo");
+closeTo(afterInsert.acumuladoDia.lucro_liquido_dia, 67.22, "inclusão atualiza o resumo");
+
+const afterEdit = recalculateDaySummary(savedLaunchEvents.map((item,index)=>index===2?{...item,manutencao:25}:item));
+closeTo(afterEdit.acumuladoDia.lucro_liquido_dia, 57.22, "edição atualiza o resumo");
+
+const afterRemove = recalculateDaySummary(savedLaunchEvents.filter((_,index)=>index!==2));
+closeTo(afterRemove.acumuladoDia.horas_trabalhadas, 2, "remoção atualiza horas");
+closeTo(afterRemove.acumuladoDia.lucro_liquido_dia, 87.22, "remoção atualiza o resumo");
 
 const zero = calculateFinancialMetrics({});
 for (const key of ["custo_por_km", "lucro_por_km", "lucro_por_hora", "margem_lucro_percentual"]) {

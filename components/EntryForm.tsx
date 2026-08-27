@@ -9,7 +9,7 @@ import CardDeLucro from "./CardDeLucro";
 import { saveEntry } from "@/app/actions";
 import {
   calculateFinancialMetrics,
-  recalculateCompleteDay,
+  recalculateDaySummary,
   type FinancialCalculationResult,
   type FinancialEngineContext,
   type FuelType,
@@ -28,7 +28,14 @@ type StoredVehicleProfile = Required<FinancialEngineContext> & { sourceDate:stri
 function scopedStorageKey(userId:string, key:string){return `faturapp:user:${userId}:${key}`;}
 function engineContextOnly(context:FinancialEngineContext):FinancialEngineContext{return {consumoPerfilKmL:context.consumoPerfilKmL,tipoCombustivel:context.tipoCombustivel,hodometroUltimoTanqueCheio:context.hodometroUltimoTanqueCheio,historicoConsumoKmL:context.historicoConsumoKmL,ultimoPrecoPorLitro:context.ultimoPrecoPorLitro};}
 
-function draftHasData(draft:DraftState){return draft.netFare>0||draft.netCustomApp.trim()!==""||draft.revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||(draft.netRevenueItems??[]).some(item=>item.bruto>0)||draft.gas>0||draft.alcohol>0||draft.gasPrice>0||draft.alcoholPrice>0||(draft.fuelPurchases??[]).length>0||Boolean(draft.fullTank)||draft.kmInitial>0||draft.kmFinal>0||draft.fuelConsumption>0||draft.hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||draft.maintenanceItems.length>0||draft.extras.length>0;}
+function nonNegative(value:number){return Number.isFinite(Number(value))?Math.max(0,Number(value)):0;}
+function normalizeMaintenance(items:MaintenanceItem[]){return items.map((item,index)=>({description:item.description.trim()||`Manutenção ${index+1}`,value:nonNegative(item.value)})).filter(item=>item.value>0);}
+function normalizeExtras(items:{name:string;value:number}[]){return items.map((item,index)=>({name:item.name.trim()||`Gasto extra ${index+1}`,value:nonNegative(item.value)})).filter(item=>item.value>0);}
+function normalizeTimeSegments(items:TimeSegment[]){return items.filter(item=>item.start&&item.end).map(item=>({start:item.start,end:item.end}));}
+function normalizeDraftForSave(draft:DraftState):DraftState{return {...draft,netFare:nonNegative(draft.netFare),gas:nonNegative(draft.gas),alcohol:nonNegative(draft.alcohol),gasPrice:nonNegative(draft.gasPrice),alcoholPrice:nonNegative(draft.alcoholPrice),fuelPurchases:(draft.fuelPurchases??[]).map(item=>({...item,amount:nonNegative(item.amount),pricePerLiter:nonNegative(item.pricePerLiter)})).filter(item=>item.amount>0||item.pricePerLiter>0),kmInitial:nonNegative(draft.kmInitial),kmFinal:nonNegative(draft.kmFinal),fuelConsumption:nonNegative(draft.fuelConsumption),hoursSegments:normalizeTimeSegments(draft.hoursSegments),maintenanceItems:normalizeMaintenance(draft.maintenanceItems),extras:normalizeExtras(draft.extras)};}
+function validateDraftBeforeSave(draft:DraftState){if(draft.kmFinal<draft.kmInitial)return "O KM final não pode ser menor que o KM inicial.";if(draft.gas>0&&draft.gasPrice<=0)return "Informe o preço por litro da gasolina.";if(draft.alcohol>0&&draft.alcoholPrice<=0)return "Informe o preço por litro do álcool.";if((draft.fuelPurchases??[]).some(item=>item.amount>0&&item.pricePerLiter<=0))return "Informe o preço por litro em cada abastecimento.";if(draft.hoursSegments.some(item=>(item.start&&!item.end)||(!item.start&&item.end)))return "Informe o início e o fim de cada período trabalhado.";return null;}
+
+function draftHasData(draft:DraftState){return draft.netFare>0||draft.netCustomApp.trim()!==""||draft.revenueItems.some(item=>item.bruto>0||item.taxa>0||item.nomeAppPersonalizado.trim()!=="")||(draft.netRevenueItems??[]).some(item=>item.bruto>0)||draft.gas>0||draft.alcohol>0||draft.gasPrice>0||draft.alcoholPrice>0||(draft.fuelPurchases??[]).some(item=>item.amount>0||item.pricePerLiter>0)||Boolean(draft.fullTank)||draft.kmInitial>0||draft.kmFinal>0||draft.fuelConsumption>0||draft.hoursSegments.some(segment=>segment.start!==""||segment.end!=="")||draft.maintenanceItems.some(item=>toNumber(item.value)>0)||draft.extras.some(item=>toNumber(item.value)>0);}
 function draftDistance(draft:DraftState){return Math.max(0,draft.kmFinal-draft.kmInitial);}
 function mergeDrafts(date:string,drafts:DraftState[]):DraftState{
  const withFee=drafts.flatMap(d=>d.revenueItems.filter(item=>item.bruto>0));
@@ -45,7 +52,7 @@ function draftFacts(draft:DraftState){
  const gas=draft.gas+gasPurchases.reduce((total,item)=>total+toNumber(item.amount),0),alcohol=draft.alcohol+alcoholPurchases.reduce((total,item)=>total+toNumber(item.amount),0);
  const gasLiters=(draft.gasPrice>0?draft.gas/draft.gasPrice:0)+gasPurchases.reduce((total,item)=>total+(item.pricePerLiter>0?item.amount/item.pricePerLiter:0),0),alcoholLiters=(draft.alcoholPrice>0?draft.alcohol/draft.alcoholPrice:0)+alcoholPurchases.reduce((total,item)=>total+(item.pricePerLiter>0?item.amount/item.pricePerLiter:0),0),totalLiters=gasLiters+alcoholLiters,totalFuel=gas+alcohol,weightedPrice=totalLiters>0?totalFuel/totalLiters:0;
  const latestPurchase=[...(draft.fuelPurchases??[])].reverse().find(item=>item.amount>0&&item.pricePerLiter>0),preferredLegacyPrice=draft.fuelType==="ethanol"&&draft.alcohol>0&&draft.alcoholPrice>0?draft.alcoholPrice:draft.fuelType==="gasoline"&&draft.gas>0&&draft.gasPrice>0?draft.gasPrice:0,latestPrice=(latestPurchase?.pricePerLiter??preferredLegacyPrice)||(draft.alcohol>0&&draft.alcoholPrice>0?draft.alcoholPrice:0)||(draft.gas>0&&draft.gasPrice>0?draft.gasPrice:0);
- const km=Math.max(0,draft.kmFinal-draft.kmInitial),maintenance=draft.maintenanceItems.filter(item=>item.description.trim()!==""),extras=draft.extras.filter(item=>item.name.trim()!==""),maintenanceTotal=maintenance.reduce((total,item)=>total+toNumber(item.value),0),extrasTotal=extras.reduce((total,item)=>total+toNumber(item.value),0),hours=draft.hoursSegments.reduce((total,segment)=>{if(!segment.start||!segment.end)return total;const [sh,sm]=segment.start.split(":").map(Number),[eh,em]=segment.end.split(":").map(Number);let minutes=(eh*60+em)-(sh*60+sm);if(minutes<0)minutes+=1440;return total+minutes/60;},0);
+ const km=Math.max(0,draft.kmFinal-draft.kmInitial),maintenance=normalizeMaintenance(draft.maintenanceItems),extras=normalizeExtras(draft.extras),maintenanceTotal=maintenance.reduce((total,item)=>total+toNumber(item.value),0),extrasTotal=extras.reduce((total,item)=>total+toNumber(item.value),0),hours=normalizeTimeSegments(draft.hoursSegments).reduce((total,segment)=>{const [sh,sm]=segment.start.split(":").map(Number),[eh,em]=segment.end.split(":").map(Number);let minutes=(eh*60+em)-(sh*60+sm);if(minutes<0)minutes+=1440;return total+minutes/60;},0);
  const fuelType:FuelType=alcoholLiters>gasLiters?"ethanol":draft.fuelType??"gasoline";
  return {revenueItems,revenue,gas,alcohol,gasPrice:gasLiters>0?gas/gasLiters:0,alcoholPrice:alcoholLiters>0?alcohol/alcoholLiters:0,gasLiters,alcoholLiters,totalLiters,totalFuel,weightedPrice,latestPrice,km,kmInitial:draft.kmInitial,kmFinal:draft.kmFinal,hours,maintenance,maintenanceTotal,extras,extrasTotal,fuelType};
 }
@@ -56,7 +63,7 @@ function draftMetrics(draft:DraftState,providedCalculation?:FinancialCalculation
 }
 type DraftMetric = ReturnType<typeof draftMetrics>;
 function calculateDraftChain(date:string,drafts:DraftState[],context:FinancialEngineContext={}){
- const facts=drafts.map(draftFacts),chain=recalculateCompleteDay(drafts.map((draft,index)=>engineInput(draft,facts[index])),context),launchMetrics=drafts.map((draft,index)=>draftMetrics(draft,chain.lancamentos[index]));
+ const facts=drafts.map(draftFacts),chain=recalculateDaySummary(drafts.map((draft,index)=>engineInput(draft,facts[index])),context),launchMetrics=drafts.map((draft,index)=>draftMetrics(draft,chain.lancamentos[index]));
  const metrics=draftMetrics(mergeDrafts(date,drafts),chain.acumuladoDia),km=chain.acumuladoDia.km_rodados,totalLiters=launchMetrics.reduce((total,item)=>total+item.totalLiters,0);
  return {launchMetrics,context:chain.contextoFinal,metrics:{...metrics,totalLiters,latestPrice:chain.contextoFinal.ultimoPrecoPorLitro,km,kmFinal:metrics.kmInitial+km,consumption:chain.acumuladoDia.km_por_litro_aplicado,consumptionMode:chain.acumuladoDia.modo_calculo_km_litro,consumed:chain.acumuladoDia.litros_consumidos_rodagem,consumedCost:chain.acumuladoDia.gasto_combustivel_rodagem,costPerKm:km>0?metrics.totalCost/km:null,grossPerKm:km>0?metrics.revenue.bruto/km:null,profitPerKm:km>0?metrics.profit/km:null} as DraftMetric};
 }
@@ -64,7 +71,7 @@ function aggregateDraftMetrics(date:string,drafts:DraftState[],context:Financial
 function profitFromMetrics(metrics:DraftMetric){return metrics.profit;}
 function draftFinancialSummary(draft:DraftState,providedMetrics?:DraftMetric){
  const metrics=providedMetrics??draftMetrics(draft);
- return {profit:metrics.profit, fuelConsumedLiters:metrics.consumed, fuelConsumedCost:metrics.consumedCost};
+ return {profit:metrics.profit,fuelConsumedLiters:metrics.consumed,fuelConsumedCost:metrics.consumedCost,fuelPurchasedLiters:metrics.totalLiters,fuelPurchasedCost:metrics.totalFuel};
 }
 
 function formatKm(v:number){return v.toLocaleString("pt-BR",{maximumFractionDigits:1});}
@@ -148,7 +155,9 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  function removeFuelPurchase(id:string){setFuelPurchases(items=>items.filter(item=>item.id!==id));}
  function saveDraft(){
   if(dayClosed){setStatus("Este dia já foi fechado. Os lançamentos estão somente para leitura.");return;}
-  const draft=currentDraft();
+  const rawDraft=currentDraft(),validationError=validateDraftBeforeSave(rawDraft);
+  if(validationError){setStatus(`❌ ${validationError}`);return;}
+  const draft=normalizeDraftForSave(rawDraft);
   if(!draftHasData(draft)){setStatus("Nenhum dado preenchido para salvar.");return;}
   try {
    window.localStorage.setItem(openDayKey(date),JSON.stringify(draft));
@@ -163,6 +172,17 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
    resetForm();
    setStatus(editingLaunchId?`✅ Registro #${String(record.number).padStart(3,"0")} atualizado.`:"✅ Dia salvo. Registro criado para um novo lançamento.");
   } catch { setStatus("❌ Não foi possível salvar o dia neste aparelho."); }
+ }
+
+ function removeLaunch(record:LaunchRecord){
+  if(dayClosed){setStatus("Este dia já foi fechado. Os lançamentos estão somente para leitura.");return;}
+  if(!window.confirm(`Remover o registro #${String(record.number).padStart(3,"0")}? O resumo do dia será recalculado.`))return;
+  try {
+   const next=savedLaunches.filter(item=>item.id!==record.id);
+   persistLaunches(next);persistVehicleProfile(next.map(item=>item.draft));
+   if(editingLaunchId===record.id){setEditingLaunchId(null);resetForm();}
+   setSavedCard(null);setStatus(`✅ Registro #${String(record.number).padStart(3,"0")} removido. Resumo recalculado.`);
+  } catch { setStatus("❌ Não foi possível remover este lançamento."); }
  }
 
  function reopenDay(){
@@ -241,8 +261,10 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  async function handleSubmit(e:FormEvent){
   e.preventDefault();
   if(dayClosed){setStatus("Este dia já foi fechado. Os lançamentos estão somente para leitura.");return;}
-  const draftBeingSubmitted=currentDraft();
-  const recordsToClose=savedLaunches.map(record=>record.draft).filter(draft=>draftHasData(draft));
+  const rawDraft=currentDraft(),validationError=validateDraftBeforeSave(rawDraft);
+  if(validationError){setStatus(`❌ ${validationError}`);return;}
+  const draftBeingSubmitted=normalizeDraftForSave(rawDraft);
+  const recordsToClose=savedLaunches.map(record=>normalizeDraftForSave(record.draft)).filter(draft=>draftHasData(draft));
   if(editingLaunchId){const index=savedLaunches.findIndex(record=>record.id===editingLaunchId);if(index>=0&&draftHasData(draftBeingSubmitted))recordsToClose[index]=draftBeingSubmitted;}
   else if(draftHasData(draftBeingSubmitted))recordsToClose.push(draftBeingSubmitted);
   const consolidated=aggregateDraftMetrics(date,recordsToClose,initialEngineContext);
@@ -306,7 +328,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  {dayClosed&&<div className="order-2 -mt-2 flex justify-center"><button type="button" onClick={reopenDay} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-extrabold text-amber-800 transition hover:bg-amber-100">Reabrir dia</button></div>}
  <section className="order-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Lançamentos do dia aberto">
   <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-slate-800">Lançamentos salvos</p><p className="text-xs text-slate-500">{dayClosed?"Dia fechado · somente leitura":"Use o botão editar para alterar um registro"}</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600">{savedLaunches.length}</span></div>
-  {savedLaunches.length===0?<p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-500">Nenhum lançamento salvo ainda.</p>:<div className="mt-3 space-y-2">{savedLaunches.slice().sort((a,b)=>a.number-b.number).map(record=>{const recordIndex=savedLaunches.findIndex(item=>item.id===record.id),summary=draftFinancialSummary(record.draft,displaySavedMetrics[recordIndex]),created=new Date(record.createdAt),isEditing=editingLaunchId===record.id;return <div key={record.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><div className="flex items-center justify-between gap-2"><strong className="text-sm text-slate-800">#{String(record.number).padStart(3,"0")}</strong><div className="flex items-center gap-2"><span className="text-xs font-medium text-slate-500">{created.toLocaleDateString("pt-BR")} · {created.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span><button type="button" disabled={dayClosed} onClick={()=>isEditing?saveDraft():loadLaunchIntoForm(record)} className="rounded-md border border-emerald-200 bg-white px-2 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50">{isEditing?"salvar":"editar"}</button></div></div><p className="mt-1 text-xs text-slate-600">Lucro líquido <span className="inline-flex items-center gap-1 font-bold"><span aria-hidden="true" className={"h-1.5 w-1.5 rounded-full " + (summary.profit<0?"bg-red-600":"bg-emerald-600")}></span><span className={summary.profit<0?"text-red-600":"text-emerald-600"}>{formatBRL(summary.profit)}</span></span> · Combustível gasto {summary.fuelConsumedLiters>0?formatLiters(summary.fuelConsumedLiters)+" L ("+formatBRL(summary.fuelConsumedCost)+")":"—"}</p></div>})}</div>}
+  {savedLaunches.length===0?<p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-500">Nenhum lançamento salvo ainda.</p>:<div className="mt-3 space-y-2">{savedLaunches.slice().sort((a,b)=>a.number-b.number).map(record=>{const recordIndex=savedLaunches.findIndex(item=>item.id===record.id),summary=draftFinancialSummary(record.draft,displaySavedMetrics[recordIndex]),created=new Date(record.createdAt),isEditing=editingLaunchId===record.id,fuelText=summary.fuelConsumedLiters>0?`Combustível gasto ${formatLiters(summary.fuelConsumedLiters)} L (${formatBRL(summary.fuelConsumedCost)})`:summary.fuelPurchasedLiters>0?`Combustível abastecido ${formatLiters(summary.fuelPurchasedLiters)} L (${formatBRL(summary.fuelPurchasedCost)})`:"Combustível gasto —";return <div key={record.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"><div className="flex flex-wrap items-center justify-between gap-2"><strong className="text-sm text-slate-800">#{String(record.number).padStart(3,"0")}</strong><div className="flex flex-wrap items-center justify-end gap-2"><span className="text-xs font-medium text-slate-500">{created.toLocaleDateString("pt-BR")} · {created.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</span><button type="button" disabled={dayClosed} onClick={()=>isEditing?saveDraft():loadLaunchIntoForm(record)} className="rounded-md border border-emerald-200 bg-white px-2 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50">{isEditing?"salvar":"editar"}</button><button type="button" disabled={dayClosed} onClick={()=>removeLaunch(record)} className="rounded-md border border-rose-200 bg-white px-2 py-1 text-[11px] font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-50">remover</button></div></div><p className="mt-1 text-xs text-slate-600">Lucro líquido <span className="inline-flex items-center gap-1 font-bold"><span aria-hidden="true" className={"h-1.5 w-1.5 rounded-full " + (summary.profit<0?"bg-red-600":"bg-emerald-600")}></span><span className={summary.profit<0?"text-red-600":"text-emerald-600"}>{formatBRL(summary.profit)}</span></span> · {fuelText}</p></div>})}</div>}
  </section>
  <section className="order-4 rounded-xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm" aria-label="Resumo do dia até agora">
   <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-slate-800">Resumo do dia até agora</p><p className="text-[11px] text-slate-500">{hasSavedLaunches?"Valores acumulados dos lançamentos salvos":"Nenhum lançamento ainda"}</p></div><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-slate-600">{savedLaunches.length}</span></div>

@@ -46,7 +46,7 @@ export async function logoutUser() { const token = sessionToken(); if (token) aw
 function normalizeEntry(input: SaveEntryInput) {
  const kmInitial=Math.max(0,Number(input.km_initial)||0),kmFinal=Math.max(0,Number(input.km_final)||0),hoursWorked=Math.max(0,Number(input.hours_worked)||0),gasCost=Math.max(0,Number(input.gas_expense)||0),alcoholCost=Math.max(0,Number(input.alcohol_expense)||0),gasPrice=Math.max(0,Number(input.gasoline_price_per_liter)||0),alcoholPrice=Math.max(0,Number(input.alcohol_price_per_liter)||0),currentFuelPrice=Math.max(0,Number(input.fuel_price_per_liter_current)||0),manualConsumption=Math.max(0,Number(input.fuel_consumption_km_per_liter)||0);
  const revenue = input.revenue_details?.length ? summarizeRevenue(input.revenue_details) : null;
- const maintenanceDetails=(input.maintenance_details??[]).filter(item=>item.description.trim()!=="").map(item=>({description:item.description.trim(),value:Math.max(0,Number(item.value)||0)}));
+ const maintenanceDetails=(input.maintenance_details??[]).map((item,index)=>({description:item.description.trim()||`Manutenção ${index+1}`,value:Math.max(0,Number(item.value)||0)})).filter(item=>item.value>0);
  const gasLiters=gasPrice>0?gasCost/gasPrice:0,alcoholLiters=alcoholPrice>0?alcoholCost/alcoholPrice:0,totalLiters=gasLiters+alcoholLiters,totalPurchase=gasCost+alcoholCost,weightedPrice=totalLiters>0?totalPurchase/totalLiters:0,priceUsed=currentFuelPrice||weightedPrice,kmDriven=kmFinal-kmInitial,automaticConsumption=manualConsumption<=0&&kmDriven>0&&totalLiters>0?kmDriven/totalLiters:0,consumption=manualConsumption>0?manualConsumption:automaticConsumption,consumed=consumption>0&&kmDriven>0?kmDriven/consumption:0,consumedCost=consumed*priceUsed;
  return {
    date:input.date,
@@ -58,7 +58,7 @@ function normalizeEntry(input: SaveEntryInput) {
    gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,fuel_price_per_liter_current:priceUsed,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,hours_worked:hoursWorked,
    fuel_consumption_km_per_liter:consumption,fuel_consumed_liters:consumed,fuel_consumed_cost:consumedCost,
    maintenance_expense:maintenanceDetails.reduce((sum,item)=>sum+item.value,0),maintenance_details:maintenanceDetails,
-   extra_expenses:(input.extra_expenses??[]).map(item=>({name:String(item.name||"").trim(),value:Math.max(0,Number(item.value)||0)})).filter(item=>item.name||item.value>0)
+   extra_expenses:(input.extra_expenses??[]).map((item,index)=>({name:String(item.name||"").trim()||`Gasto extra ${index+1}`,value:Math.max(0,Number(item.value)||0)})).filter(item=>item.value>0)
  };
 }
 

@@ -178,7 +178,7 @@ export function calculateFinancialMetrics(
   return calculateLaunch(input, context).result;
 }
 
-export function recalculateCompleteDay(
+export function recalculateDaySummary(
   launches: FinancialCalculationInput[],
   initialContext: FinancialEngineContext = {},
 ): FinancialChainResult {
@@ -263,5 +263,13 @@ export function calculateFinancialChain(
   launches: FinancialCalculationInput[],
   initialContext: FinancialEngineContext = {},
 ): FinancialChainResult {
-  return recalculateCompleteDay(launches, initialContext);
+  return recalculateDaySummary(launches, initialContext);
+}
+
+/** Nome legado mantido para consumidores já integrados ao motor. */
+export function recalculateCompleteDay(
+  launches: FinancialCalculationInput[],
+  initialContext: FinancialEngineContext = {},
+): FinancialChainResult {
+  return recalculateDaySummary(launches, initialContext);
 }
