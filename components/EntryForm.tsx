@@ -6,6 +6,7 @@ import { createRevenueItem, REVENUE_APPS, summarizeRevenue, type RevenueAppName,
 import ExtraExpenses from "./ExtraExpenses";
 import MaintenanceExpenses, { type MaintenanceItem } from "./MaintenanceExpenses";
 import CardDeLucro from "./CardDeLucro";
+import SaveLaunchButton from "./SaveLaunchButton";
 import { saveEntry } from "@/app/actions";
 import {
   calculateFinancialMetrics,
@@ -153,12 +154,12 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
  function addFuelPurchase(){setFuelPurchases(items=>[...items,{id:`fuel-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,type:"gasoline",amount:0,pricePerLiter:0}]);}
  function updateFuelPurchase(id:string,patch:Partial<FuelPurchase>){setFuelPurchases(items=>items.map(item=>item.id===id?{...item,...patch}:item));}
  function removeFuelPurchase(id:string){setFuelPurchases(items=>items.filter(item=>item.id!==id));}
- function saveDraft(){
-  if(dayClosed){setStatus("Este dia já foi fechado. Os lançamentos estão somente para leitura.");return;}
+ function saveDraft():boolean{
+  if(dayClosed){setStatus("Este dia já foi fechado. Os lançamentos estão somente para leitura.");return false;}
   const rawDraft=currentDraft(),validationError=validateDraftBeforeSave(rawDraft);
-  if(validationError){setStatus(`❌ ${validationError}`);return;}
+  if(validationError){setStatus(`❌ ${validationError}`);return false;}
   const draft=normalizeDraftForSave(rawDraft);
-  if(!draftHasData(draft)){setStatus("Nenhum dado preenchido para salvar.");return;}
+  if(!draftHasData(draft)){setStatus("Nenhum dado preenchido para salvar.");return false;}
   try {
    window.localStorage.setItem(openDayKey(date),JSON.stringify(draft));
    const nextNumber=Number(window.localStorage.getItem(nextLaunchNumberKey)||"1");
@@ -171,7 +172,8 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
    setEditingLaunchId(null);
    resetForm();
    setStatus(editingLaunchId?`✅ Registro #${String(record.number).padStart(3,"0")} atualizado.`:"✅ Dia salvo. Registro criado para um novo lançamento.");
-  } catch { setStatus("❌ Não foi possível salvar o dia neste aparelho."); }
+   return true;
+  } catch { setStatus("❌ Não foi possível salvar o dia neste aparelho.");return false; }
  }
 
  function removeLaunch(record:LaunchRecord){
@@ -323,7 +325,7 @@ export default function EntryForm({initialDate=hojeBrasilia(),initialMonthProfit
    </div></details>
   <details className="group rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-bold text-slate-800">🔧 Manutenção <span className="ml-1 text-xs font-normal text-slate-500">{maintenanceItems.length} lanç.</span></span><span className="flex items-center"><strong className="text-sm text-slate-700">{formatBRL(maintenanceTotal)}</strong><DisclosureChevron/></span></summary><div className="border-t border-slate-100 p-3"><MaintenanceExpenses items={maintenanceItems} onChange={setMaintenanceItems}/></div></details>
   <details className="group rounded-xl border border-slate-200 bg-white shadow-sm"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3"><span className="text-sm font-bold text-slate-800">🧾 Gastos extras <span className="ml-1 text-xs font-normal text-slate-500">{extras.length} lanç.</span></span><span className="flex items-center"><strong className="text-sm text-slate-700">{formatBRL(extrasSum)}</strong><DisclosureChevron/></span></summary><div className="border-t border-slate-100 p-3"><ExtraExpenses extras={extras} onChange={setExtras}/></div></details>
-  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><button type="button" onClick={saveDraft} className="btn btn-secondary w-full">Salvar Lançamento</button><button type="submit" className="btn btn-primary w-full">Registrar e fechar dia</button></div>{status&&<p className={"text-sm text-center " + (status.startsWith("Dia reaberto.")?"rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-bold text-emerald-700":editingLaunchId?"font-bold text-amber-700":"text-slate-600")}>{status}</p>}
+  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><SaveLaunchButton onSave={saveDraft} disabled={dayClosed}/><button type="submit" className="btn btn-primary w-full">Registrar e fechar dia</button></div>{status&&<p className={"text-sm text-center " + (status.startsWith("Dia reaberto.")?"rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 font-bold text-emerald-700":editingLaunchId?"font-bold text-amber-700":"text-slate-600")}>{status}</p>}
  </fieldset></form>
  {dayClosed&&<div className="order-2 -mt-2 flex justify-center"><button type="button" onClick={reopenDay} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-extrabold text-amber-800 transition hover:bg-amber-100">Reabrir dia</button></div>}
  <section className="order-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm" aria-label="Lançamentos do dia aberto">
