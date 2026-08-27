@@ -63,6 +63,7 @@ export type DailyEntry = {
   alcohol_price_per_liter: number;
   gasoline_liters: number;
   alcohol_liters: number;
+  fuel_price_per_liter_current?: number;
   km_initial: number;
   km_final: number;
   km_driven: number;

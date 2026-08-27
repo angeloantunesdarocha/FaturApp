@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   calculateFinancialChain,
   calculateFinancialMetrics,
+  recalculateCompleteDay,
 } from "../lib/financial-engine.ts";
 
 const closeTo = (actual, expected, message) => {
@@ -101,6 +102,62 @@ const recalculated = calculateFinancialChain([
 ]);
 closeTo(recalculated.lancamentos[1].km_por_litro_aplicado, 12, "edição recalcula o tanque posterior");
 closeTo(recalculated.lancamentos[2].km_por_litro_aplicado, 12, "edição propaga a nova média");
+
+const reactiveDay = recalculateCompleteDay([
+  {
+    receitaLiquida: 100,
+    horasTrabalhadas: 4,
+    kmInicial: 50,
+    kmFinal: 70,
+    consumoPerfilKmL: 10,
+    valorAbastecido: 30,
+    precoPorLitro: 5,
+  },
+  {
+    receitaLiquida: 50,
+    horasTrabalhadas: 2,
+    kmInicial: 70,
+    kmFinal: 100,
+    valorAbastecido: 42,
+    precoPorLitro: 6,
+    manutencao: 10,
+    gastosExtras: 5,
+  },
+]);
+closeTo(reactiveDay.acumuladoDia.km_rodados, 50, "km total reativo");
+closeTo(reactiveDay.acumuladoDia.horas_trabalhadas, 6, "horas totais reativas");
+closeTo(reactiveDay.acumuladoDia.litros_consumidos_rodagem, 5, "litros pela média vigente");
+closeTo(reactiveDay.acumuladoDia.gasto_combustivel_rodagem, 30, "último preço aplicado a todo o km");
+closeTo(reactiveDay.acumuladoDia.custo_total_dia, 45, "custos acumulados reativos");
+closeTo(reactiveDay.acumuladoDia.lucro_liquido_dia, 105, "lucro líquido reativo");
+closeTo(reactiveDay.acumuladoDia.custo_por_km, 0.9, "custo por km reativo");
+closeTo(reactiveDay.acumuladoDia.lucro_por_km, 2.1, "lucro por km reativo");
+closeTo(reactiveDay.acumuladoDia.lucro_por_hora, 17.5, "lucro por hora reativo");
+closeTo(reactiveDay.acumuladoDia.margem_lucro_percentual, 70, "margem reativa");
+
+const repricedDay = recalculateCompleteDay([
+  {
+    receitaLiquida: 100,
+    horasTrabalhadas: 4,
+    kmInicial: 50,
+    kmFinal: 70,
+    consumoPerfilKmL: 10,
+    valorAbastecido: 30,
+    precoPorLitro: 5,
+  },
+  {
+    receitaLiquida: 50,
+    horasTrabalhadas: 2,
+    kmInicial: 70,
+    kmFinal: 100,
+    valorAbastecido: 49,
+    precoPorLitro: 7,
+    manutencao: 10,
+    gastosExtras: 5,
+  },
+]);
+closeTo(repricedDay.acumuladoDia.gasto_combustivel_rodagem, 35, "novo preço recalcula toda a rodagem");
+closeTo(repricedDay.acumuladoDia.lucro_liquido_dia, 100, "novo preço atualiza o lucro imediatamente");
 
 const zero = calculateFinancialMetrics({});
 for (const key of ["custo_por_km", "lucro_por_km", "lucro_por_hora", "margem_lucro_percentual"]) {

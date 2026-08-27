@@ -178,18 +178,51 @@ export function calculateFinancialMetrics(
   return calculateLaunch(input, context).result;
 }
 
-export function calculateFinancialChain(
+export function recalculateCompleteDay(
   launches: FinancialCalculationInput[],
   initialContext: FinancialEngineContext = {},
 ): FinancialChainResult {
   let context = normalizeContext(initialContext);
-  const results: FinancialCalculationResult[] = [];
+  const calculatedLaunches: FinancialCalculationResult[] = [];
 
   for (const launch of launches) {
     const calculated = calculateLaunch(launch, context);
-    results.push(calculated.result);
+    calculatedLaunches.push(calculated.result);
     context = calculated.context;
   }
+
+  const latestCalculation = calculatedLaunches.at(-1);
+  const consumption = latestCalculation?.km_por_litro_aplicado ?? 0;
+  const mode = latestCalculation?.modo_calculo_km_litro ?? "estimativa_inicial";
+  const latestPrice = [...launches].reverse().find(launch =>
+    finiteNonNegative(launch.valorAbastecido) > 0
+      && finiteNonNegative(launch.precoPorLitro) > 0,
+  )?.precoPorLitro;
+  const price = finiteNonNegative(latestPrice) || normalizeContext(initialContext).ultimoPrecoPorLitro;
+
+  // O resumo do dia usa uma única referência vigente. Assim, quando o consumo
+  // ou o preço mais recente muda, todos os quilômetros do dia são recalculados
+  // pela mesma regra e os lançamentos deixam de carregar custos obsoletos.
+  const results = calculatedLaunches.map(result => {
+    const revenue = result.lucro_liquido_dia + result.custo_total_dia;
+    const consumedLiters = safeDivide(result.km_rodados, consumption);
+    const fuelCost = consumedLiters * price;
+    const cost = fuelCost + result.gasto_manutencao + result.gastos_extras;
+    const profit = revenue - cost;
+
+    return {
+      ...result,
+      km_por_litro_aplicado: consumption,
+      litros_consumidos_rodagem: consumedLiters,
+      gasto_combustivel_rodagem: fuelCost,
+      custo_total_dia: cost,
+      lucro_liquido_dia: profit,
+      custo_por_km: safeDivide(cost, result.km_rodados),
+      lucro_por_km: safeDivide(profit, result.km_rodados),
+      lucro_por_hora: safeDivide(profit, result.horas_trabalhadas),
+      margem_lucro_percentual: safeDivide(profit * 100, revenue),
+    } satisfies FinancialCalculationResult;
+  });
 
   const sum = (pick: (result: FinancialCalculationResult) => number) =>
     results.reduce((total, result) => total + pick(result), 0);
@@ -202,18 +235,13 @@ export function calculateFinancialChain(
   const cost = sum(result => result.custo_total_dia);
   const profit = sum(result => result.lucro_liquido_dia);
   const revenue = profit + cost;
-  const mode = results.some(result => result.modo_calculo_km_litro === "exato_tanque_cheio")
-    ? "exato_tanque_cheio"
-    : results.some(result => result.modo_calculo_km_litro === "media_perfil")
-      ? "media_perfil"
-      : "estimativa_inicial";
 
   return {
     lancamentos: results,
     acumuladoDia: {
       km_rodados: km,
       horas_trabalhadas: hours,
-      km_por_litro_aplicado: safeDivide(km, consumedLiters),
+      km_por_litro_aplicado: consumption,
       modo_calculo_km_litro: mode,
       litros_consumidos_rodagem: consumedLiters,
       gasto_combustivel_rodagem: fuelCost,
@@ -228,4 +256,12 @@ export function calculateFinancialChain(
     },
     contextoFinal: context,
   };
+}
+
+/** Compatibilidade com chamadas existentes; todo encadeamento usa a função mestre. */
+export function calculateFinancialChain(
+  launches: FinancialCalculationInput[],
+  initialContext: FinancialEngineContext = {},
+): FinancialChainResult {
+  return recalculateCompleteDay(launches, initialContext);
 }

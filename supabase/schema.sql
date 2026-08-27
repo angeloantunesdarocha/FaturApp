@@ -29,6 +29,7 @@ alter table public.daily_entries add column if not exists gasoline_price_per_lit
 alter table public.daily_entries add column if not exists alcohol_price_per_liter numeric default 0 not null;
 alter table public.daily_entries add column if not exists gasoline_liters numeric default 0 not null;
 alter table public.daily_entries add column if not exists alcohol_liters numeric default 0 not null;
+alter table public.daily_entries add column if not exists fuel_price_per_liter_current numeric default 0 not null;
 alter table public.daily_entries add column if not exists km_initial numeric default 0 not null;
 alter table public.daily_entries add column if not exists km_final numeric default 0 not null;
 alter table public.daily_entries add column if not exists km_driven numeric default 0 not null;
