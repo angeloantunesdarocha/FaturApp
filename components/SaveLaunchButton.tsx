@@ -52,12 +52,12 @@ export default function SaveLaunchButton({ onSave, disabled = false }: Props) {
       disabled={disabled || state !== "idle"}
       aria-busy={isLoading}
       aria-live="polite"
-      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm transition-all duration-300 ease-out motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
+      className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 px-4 py-2.5 text-sm font-bold shadow-sm transition-all duration-300 ease-out motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
         isSuccess
-          ? "scale-[1.02] border-emerald-600 bg-emerald-600 text-white shadow-emerald-200"
+          ? "scale-[1.02] border-emerald-700 bg-emerald-700 text-white shadow-emerald-200"
           : isLoading
-            ? "border-slate-300 bg-slate-100 text-slate-600"
-            : "border-slate-300 bg-white text-slate-800 hover:scale-[1.01] hover:border-slate-500 hover:bg-slate-50 hover:shadow-md active:scale-[0.99]"
+            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+            : "border-emerald-600 bg-white text-emerald-700 hover:scale-[1.01] hover:border-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 hover:shadow-md active:scale-[0.99] active:bg-emerald-100"
       }`}
     >
       {isLoading ? (
@@ -71,7 +71,13 @@ export default function SaveLaunchButton({ onSave, disabled = false }: Props) {
           <span>Lançamento Salvo!</span>
         </>
       ) : (
-        <span>Salvar Lançamento</span>
+        <>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" className="h-5 w-5 shrink-0" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M5 4h12l2 2v14H5z" />
+            <path d="M8 4v6h8V4M8 20v-6h8v6" />
+          </svg>
+          <span>Salvar Lançamento</span>
+        </>
       )}
     </button>
   );
