@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import ContributionPendingReminder from "@/components/ContributionPendingReminder";
 import PresenceTracker from "@/components/PresenceTracker";
+import AppFooter from "@/components/AppFooter";
 import { getCurrentUser } from "@/lib/auth";
 import { Analytics } from "@vercel/analytics/next";
 import Script from "next/script";
@@ -77,10 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="mx-auto w-full max-w-6xl flex-1 overflow-x-hidden px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
           {children}
         </main>
-        <footer className="border-t border-slate-200 px-3 py-4 text-center text-xs text-slate-500 sm:px-4">
-          <p>FaturApp — descubra se você está lucrando ou pagando pra trabalhar.</p>
-          <p className="mt-1">Desenvolvido por: Ângelo Antunes</p>
-        </footer>
+        <AppFooter />
         <Analytics />
         {gaMeasurementId ? (
           <>
