@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 const COPYRIGHT = "© 2026 FaturApp. Visibilidade total sobre o seu lucro real. Desenvolvido por Ângelo Antunes. Todos os direitos reservados.";
 const INSTAGRAM_URL = "https://www.instagram.com/faturappbrasil/";
-const FACEBOOK_URL = "https://www.facebook.com/faturappbrasil/";
+const FACEBOOK_URL = "https://www.facebook.com/share/1DCMkxEp7E/";
 
 function InstagramIcon() {
   return (
