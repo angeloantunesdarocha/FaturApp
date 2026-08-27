@@ -120,9 +120,12 @@ export function computeFuelCostPerKm(expense: number, km: number): number | null
 }
 
 export function computeFuelCostForProfit(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense"> & Partial<Pick<DailyEntry, "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {
-  // O lucro líquido segue a regra financeira do app: combustível comprado
-  // no dia é despesa. O custo exato do combustível consumido para a distância
-  // continua disponível em fuel_consumed_cost como uma métrica operacional.
+  // Registros novos usam o custo do combustível efetivamente consumido na
+  // rodagem. O valor comprado fica separado como dado do abastecimento.
+  // O fallback preserva a leitura de registros históricos sem consumo calculado.
+  if (Math.max(0, Number(entry.fuel_consumption_km_per_liter) || 0) > 0) {
+    return Math.max(0, Number(entry.fuel_consumed_cost) || 0);
+  }
   return computeFuelCost(entry);
 }
 
