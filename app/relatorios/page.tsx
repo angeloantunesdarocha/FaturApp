@@ -4,11 +4,10 @@ import { hojeBrasilia } from "@/lib/utils";
 import { requireUser } from "@/lib/auth";
 
 export default async function ReportsPage() {
-  await requireUser();
+  const user = await requireUser();
   const today = hojeBrasilia();
-  const [year] = today.split("-");
-  // Buscar todos os lançamentos do ano para o dashboard filtrar dinamicamente
-  const entries = await getEntriesInRange(`${year}-01-01`, `${year}-12-31`);
+  // O filtro De/Até pode atravessar semanas, meses e anos sem nova regra de cálculo.
+  const entries = await getEntriesInRange("2000-01-01", "2100-12-31");
 
   return (
     <div className="space-y-5">
@@ -16,6 +15,7 @@ export default async function ReportsPage() {
         entries={entries}
         initialFrom={today}
         initialTo={today}
+        userId={user.user_id}
       />
     </div>
   );

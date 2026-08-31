@@ -5,6 +5,7 @@ import {
   recalculateCompleteDay,
   recalculateDaySummary,
 } from "../lib/financial-engine.ts";
+import { calculateDay, calculateDaysFromEntries, sumPeriod } from "../lib/day-calculation.ts";
 
 const closeTo = (actual, expected, message) => {
   assert.ok(Math.abs(actual - expected) < 1e-9, `${message}: esperado ${expected}, obtido ${actual}`);
@@ -195,6 +196,92 @@ closeTo(afterEdit.acumuladoDia.lucro_liquido_dia, 27.22, "edição atualiza o re
 const afterRemove = recalculateDaySummary(savedLaunchEvents.filter((_,index)=>index!==2));
 closeTo(afterRemove.acumuladoDia.horas_trabalhadas, 2, "remoção atualiza horas");
 closeTo(afterRemove.acumuladoDia.lucro_liquido_dia, 57.22, "remoção atualiza o resumo");
+
+// Dados reais de homologação de 31/08/2026. O abastecimento de R$ 30,00
+// sem quilometragem é uma saída direta; o de R$ 50,00 alimenta o tanque e
+// a rodagem é custeada pelo combustível efetivamente consumido.
+const validationDay = calculateDay([
+  {
+    id: "launch-1",
+    number: 1,
+    date: "2026-08-31",
+    revenueItems: [{ id: "revenue-1", app: "Uber", nomeAppPersonalizado: "", bruto: 220, taxa: 0 }],
+    hoursWorked: 8,
+    kmInitial: 100,
+    kmFinal: 165,
+    consumptionKmL: 10,
+    fuelPurchases: [{ id: "fuel-1", type: "gasoline", amount: 50, pricePerLiter: 6.2 }],
+  },
+  {
+    id: "launch-2",
+    number: 2,
+    date: "2026-08-31",
+    fuelPurchases: [{ id: "fuel-2", type: "gasoline", amount: 30, pricePerLiter: 6.4 }],
+  },
+  {
+    id: "launch-3",
+    number: 3,
+    date: "2026-08-31",
+    maintenanceItems: [{ description: "Manutenção", value: 17.89 }],
+    extraItems: [{ name: "Gastos extras", value: 9.94 }],
+  },
+]);
+closeTo(validationDay.revenueGross, 220, "receitas reais");
+closeTo(validationDay.hours, 8, "horas reais");
+closeTo(validationDay.km, 65, "km reais");
+closeTo(validationDay.fuelPurchasedAmount, 80, "combustível abastecido em reais");
+closeTo(validationDay.fuelPurchasedLiters, 12.752016129032258, "combustível abastecido em litros");
+closeTo(validationDay.fuelConsumedLiters, 6.5, "combustível consumido em litros");
+closeTo(validationDay.fuelConsumedCost, 41.6, "combustível consumido em reais");
+closeTo(validationDay.isolatedFuelExpense, 30, "abastecimento isolado como saída");
+closeTo(validationDay.operatingCosts, 99.43, "custos reais");
+closeTo(validationDay.profit, 120.57, "lucro líquido real");
+closeTo(validationDay.profitPerKm, 120.57 / 65, "lucro real por km");
+closeTo(validationDay.profitPerHour, 120.57 / 8, "lucro real por hora");
+closeTo(validationDay.marginPercent, 120.57 / 220 * 100, "margem real");
+closeTo(validationDay.gainPerKm - validationDay.costPerKm, validationDay.profitPerKm, "prova real por km");
+
+const validationPeriod = sumPeriod([validationDay]);
+closeTo(validationPeriod.operatingCosts, 99.43, "custos iguais no período");
+closeTo(validationPeriod.profit, 120.57, "lucro igual no período");
+closeTo(validationPeriod.profitPerKm, 120.57 / 65, "lucro/km igual no período");
+
+const persistedValidationDay = calculateDaysFromEntries([{
+  id: "daily-entry-1",
+  date: "2026-08-31",
+  gross_amount: 220,
+  fee_percent: 0,
+  net_fare: 220,
+  gas_expense: 80,
+  alcohol_expense: 0,
+  gasoline_price_per_liter: 80 / 12.752016129032258,
+  alcohol_price_per_liter: 0,
+  km_initial: 100,
+  km_final: 165,
+  km_driven: 65,
+  hours_worked: 8,
+  fuel_consumption_km_per_liter: 10,
+  isolated_fuel_expense: 30,
+  maintenance_expense: 17.89,
+  maintenance_details: [{ description: "Manutenção", value: 17.89 }],
+  extra_expenses: [{ name: "Gastos extras", value: 9.94 }],
+  launch_details: validationDay.launches.map((launch) => ({
+    id: launch.id,
+    number: launch.number,
+    date: launch.date,
+    revenueItems: launch.revenueItems,
+    hoursWorked: launch.hours,
+    kmInitial: launch.kmInitial,
+    kmFinal: launch.kmFinal,
+    fuelPurchases: launch.fuelPurchases,
+    consumptionKmL: launch.consumptionKmL,
+    maintenanceItems: launch.maintenanceItems,
+    extraItems: launch.extraItems,
+    isolatedFuelExpenseOverride: launch.isolatedFuelExpense,
+  })),
+}])[0];
+closeTo(persistedValidationDay.operatingCosts, 99.43, "relatórios usam os mesmos custos");
+closeTo(persistedValidationDay.profit, 120.57, "relatórios usam o mesmo lucro");
 
 const zero = calculateFinancialMetrics({});
 for (const key of ["custo_por_km", "lucro_por_km", "lucro_por_hora", "margem_lucro_percentual"]) {

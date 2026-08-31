@@ -1,3 +1,5 @@
+import type { DayLaunchInput } from "./day-calculation.ts";
+
 export function formatBRL(value: number): string {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -12,7 +14,7 @@ export function toNumber(v: string | number | null | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-const FATURAPP_TIME_ZONE = "America/Sao_Paulo";
+export const FATURAPP_TIME_ZONE = "America/Sao_Paulo";
 
 /**
  * Retorna a data atual no fuso oficial do FaturApp.
@@ -39,11 +41,32 @@ export function formatDateBR(iso: string): string {
   return `${d}/${m}/${y}`;
 }
 
+export function formatDateTimeBrasilia(value: string | Date): { date: string; time: string } {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return {
+    date: new Intl.DateTimeFormat("pt-BR", { timeZone: FATURAPP_TIME_ZONE }).format(date),
+    time: new Intl.DateTimeFormat("pt-BR", { timeZone: FATURAPP_TIME_ZONE, hour: "2-digit", minute: "2-digit" }).format(date),
+  };
+}
+
+export function startOfWeekBrasilia(dateISO = hojeBrasilia()): string {
+  const [year, month, day] = dateISO.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12));
+  const weekDay = date.getUTCDay();
+  date.setUTCDate(date.getUTCDate() + (weekDay === 0 ? -6 : 1 - weekDay));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+}
+
+export function startOfMonthBrasilia(dateISO = hojeBrasilia()): string {
+  return `${dateISO.slice(0, 7)}-01`;
+}
+
 export type ExtraExpense = { name: string; value: number };
 export type MaintenanceItem = { description: string; value: number };
 
 export type DailyEntry = {
   id: string;
+  created_at?: string;
   date: string;
   gross_amount: number | null;
   fee_percent: number | null;
@@ -76,65 +99,9 @@ export type DailyEntry = {
   fuel_consumption_km_per_liter?: number;
   fuel_consumed_liters?: number;
   fuel_consumed_cost?: number;
+  isolated_fuel_expense?: number;
+  launch_details?: DayLaunchInput[];
+  reopen_history?: Array<{ at: string }>;
+  fuel_remaining_liters?: number;
+  fuel_remaining_value?: number;
 };
-
-export function computeFeeAmount(entry: { gross_amount: number | null; fee_percent: number | null }): number {
-  if (entry.gross_amount === null || entry.gross_amount === undefined) return 0;
-  const gross = Number(entry.gross_amount) || 0;
-  const fee = Number(entry.fee_percent ?? 0) || 0;
-  return gross * (fee / 100);
-}
-
-export function computeNetFare(entry: {
-  gross_amount: number | null;
-  fee_percent: number | null;
-  net_fare: number | null;
-  revenue_details?: Array<{ liquido?: number | null }>;
-}): number {
-  const details = entry.revenue_details || [];
-  if (details.length) {
-    return details.reduce((sum, item) => sum + Math.max(0, Number(item.liquido) || 0), 0);
-  }
-  if (entry.gross_amount !== null && entry.gross_amount !== undefined) {
-    const gross = Number(entry.gross_amount) || 0;
-    const fee = Number(entry.fee_percent ?? 0) || 0;
-    return gross * (1 - fee / 100);
-  }
-  return Number(entry.net_fare ?? 0) || 0;
-}
-
-export function computeFuelCost(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense">): number {
-  return Math.max(0, Number(entry.gas_expense) || 0) + Math.max(0, Number(entry.alcohol_expense) || 0);
-}
-
-export function computeFuelLiters(entry: Pick<DailyEntry, "gasoline_liters" | "alcohol_liters">): number {
-  return Math.max(0, Number(entry.gasoline_liters) || 0) + Math.max(0, Number(entry.alcohol_liters) || 0);
-}
-
-export function computeLitersFromPurchase(amount: number, pricePerLiter: number): number {
-  if (amount <= 0 || pricePerLiter <= 0) return 0;
-  return amount / pricePerLiter;
-}
-
-export function computeFuelCostPerKm(expense: number, km: number): number | null {
-  return km > 0 ? expense / km : null;
-}
-
-export function computeFuelCostForProfit(entry: Pick<DailyEntry, "gas_expense" | "alcohol_expense"> & Partial<Pick<DailyEntry, "fuel_consumed_cost" | "fuel_consumption_km_per_liter">>): number {
-  // Registros novos usam o custo do combustível efetivamente consumido na
-  // rodagem. O valor comprado fica separado como dado do abastecimento.
-  // O fallback preserva a leitura de registros históricos sem consumo calculado.
-  if (Math.max(0, Number(entry.fuel_consumption_km_per_liter) || 0) > 0) {
-    return Math.max(0, Number(entry.fuel_consumed_cost) || 0);
-  }
-  return computeFuelCost(entry);
-}
-
-export function computeDayProfit(entry: Pick<DailyEntry, "gross_amount" | "fee_percent" | "net_fare" | "gas_expense" | "alcohol_expense" | "maintenance_expense" | "maintenance_details" | "extra_expenses"> & Partial<Pick<DailyEntry, "revenue_details" | "fuel_consumed_cost" | "fuel_consumption_km_per_liter" | "manutencao_itens" | "extras_itens">>): number {
-  const net = computeNetFare(entry);
-  const maintenanceItems = entry.maintenance_details?.length ? entry.maintenance_details : (entry.manutencao_itens || []);
-  const extraItems = entry.extra_expenses?.length ? entry.extra_expenses : (entry.extras_itens || []);
-  const maintenance = maintenanceItems.reduce((sum, item) => sum + toNumber(item.value), 0) || Number(entry.maintenance_expense || 0);
-  const extras = extraItems.reduce((sum, item) => sum + toNumber(item.value), 0);
-  return net - computeFuelCostForProfit(entry) - maintenance - extras;
-}

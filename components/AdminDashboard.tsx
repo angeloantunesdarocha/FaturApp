@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createAdminUser, deleteAdminUser, getAdminDashboard } from "@/app/admin/actions";
+import { FATURAPP_TIME_ZONE } from "@/lib/utils";
 
 type User = {
   id: string; login: string; email: string | null; role: string; created_at: string;
@@ -15,7 +16,7 @@ type Props = { data: { summary: Record<string, number>; users: User[]; recent_ac
 
 const number = new Intl.NumberFormat("pt-BR");
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
-const dt = (value: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "Nunca";
+const dt = (value: string | null) => value ? new Intl.DateTimeFormat("pt-BR", { timeZone: FATURAPP_TIME_ZONE, dateStyle: "short", timeStyle: "short" }).format(new Date(value)) : "Nunca";
 const labels: Record<string, string> = {
   access: "Acesso", entry_created: "Lançamento criado", entry_updated: "Lançamento atualizado",
   report_pdf: "PDF emitido", report_excel: "Planilha emitida", report_shared: "Relatório compartilhado",

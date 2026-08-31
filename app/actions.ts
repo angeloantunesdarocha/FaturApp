@@ -4,7 +4,8 @@ import { cookies, headers } from "next/headers";
 import { createClientServer } from "@/lib/supabase";
 import { clearSessionCookie, requireUser, setSessionCookie } from "@/lib/auth";
 import { summarizeRevenue, type RevenueItem } from "@/lib/revenue";
-import { computeDayProfit, type DailyEntry, type ExtraExpense, type MaintenanceItem } from "@/lib/utils";
+import { type DailyEntry, type ExtraExpense, type MaintenanceItem } from "@/lib/utils";
+import { calculateDay, calculateDaysFromEntries, sumPeriod, type DayLaunchInput } from "@/lib/day-calculation";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -28,6 +29,11 @@ export type SaveEntryInput = {
   fuel_consumption_km_per_liter?: number;
   fuel_consumed_liters?: number;
   fuel_consumed_cost?: number;
+  isolated_fuel_expense?: number;
+  fuel_remaining_liters?: number;
+  fuel_remaining_value?: number;
+  launch_details?: DayLaunchInput[];
+  reopen_history?: Array<{ at: string }>;
   maintenance_expense: number;
   maintenance_details: MaintenanceItem[];
   extra_expenses: ExtraExpense[];
@@ -44,6 +50,19 @@ export async function finishPasswordRecovery(sessionToken: string) { if (!/^[0-9
 export async function logoutUser() { const token = sessionToken(); if (token) await createClientServer().rpc("app_logout", { p_token: token }); clearSessionCookie(); redirect("/login"); }
 
 function normalizeEntry(input: SaveEntryInput) {
+ if(input.launch_details?.length){
+  const day=calculateDay(input.launch_details);
+  const gasPurchases=day.fuelPurchases.filter(item=>item.type==="gasoline"),alcoholPurchases=day.fuelPurchases.filter(item=>item.type==="alcohol");
+  const gasCost=gasPurchases.reduce((sum,item)=>sum+item.amount,0),alcoholCost=alcoholPurchases.reduce((sum,item)=>sum+item.amount,0),gasLiters=gasPurchases.reduce((sum,item)=>sum+(item.pricePerLiter>0?item.amount/item.pricePerLiter:0),0),alcoholLiters=alcoholPurchases.reduce((sum,item)=>sum+(item.pricePerLiter>0?item.amount/item.pricePerLiter:0),0);
+  const launchDetails:DayLaunchInput[]=day.launches.map(launch=>({id:launch.id,number:launch.number,date:launch.date,createdAt:launch.createdAt,revenueItems:launch.revenueItems.map(item=>({id:item.id,app:item.app,nomeAppPersonalizado:item.nomeAppPersonalizado,bruto:item.bruto,taxa:item.taxa})),hoursWorked:launch.hours,kmInitial:launch.kmInitial,kmFinal:launch.kmFinal,fuelPurchases:launch.fuelPurchases,fuelType:launch.fuelPurchases.at(-1)?.type==="alcohol"?"ethanol":"gasoline",consumptionKmL:launch.consumptionKmL,maintenanceItems:launch.maintenanceItems,extraItems:launch.extraItems,isolatedFuelExpenseOverride:launch.isolatedFuelExpense}));
+  return {
+   date:input.date,gross_amount:day.revenueGross,fee_percent:day.revenueGross>0?day.fees/day.revenueGross*100:0,net_fare:day.revenueNet,revenue_details:day.revenueItems,
+   gas_expense:gasCost,alcohol_expense:alcoholCost,gasoline_price_per_liter:gasLiters>0?gasCost/gasLiters:0,alcohol_price_per_liter:alcoholLiters>0?alcoholCost/alcoholLiters:0,gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,
+   fuel_price_per_liter_current:day.fuelPriceApplied,km_initial:day.launches.find(launch=>launch.kmInitial>0)?.kmInitial??0,km_final:(day.launches.find(launch=>launch.kmInitial>0)?.kmInitial??0)+day.km,km_driven:day.km,hours_worked:day.hours,
+   fuel_consumption_km_per_liter:day.consumptionKmL,fuel_consumed_liters:day.fuelConsumedLiters,fuel_consumed_cost:day.fuelConsumedCost,isolated_fuel_expense:day.isolatedFuelExpense,fuel_remaining_liters:day.fuelRemainingLiters,fuel_remaining_value:day.fuelRemainingValue,
+   maintenance_expense:day.maintenance,maintenance_details:day.maintenanceItems,extra_expenses:day.extraItems,launch_details:launchDetails,reopen_history:(input.reopen_history??[]).filter(item=>item&&typeof item.at==="string"&&!Number.isNaN(Date.parse(item.at))).map(item=>({at:new Date(item.at).toISOString()})),
+  };
+ }
  const kmInitial=Math.max(0,Number(input.km_initial)||0),kmFinal=Math.max(0,Number(input.km_final)||0),hoursWorked=Math.max(0,Number(input.hours_worked)||0),gasCost=Math.max(0,Number(input.gas_expense)||0),alcoholCost=Math.max(0,Number(input.alcohol_expense)||0),gasPrice=Math.max(0,Number(input.gasoline_price_per_liter)||0),alcoholPrice=Math.max(0,Number(input.alcohol_price_per_liter)||0),currentFuelPrice=Math.max(0,Number(input.fuel_price_per_liter_current)||0),manualConsumption=Math.max(0,Number(input.fuel_consumption_km_per_liter)||0);
  const revenue = input.revenue_details?.length ? summarizeRevenue(input.revenue_details) : null;
  const maintenanceDetails=(input.maintenance_details??[]).map((item,index)=>({description:item.description.trim()||`Manutenção ${index+1}`,value:Math.max(0,Number(item.value)||0)})).filter(item=>item.value>0);
@@ -56,7 +75,7 @@ function normalizeEntry(input: SaveEntryInput) {
    ...(revenue ? {revenue_details:revenue.normalized} : {}),
    gas_expense:gasCost,alcohol_expense:alcoholCost,gasoline_price_per_liter:gasPrice,alcohol_price_per_liter:alcoholPrice,
    gasoline_liters:gasLiters,alcohol_liters:alcoholLiters,fuel_price_per_liter_current:priceUsed,km_initial:kmInitial,km_final:kmFinal,km_driven:kmDriven,hours_worked:hoursWorked,
-   fuel_consumption_km_per_liter:consumption,fuel_consumed_liters:consumed,fuel_consumed_cost:consumedCost,
+   fuel_consumption_km_per_liter:consumption,fuel_consumed_liters:consumed,fuel_consumed_cost:consumedCost,isolated_fuel_expense:Math.max(0,Number(input.isolated_fuel_expense)||0),fuel_remaining_liters:Math.max(0,Number(input.fuel_remaining_liters)||0),fuel_remaining_value:Math.max(0,Number(input.fuel_remaining_value)||0),launch_details:[],reopen_history:[],
    maintenance_expense:maintenanceDetails.reduce((sum,item)=>sum+item.value,0),maintenance_details:maintenanceDetails,
    extra_expenses:(input.extra_expenses??[]).map((item,index)=>({name:String(item.name||"").trim()||`Gasto extra ${index+1}`,value:Math.max(0,Number(item.value)||0)})).filter(item=>item.value>0)
  };
@@ -85,5 +104,5 @@ export async function saveEntry(input:SaveEntryInput){
  return{success:true,monthProfit,userId:user.user_id};
 }
 export async function updateEntry(id:string,input:SaveEntryInput){await requireUser();const token=sessionToken();if(!token)return{success:false,error:"Sessão inválida."};if(!UUID_PATTERN.test(id))return{success:false,error:GENERIC_RESOURCE_ERROR};const row=normalizeEntry(input);if(row.km_final<row.km_initial)return{success:false,error:"O km final não pode ser menor que o km inicial."};if(row.gas_expense>0&&row.gasoline_price_per_liter<=0)return{success:false,error:"Informe o preço por litro da gasolina."};if(row.alcohol_expense>0&&row.alcohol_price_per_liter<=0)return{success:false,error:"Informe o preço por litro do álcool."};if(row.gas_expense+row.alcohol_expense>0&&row.km_driven>0&&row.fuel_consumption_km_per_liter<=0)return{success:false,error:"Informe o consumo médio do veículo (Km/L)."};const{error}=await createClientServer().rpc("app_update_entry",{p_token:token,p_entry_id:id,p_entry:row});if(error){console.error("Erro ao atualizar lançamento:",error.code);return{success:false,error:GENERIC_RESOURCE_ERROR};}revalidatePath("/");revalidatePath("/relatorios");return{success:true};}
-export async function getMonthProfit(dateISO:string):Promise<number>{await requireUser();const token=sessionToken();if(!token)return 0;const[y,m]=dateISO.split("-");const from=`${y}-${m}-01`;const last=new Date(Number(y),Number(m),0).getDate();const to=`${y}-${m}-${String(last).padStart(2,"0")}`;const{data,error}=await createClientServer().rpc("app_get_entries",{p_token:token,p_from:from,p_to:to});if(error||!data)return 0;return(data as DailyEntry[]).reduce((sum,entry)=>sum+computeDayProfit(entry),0);}
+export async function getMonthProfit(dateISO:string):Promise<number>{await requireUser();const token=sessionToken();if(!token)return 0;const[y,m]=dateISO.split("-");const from=`${y}-${m}-01`;const last=new Date(Number(y),Number(m),0).getDate();const to=`${y}-${m}-${String(last).padStart(2,"0")}`;const{data,error}=await createClientServer().rpc("app_get_entries",{p_token:token,p_from:from,p_to:to});if(error||!data)return 0;return sumPeriod(calculateDaysFromEntries(data as DailyEntry[])).profit;}
 export async function getEntriesInRange(from:string,to:string){await requireUser();const token=sessionToken();if(!token)return[];const{data,error}=await createClientServer().rpc("app_get_entries",{p_token:token,p_from:from,p_to:to});if(error)throw new Error(error.message);return(data??[])as any[];}
