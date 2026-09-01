@@ -28,6 +28,7 @@ function appName(app: string, custom: string) {
 
 export function buildReportText(days: DaySummary[], from: string, to: string): string {
   const totals = sumPeriod(days);
+  const showDailyBalance = from !== to;
   const lines = [
     "🚗 *FaturApp - Relatório Completo*",
     `📅 Período: ${periodLabel(from, to)}`,
@@ -47,9 +48,18 @@ export function buildReportText(days: DaySummary[], from: string, to: string): s
     "",
   ];
 
+  if (showDailyBalance) {
+    lines.push("📊 *BALANÇO TOTAL POR DIA*");
+    lines.push("Data | Receita bruta | Receita líquida | Taxas | Custos | Lucro | Km | Horas | Lucro/km | Lucro/h");
+    for (const day of days) {
+      lines.push(`${formatDateBR(day.date)} | ${formatBRL(day.revenueGross)} | ${formatBRL(day.revenueNet)} | ${formatBRL(day.fees)} | ${formatBRL(day.operatingCosts)} | ${formatBRL(day.profit)} | ${number(day.km, 1)} km | ${number(day.hours, 1)} h | ${formatBRL(day.profitPerKm)} | ${formatBRL(day.profitPerHour)}`);
+    }
+    lines.push(`TOTAL | ${formatBRL(totals.revenueGross)} | ${formatBRL(totals.revenueNet)} | ${formatBRL(totals.fees)} | ${formatBRL(totals.operatingCosts)} | ${formatBRL(totals.profit)} | ${number(totals.km, 1)} km | ${number(totals.hours, 1)} h | ${formatBRL(totals.profitPerKm)} | ${formatBRL(totals.profitPerHour)}`);
+    lines.push("");
+  }
+
   for (const day of days) {
     lines.push(`📆 *${formatDateBR(day.date)}*`);
-    lines.push(`Lucro ${formatBRL(day.profit)} · Custos ${formatBRL(day.operatingCosts)} · ${number(day.km, 1)} km · ${number(day.hours, 1)} h`);
     lines.push("💰 Receitas por aplicativo:");
     if (day.revenueItems.length) day.revenueItems.forEach((item) => lines.push(`  • ${appName(item.app, item.nomeAppPersonalizado)}: bruto ${formatBRL(item.bruto)} · taxa ${formatBRL(item.taxaValor)} · líquido ${formatBRL(item.liquido)}`));
     else lines.push("  • Não informado - R$ 0,00");
@@ -242,27 +252,31 @@ export function createReportPdf(days: DaySummary[], from: string, to: string): j
   };
 
   drawSummary(doc, days);
-  sectionTitle(doc, "Balanço total por dia", 91);
-  autoTable(doc, {
-    ...tableTheme({
-      0: { halign: "left", cellWidth: 19 },
-      1: { halign: "left", cellWidth: 21 },
-      2: { halign: "left", cellWidth: 22 },
-      3: { halign: "left", cellWidth: 18 },
-      4: { halign: "left", cellWidth: 19 },
-      5: { halign: "left", cellWidth: 19 },
-      6: { halign: "left", cellWidth: 13 },
-      7: { halign: "left", cellWidth: 15 },
-      8: { halign: "left", cellWidth: 20 },
-      9: { halign: "left", cellWidth: 20 },
-    }, decoratePage, { width: 186 }),
-    startY: 96,
-    head: [["Data", "Receita bruta", "Receita líquida", "Taxas", "Custos", "Lucro", "Km", "Horas", "Lucro/km", "Lucro/h"]],
-    body: days.map((day) => [formatDateBR(day.date), formatBRL(day.revenueGross), formatBRL(day.revenueNet), formatBRL(day.fees), formatBRL(day.operatingCosts), formatBRL(day.profit), number(day.km, 1), number(day.hours, 1), formatBRL(day.profitPerKm), formatBRL(day.profitPerHour)]),
-    foot: [["TOTAL", formatBRL(totals.revenueGross), formatBRL(totals.revenueNet), formatBRL(totals.fees), formatBRL(totals.operatingCosts), formatBRL(totals.profit), number(totals.km, 1), number(totals.hours, 1), formatBRL(totals.profitPerKm), formatBRL(totals.profitPerHour)]],
-  });
+  const showDailyBalance = from !== to;
+  let y = 91;
+  if (showDailyBalance) {
+    sectionTitle(doc, "Balanço total por dia", 91);
+    autoTable(doc, {
+      ...tableTheme({
+        0: { halign: "left", cellWidth: 19 },
+        1: { halign: "left", cellWidth: 21 },
+        2: { halign: "left", cellWidth: 22 },
+        3: { halign: "left", cellWidth: 18 },
+        4: { halign: "left", cellWidth: 19 },
+        5: { halign: "left", cellWidth: 19 },
+        6: { halign: "left", cellWidth: 13 },
+        7: { halign: "left", cellWidth: 15 },
+        8: { halign: "left", cellWidth: 20 },
+        9: { halign: "left", cellWidth: 20 },
+      }, decoratePage, { width: 186 }),
+      startY: 96,
+      head: [["Data", "Receita bruta", "Receita líquida", "Taxas", "Custos", "Lucro", "Km", "Horas", "Lucro/km", "Lucro/h"]],
+      body: days.map((day) => [formatDateBR(day.date), formatBRL(day.revenueGross), formatBRL(day.revenueNet), formatBRL(day.fees), formatBRL(day.operatingCosts), formatBRL(day.profit), number(day.km, 1), number(day.hours, 1), formatBRL(day.profitPerKm), formatBRL(day.profitPerHour)]),
+      foot: [["TOTAL", formatBRL(totals.revenueGross), formatBRL(totals.revenueNet), formatBRL(totals.fees), formatBRL(totals.operatingCosts), formatBRL(totals.profit), number(totals.km, 1), number(totals.hours, 1), formatBRL(totals.profitPerKm), formatBRL(totals.profitPerHour)]],
+    });
+    y = (doc as any).lastAutoTable.finalY + 12;
+  }
 
-  let y = (doc as any).lastAutoTable.finalY + 12;
   const ensure = (height = 30) => { if (y + height > 270) { doc.addPage(); y = 40; } };
   const renderTable = (
     title: string,
