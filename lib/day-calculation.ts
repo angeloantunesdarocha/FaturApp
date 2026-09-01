@@ -410,6 +410,17 @@ function fallbackLaunch(entry: PersistedDayEntry): DayLaunchInput {
   const kmInitial = zeroIfInvalid(entry.km_initial);
   const storedKm = zeroIfInvalid(entry.km_driven);
   const kmFinal = Math.max(kmInitial, zeroIfInvalid(entry.km_final), kmInitial + storedKm);
+  const purchasedFuelAmount = gas + alcohol;
+  const hasPersistedLaunches = Array.isArray(entry.launch_details) && entry.launch_details.length > 0;
+  const storedIsolatedFuelExpense = zeroIfInvalid(entry.isolated_fuel_expense);
+  // Older rows did not have `isolated_fuel_expense`. After the column was
+  // added with a zero default, those rows still need to count a fuel-only
+  // purchase as an outflow; otherwise historical reports silently lose the
+  // money paid at the pump. A row with distance remains a normal rodagem cost.
+  const shouldInferFuelOnlyExpense = purchasedFuelAmount > 0
+    && kmFinal <= kmInitial
+    && !hasPersistedLaunches
+    && storedIsolatedFuelExpense <= 0;
   const maintenanceItems = entry.maintenance_details?.length
     ? entry.maintenance_details
     : entry.manutencao_itens?.length
@@ -431,9 +442,11 @@ function fallbackLaunch(entry: PersistedDayEntry): DayLaunchInput {
     consumptionKmL: zeroIfInvalid(entry.fuel_consumption_km_per_liter),
     maintenanceItems,
     extraItems,
-    isolatedFuelExpenseOverride: entry.isolated_fuel_expense === undefined
-      ? undefined
-      : zeroIfInvalid(entry.isolated_fuel_expense),
+    isolatedFuelExpenseOverride: shouldInferFuelOnlyExpense
+      ? purchasedFuelAmount
+      : entry.isolated_fuel_expense === undefined
+        ? undefined
+        : storedIsolatedFuelExpense,
   };
 }
 

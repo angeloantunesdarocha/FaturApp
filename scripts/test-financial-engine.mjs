@@ -283,6 +283,29 @@ const persistedValidationDay = calculateDaysFromEntries([{
 closeTo(persistedValidationDay.operatingCosts, 99.43, "relatórios usam os mesmos custos");
 closeTo(persistedValidationDay.profit, 120.57, "relatórios usam o mesmo lucro");
 
+// Registros antigos receberam isolated_fuel_expense=0 quando a coluna foi
+// criada, mas um abastecimento sem km continua sendo uma saída de caixa.
+const legacyFuelOnlyDay = calculateDaysFromEntries([{
+  id: "legacy-fuel-only",
+  date: "2026-08-30",
+  gross_amount: 0,
+  fee_percent: 0,
+  net_fare: 0,
+  gas_expense: 30,
+  alcohol_expense: 0,
+  gasoline_price_per_liter: 6,
+  alcohol_price_per_liter: 0,
+  km_initial: 0,
+  km_final: 0,
+  km_driven: 0,
+  hours_worked: 0,
+  fuel_consumption_km_per_liter: 0,
+  isolated_fuel_expense: 0,
+  launch_details: [],
+}])[0];
+closeTo(legacyFuelOnlyDay.isolatedFuelExpense, 30, "abastecimento histórico sem km preserva a saída");
+closeTo(legacyFuelOnlyDay.profit, -30, "abastecimento histórico sem km reduz o lucro");
+
 const zero = calculateFinancialMetrics({});
 for (const key of ["custo_por_km", "lucro_por_km", "lucro_por_hora", "margem_lucro_percentual"]) {
   assert.equal(zero[key], 0, `${key} deve proteger divisão por zero`);
