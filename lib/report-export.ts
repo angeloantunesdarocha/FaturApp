@@ -1,6 +1,8 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { sumPeriod, type DaySummary } from "./day-calculation.ts";
+import { FATURAPP_LOGO_PNG_DATA_URI } from "./faturapp-logo.ts";
+import { FATURAPP_PDF_FONT_BOLD_BASE64, FATURAPP_PDF_FONT_REGULAR_BASE64 } from "./faturapp-pdf-font.ts";
 import { formatBRL, formatDateBR, formatDateTimeBrasilia } from "./utils.ts";
 
 const NAVY: [number, number, number] = [11, 34, 57];
@@ -8,11 +10,15 @@ const BLUE: [number, number, number] = [30, 58, 138];
 const GREEN: [number, number, number] = [34, 197, 94];
 const LIGHT_GREEN: [number, number, number] = [220, 252, 231];
 const LIGHT_GRAY: [number, number, number] = [248, 250, 252];
+const WHITE: [number, number, number] = [255, 255, 255];
+const BORDER: [number, number, number] = [226, 232, 240];
 const MAIN_URL = "fatur-app.vercel.app/comece";
+const PAGE_TOTAL_TOKEN = "__FATURAPP_TOTAL_PAGES__";
+const PDF_FONT_FAMILY = "FaturAppSans";
 
 const number = (value: number, digits = 2) => value.toLocaleString("pt-BR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 const percent = (value: number) => `${number(value, 2)}%`;
-const valueOrDash = (value: string | undefined | null) => String(value || "").trim() || "—";
+const valueOrNotInformed = (value: string | undefined | null) => String(value || "").trim() || "Não informado";
 const periodLabel = (from: string, to: string) => from === to ? formatDateBR(from) : `${formatDateBR(from)} a ${formatDateBR(to)}`;
 
 function appName(app: string, custom: string) {
@@ -23,7 +29,7 @@ function appName(app: string, custom: string) {
 export function buildReportText(days: DaySummary[], from: string, to: string): string {
   const totals = sumPeriod(days);
   const lines = [
-    "🚗 *FaturApp — Relatório Completo*",
+    "🚗 *FaturApp - Relatório Completo*",
     `📅 Período: ${periodLabel(from, to)}`,
     `📊 ${days.length} dia(s) · ${totals.launches} lançamento(s)`,
     "",
@@ -46,19 +52,19 @@ export function buildReportText(days: DaySummary[], from: string, to: string): s
     lines.push(`Lucro ${formatBRL(day.profit)} · Custos ${formatBRL(day.operatingCosts)} · ${number(day.km, 1)} km · ${number(day.hours, 1)} h`);
     lines.push("💰 Receitas por aplicativo:");
     if (day.revenueItems.length) day.revenueItems.forEach((item) => lines.push(`  • ${appName(item.app, item.nomeAppPersonalizado)}: bruto ${formatBRL(item.bruto)} · taxa ${formatBRL(item.taxaValor)} · líquido ${formatBRL(item.liquido)}`));
-    else lines.push("  • Não informado — R$ 0,00");
+    else lines.push("  • Não informado - R$ 0,00");
     lines.push("⛽ Abastecimentos:");
     if (day.fuelPurchases.length) day.fuelPurchases.forEach((item) => lines.push(`  • ${item.type === "alcohol" ? "Etanol" : "Gasolina"}: ${number(item.pricePerLiter > 0 ? item.amount / item.pricePerLiter : 0, 3)} L · ${formatBRL(item.amount)}`));
-    else lines.push("  • —");
+    else lines.push("  • Não informado");
     lines.push(`  *Combustível abastecido: ${number(day.fuelPurchasedLiters, 3)} L · ${formatBRL(day.fuelPurchasedAmount)}*`);
     lines.push(`  Combustível consumido estimado: ${number(day.fuelConsumedLiters, 3)} L · ${formatBRL(day.fuelConsumedCost)}`);
     if (day.isolatedFuelExpense > 0) lines.push(`  Abastecimento isolado contabilizado como saída: ${formatBRL(day.isolatedFuelExpense)}`);
     lines.push("🔧 Manutenção:");
-    if (day.maintenanceItems.length) day.maintenanceItems.forEach((item) => lines.push(`  • ${valueOrDash(item.description)}: ${formatBRL(item.value)}`));
-    else lines.push("  • —");
+    if (day.maintenanceItems.length) day.maintenanceItems.forEach((item) => lines.push(`  • ${valueOrNotInformed(item.description)}: ${formatBRL(item.value)}`));
+    else lines.push("  • Não informado");
     lines.push("🧾 Gastos extras:");
-    if (day.extraItems.length) day.extraItems.forEach((item) => lines.push(`  • ${valueOrDash(item.name)}: ${formatBRL(item.value)}`));
-    else lines.push("  • —");
+    if (day.extraItems.length) day.extraItems.forEach((item) => lines.push(`  • ${valueOrNotInformed(item.name)}: ${formatBRL(item.value)}`));
+    else lines.push("  • Não informado");
     lines.push("");
   }
   lines.push("_Organize os números do seu trabalho com o FaturApp._", `https://${MAIN_URL}`);
@@ -66,28 +72,40 @@ export function buildReportText(days: DaySummary[], from: string, to: string): s
 }
 
 function drawHeader(doc: jsPDF, from: string, to: string, issuedAt: string) {
+  doc.setCharSpace(0);
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, 210, 30, "F");
-  doc.setDrawColor(...GREEN);
-  doc.setLineWidth(1.2);
-  doc.roundedRect(12, 8, 18, 12, 2, 2, "S");
-  doc.line(15, 17, 19, 13);
-  doc.line(19, 13, 22, 15);
-  doc.line(22, 15, 27, 10);
-  doc.setFont("helvetica", "bold");
+  doc.addImage(FATURAPP_LOGO_PNG_DATA_URI, "PNG", 11, 4, 22, 22, "faturapp-logo", "FAST");
+  doc.setFont(PDF_FONT_FAMILY, "bold");
   doc.setFontSize(15);
-  doc.setTextColor(255, 255, 255);
-  doc.text("FaturApp", 35, 14);
-  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...WHITE);
+  doc.text("FaturApp", 37, 14);
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setFontSize(7.5);
-  doc.text("Visibilidade total sobre o seu lucro real", 35, 19);
-  doc.setFont("helvetica", "bold");
+  doc.text("Visibilidade total sobre o seu lucro real", 37, 19);
+  doc.setFont(PDF_FONT_FAMILY, "bold");
   doc.setFontSize(11);
-  doc.text("Relatório Completo", 198, 10, { align: "right" });
-  doc.setFont("helvetica", "normal");
+  doc.text("Relatório Completo", 198, 10, { align: "right", maxWidth: 76 });
+  doc.setFont(PDF_FONT_FAMILY, "normal");
   doc.setFontSize(7.5);
-  doc.text(`Período: ${periodLabel(from, to)}`, 198, 16, { align: "right" });
-  doc.text(`Emitido em ${issuedAt}`, 198, 21, { align: "right" });
+  doc.text(`Período: ${periodLabel(from, to)}`, 198, 16, { align: "right", maxWidth: 76 });
+  doc.text(`Emitido em ${issuedAt}`, 198, 21, { align: "right", maxWidth: 76 });
+}
+
+function drawFooter(doc: jsPDF, page: number) {
+  // Strings deliberately remain single text nodes: jsPDF never splits these
+  // into the broken words seen in the previous footer implementation.
+  doc.setDrawColor(...BORDER);
+  doc.setLineWidth(0.25);
+  doc.line(12, 276, 198, 276);
+  doc.setCharSpace(0);
+  doc.setFont(PDF_FONT_FAMILY, "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Organize os números do seu trabalho", 12, 282);
+  doc.text(`Página ${page} de ${PAGE_TOTAL_TOKEN}`, 12, 290);
+  doc.text(MAIN_URL, 105, 290, { align: "center" });
+  doc.addImage(FATURAPP_LOGO_PNG_DATA_URI, "PNG", 186, 278, 10, 10, "faturapp-logo", "FAST");
 }
 
 function drawSummary(doc: jsPDF, days: DaySummary[]) {
@@ -111,37 +129,107 @@ function drawSummary(doc: jsPDF, days: DaySummary[]) {
     doc.setFillColor(...LIGHT_GRAY);
     doc.setDrawColor(226, 232, 240);
     doc.roundedRect(x, y, 59, 13, 2, 2, "FD");
-    doc.setFont("helvetica", "normal");
+    doc.setFont(PDF_FONT_FAMILY, "normal");
     doc.setFontSize(6.5);
     doc.setTextColor(100, 116, 139);
     doc.text(card.label.toUpperCase(), x + 3, y + 4);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(PDF_FONT_FAMILY, "bold");
     doc.setFontSize(index === 0 ? 10 : 8.5);
     doc.setTextColor(...card.color);
     doc.text(card.value, x + 3, y + 10);
   });
 }
 
-function tableTheme() {
+function tableTheme(
+  columnStyles: Record<number, { halign: "left" | "right"; cellWidth?: number }>,
+  decoratePage: (doc: jsPDF) => void,
+) {
   return {
-    theme: "striped" as const,
-    styles: { font: "helvetica", fontSize: 7, cellPadding: 1.8, valign: "middle" as const },
-    headStyles: { fillColor: NAVY, textColor: [255, 255, 255] as [number, number, number], fontStyle: "bold" as const },
-    alternateRowStyles: { fillColor: LIGHT_GRAY },
-    footStyles: { fillColor: LIGHT_GREEN, textColor: NAVY, fontStyle: "bold" as const },
-    margin: { top: 34, right: 12, bottom: 17, left: 12 },
+    theme: "plain" as const,
+    styles: {
+      font: PDF_FONT_FAMILY,
+      fontSize: 6.2,
+      cellPadding: { top: 2, right: 1.8, bottom: 2, left: 1.8 },
+      valign: "middle" as const,
+      lineColor: BORDER,
+      lineWidth: 0.15,
+      overflow: "linebreak" as const,
+    },
+    headStyles: {
+      fillColor: NAVY,
+      textColor: WHITE,
+      fontStyle: "bold" as const,
+      halign: "left" as const,
+      cellPadding: { top: 2.4, right: 1.8, bottom: 2.4, left: 1.8 },
+    },
+    footStyles: {
+      fillColor: LIGHT_GREEN,
+      textColor: NAVY,
+      fontStyle: "bold" as const,
+      cellPadding: { top: 2.2, right: 1.8, bottom: 2.2, left: 1.8 },
+    },
+    columnStyles,
+    // The explicit column widths add up to the printable width.  Using wrap
+    // prevents AutoTable from trying to redistribute them and logging a
+    // false "content could not fit" warning for a table that does fit.
+    tableWidth: "wrap" as const,
+    rowPageBreak: "avoid" as const,
+    margin: { top: 34, right: 12, bottom: 25, left: 12 },
     showHead: "everyPage" as const,
     showFoot: "lastPage" as const,
+    didParseCell(data: any) {
+      if (data.section === "body") {
+        data.cell.styles.fillColor = data.row.index % 2 === 0 ? WHITE : LIGHT_GRAY;
+      }
+      if (data.section === "foot") {
+        data.cell.styles.fillColor = LIGHT_GREEN;
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+    didDrawPage(data: any) {
+      decoratePage(data.doc as jsPDF);
+    },
   };
 }
 
-function sectionTitle(doc: jsPDF, title: string, y: number) {
-  doc.setFillColor(...BLUE);
-  doc.roundedRect(12, y - 5, 186, 8, 1.5, 1.5, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text(title, 16, y);
+type SectionIcon = "revenue" | "fuel" | "maintenance" | "extra";
+
+function drawSectionIcon(doc: jsPDF, icon: SectionIcon, x: number, y: number) {
+  doc.setFillColor(...GREEN);
+  doc.circle(x + 4, y - 2.1, 4, "F");
+  doc.setDrawColor(...NAVY);
+  doc.setTextColor(...NAVY);
+  doc.setLineWidth(0.7);
+  if (icon === "revenue") {
+    doc.setFont(PDF_FONT_FAMILY, "bold");
+    doc.setFontSize(5.5);
+    doc.text("R$", x + 4, y - 0.3, { align: "center" });
+  } else if (icon === "fuel") {
+    doc.roundedRect(x + 2.1, y - 5, 3.6, 5.6, 0.5, 0.5, "S");
+    doc.line(x + 2.8, y - 3.2, x + 5, y - 3.2);
+    doc.line(x + 5.7, y - 4.2, x + 7.1, y - 3.2);
+    doc.line(x + 7.1, y - 3.2, x + 7.1, y - 0.8);
+  } else if (icon === "maintenance") {
+    doc.line(x + 1.9, y - 4.1, x + 6.1, y + 0.1);
+    doc.circle(x + 2, y - 4.2, 1.4, "S");
+    doc.circle(x + 6.5, y + 0.3, 1.5, "S");
+  } else {
+    doc.rect(x + 2, y - 5, 4.5, 5.8, "S");
+    doc.line(x + 3, y - 3.5, x + 5.5, y - 3.5);
+    doc.line(x + 3, y - 1.7, x + 5.5, y - 1.7);
+    doc.line(x + 3, y + 0.1, x + 4.8, y + 0.1);
+  }
+}
+
+function sectionTitle(doc: jsPDF, title: string, icon: SectionIcon, y: number) {
+  doc.setDrawColor(...BORDER);
+  doc.setLineWidth(0.35);
+  doc.line(12, y - 8, 198, y - 8);
+  drawSectionIcon(doc, icon, 14, y);
+  doc.setTextColor(...NAVY);
+  doc.setFont(PDF_FONT_FAMILY, "bold");
+  doc.setFontSize(10);
+  doc.text(title, 23, y);
 }
 
 export function createReportPdf(days: DaySummary[], from: string, to: string): jsPDF {
@@ -149,57 +237,88 @@ export function createReportPdf(days: DaySummary[], from: string, to: string): j
   const issued = formatDateTimeBrasilia(new Date());
   const issuedAt = `${issued.date} às ${issued.time}`;
   const doc = new jsPDF("portrait", "mm", "a4");
+  doc.addFileToVFS(`${PDF_FONT_FAMILY}-regular.ttf`, FATURAPP_PDF_FONT_REGULAR_BASE64);
+  doc.addFileToVFS(`${PDF_FONT_FAMILY}-bold.ttf`, FATURAPP_PDF_FONT_BOLD_BASE64);
+  doc.addFont(`${PDF_FONT_FAMILY}-regular.ttf`, PDF_FONT_FAMILY, "normal");
+  doc.addFont(`${PDF_FONT_FAMILY}-bold.ttf`, PDF_FONT_FAMILY, "bold");
+  doc.setFont(PDF_FONT_FAMILY, "normal");
+  doc.setCharSpace(0);
+  const decoratedPages = new Set<number>();
+  const decoratePage = (currentDoc: jsPDF) => {
+    const page = currentDoc.getCurrentPageInfo().pageNumber;
+    if (decoratedPages.has(page)) return;
+    decoratedPages.add(page);
+    drawHeader(currentDoc, from, to, issuedAt);
+    drawFooter(currentDoc, page);
+  };
+
   drawSummary(doc, days);
-  sectionTitle(doc, "Balanço total por dia", 91);
+  sectionTitle(doc, "Balanço total por dia", "revenue", 91);
   autoTable(doc, {
-    ...tableTheme(),
+    ...tableTheme({
+      0: { halign: "left", cellWidth: 19 },
+      1: { halign: "right", cellWidth: 21 },
+      2: { halign: "right", cellWidth: 22 },
+      3: { halign: "right", cellWidth: 18 },
+      4: { halign: "right", cellWidth: 19 },
+      5: { halign: "right", cellWidth: 19 },
+      6: { halign: "right", cellWidth: 13 },
+      7: { halign: "right", cellWidth: 15 },
+      8: { halign: "right", cellWidth: 20 },
+      9: { halign: "right", cellWidth: 20 },
+    }, decoratePage),
     startY: 96,
     head: [["Data", "Receita bruta", "Receita líquida", "Taxas", "Custos", "Lucro", "Km", "Horas", "Lucro/km", "Lucro/h"]],
     body: days.map((day) => [formatDateBR(day.date), formatBRL(day.revenueGross), formatBRL(day.revenueNet), formatBRL(day.fees), formatBRL(day.operatingCosts), formatBRL(day.profit), number(day.km, 1), number(day.hours, 1), formatBRL(day.profitPerKm), formatBRL(day.profitPerHour)]),
     foot: [["TOTAL", formatBRL(totals.revenueGross), formatBRL(totals.revenueNet), formatBRL(totals.fees), formatBRL(totals.operatingCosts), formatBRL(totals.profit), number(totals.km, 1), number(totals.hours, 1), formatBRL(totals.profitPerKm), formatBRL(totals.profitPerHour)]],
-    columnStyles: Object.fromEntries(Array.from({ length: 10 }, (_, index) => [index, { halign: index === 0 ? "left" : "right" }])),
   });
 
   let y = (doc as any).lastAutoTable.finalY + 12;
-  const ensure = (height = 30) => { if (y + height > 278) { doc.addPage(); y = 40; } };
-  const addTable = (title: string, head: string[], body: string[][], foot: string[]) => {
+  const ensure = (height = 30) => { if (y + height > 270) { doc.addPage(); y = 40; } };
+  const addTable = (
+    title: string,
+    icon: SectionIcon,
+    head: string[],
+    body: string[][],
+    foot: string[],
+    columnStyles: Record<number, { halign: "left" | "right"; cellWidth?: number }>,
+  ) => {
     ensure(30);
-    sectionTitle(doc, title, y);
+    sectionTitle(doc, title, icon, y);
     autoTable(doc, {
-      ...tableTheme(),
+      ...tableTheme(columnStyles, decoratePage),
       startY: y + 5,
       head: [head],
-      body: body.length ? body : [["—", ...head.slice(1).map(() => "—")]],
+      body: body.length ? body : [["Não informado", ...head.slice(1).map(() => "Não informado")]],
       foot: [foot],
-      columnStyles: Object.fromEntries(head.map((_, index) => [index, { halign: index < 2 ? "left" : "right" }])),
     });
     y = (doc as any).lastAutoTable.finalY + 12;
   };
 
   const revenueRows = days.flatMap((day) => day.revenueItems.map((item) => [formatDateBR(day.date), appName(item.app, item.nomeAppPersonalizado), formatBRL(item.bruto), percent(item.taxa), formatBRL(item.taxaValor), formatBRL(item.liquido)]));
-  addTable("Receitas por aplicativo", ["Data", "Aplicativo", "Bruta", "Taxa %", "Taxa R$", "Líquida"], revenueRows, ["TOTAL", "", formatBRL(totals.revenueGross), "", formatBRL(totals.fees), formatBRL(totals.revenueNet)]);
+  addTable("Receitas por aplicativo", "revenue", ["Data", "Aplicativo", "Bruta", "Taxa %", "Taxa R$", "Líquida"], revenueRows, ["TOTAL", "Não informado", formatBRL(totals.revenueGross), percent(totals.revenueGross > 0 ? totals.fees * 100 / totals.revenueGross : 0), formatBRL(totals.fees), formatBRL(totals.revenueNet)], {
+    0: { halign: "left", cellWidth: 20 }, 1: { halign: "left", cellWidth: 45 }, 2: { halign: "right", cellWidth: 29 }, 3: { halign: "right", cellWidth: 21 }, 4: { halign: "right", cellWidth: 35 }, 5: { halign: "right", cellWidth: 36 },
+  });
 
   const fuelRows = days.flatMap((day) => day.fuelPurchases.map((item) => [formatDateBR(day.date), item.type === "alcohol" ? "Etanol" : "Gasolina", `${number(item.pricePerLiter > 0 ? item.amount / item.pricePerLiter : 0, 3)} L`, formatBRL(item.amount)]));
-  addTable("Combustível", ["Data", "Tipo", "Litros abastecidos", "Valor"], fuelRows, ["Combustível abastecido", "", `${number(totals.fuelPurchasedLiters, 3)} L`, formatBRL(totals.fuelPurchasedAmount)]);
-  addTable("Combustível consumido estimado", ["Período", "Descrição", "Litros", "Valor"], [[periodLabel(from, to), "Consumo estimado da rodagem", `${number(totals.fuelConsumedLiters, 3)} L`, formatBRL(totals.fuelConsumedCost)]], ["TOTAL", "", `${number(totals.fuelConsumedLiters, 3)} L`, formatBRL(totals.fuelConsumedCost)]);
+  addTable("Combustível abastecido", "fuel", ["Data", "Tipo", "Litros abastecidos", "Valor"], fuelRows, ["Combustível abastecido", "Não informado", `${number(totals.fuelPurchasedLiters, 3)} L`, formatBRL(totals.fuelPurchasedAmount)], {
+    0: { halign: "left", cellWidth: 33.1 }, 1: { halign: "left", cellWidth: 34 }, 2: { halign: "right", cellWidth: 62 }, 3: { halign: "right", cellWidth: 57 },
+  });
+  addTable("Combustível consumido estimado", "fuel", ["Período", "Descrição", "Litros", "Valor"], [[periodLabel(from, to), "Consumo estimado da rodagem", `${number(totals.fuelConsumedLiters, 3)} L`, formatBRL(totals.fuelConsumedCost)]], ["TOTAL", "Não informado", `${number(totals.fuelConsumedLiters, 3)} L`, formatBRL(totals.fuelConsumedCost)], {
+    0: { halign: "left", cellWidth: 48 }, 1: { halign: "left", cellWidth: 68 }, 2: { halign: "right", cellWidth: 32 }, 3: { halign: "right", cellWidth: 38 },
+  });
 
-  const maintenanceRows = days.flatMap((day) => day.maintenanceItems.map((item) => [formatDateBR(day.date), valueOrDash(item.description), formatBRL(item.value)]));
-  addTable("Manutenção", ["Data", "Descrição", "Valor"], maintenanceRows, ["", "TOTAL", formatBRL(totals.maintenance)]);
-  const extraRows = days.flatMap((day) => day.extraItems.map((item) => [formatDateBR(day.date), valueOrDash(item.name), formatBRL(item.value)]));
-  addTable("Gastos extras", ["Data", "Descrição", "Valor"], extraRows, ["", "TOTAL", formatBRL(totals.extras)]);
+  const maintenanceRows = days.flatMap((day) => day.maintenanceItems.map((item) => [formatDateBR(day.date), valueOrNotInformed(item.description), formatBRL(item.value)]));
+  addTable("Manutenção", "maintenance", ["Data", "Descrição", "Valor"], maintenanceRows, ["Não informado", "TOTAL", formatBRL(totals.maintenance)], {
+    0: { halign: "left", cellWidth: 28 }, 1: { halign: "left", cellWidth: 112 }, 2: { halign: "right", cellWidth: 46 },
+  });
+  const extraRows = days.flatMap((day) => day.extraItems.map((item) => [formatDateBR(day.date), valueOrNotInformed(item.name), formatBRL(item.value)]));
+  addTable("Gastos extras", "extra", ["Data", "Descrição", "Valor"], extraRows, ["Não informado", "TOTAL", formatBRL(totals.extras)], {
+    0: { halign: "left", cellWidth: 28 }, 1: { halign: "left", cellWidth: 112 }, 2: { halign: "right", cellWidth: 46 },
+  });
 
-  const pages = doc.getNumberOfPages();
-  for (let page = 1; page <= pages; page += 1) {
-    doc.setPage(page);
-    drawHeader(doc, from, to, issuedAt);
-    doc.setDrawColor(226, 232, 240);
-    doc.line(12, 285, 198, 285);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text("Organize os números do seu trabalho", 12, 290);
-    doc.text(MAIN_URL, 105, 290, { align: "center" });
-    doc.text(`Página ${page} de ${pages}`, 198, 290, { align: "right" });
-  }
+  // AutoTable invokes didDrawPage for every generated page. A token keeps the
+  // total page count correct even though it is unknown while tables paginate.
+  doc.putTotalPages(PAGE_TOTAL_TOKEN);
   return doc;
 }
