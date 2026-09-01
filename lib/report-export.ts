@@ -141,7 +141,7 @@ function drawSummary(doc: jsPDF, days: DaySummary[]) {
 }
 
 function tableTheme(
-  columnStyles: Record<number, { halign: "left" | "right"; cellWidth?: number }>,
+  columnStyles: Record<number, { halign: "left" | "right" }>,
   decoratePage: (doc: jsPDF) => void,
 ) {
   return {
@@ -149,6 +149,7 @@ function tableTheme(
     styles: {
       font: PDF_FONT_FAMILY,
       fontSize: 6.2,
+      cellWidth: "wrap" as const,
       cellPadding: { top: 2, right: 1.8, bottom: 2, left: 1.8 },
       valign: "middle" as const,
       lineColor: BORDER,
@@ -169,15 +170,20 @@ function tableTheme(
       cellPadding: { top: 2.2, right: 1.8, bottom: 2.2, left: 1.8 },
     },
     columnStyles,
-    // The explicit column widths add up to the printable width.  Using wrap
-    // prevents AutoTable from trying to redistribute them and logging a
-    // false "content could not fit" warning for a table that does fit.
+    // Let each column use only the width required by its longest cell. This
+    // keeps the report compact while retaining predictable left alignment.
     tableWidth: "wrap" as const,
     rowPageBreak: "avoid" as const,
     margin: { top: 34, right: 12, bottom: 25, left: 12 },
     showHead: "everyPage" as const,
     showFoot: "lastPage" as const,
     didParseCell(data: any) {
+      const columnStyle = columnStyles[data.column.index];
+      if (columnStyle) {
+        // AutoTable applies columnStyles.halign to body cells only. Applying
+        // it here also keeps headers and TOTAL cells on the same left edge.
+        data.cell.styles.halign = columnStyle.halign;
+      }
       if (data.section === "body") {
         data.cell.styles.fillColor = data.row.index % 2 === 0 ? WHITE : LIGHT_GRAY;
       }
@@ -256,16 +262,16 @@ export function createReportPdf(days: DaySummary[], from: string, to: string): j
   sectionTitle(doc, "Balanço total por dia", "revenue", 91);
   autoTable(doc, {
     ...tableTheme({
-      0: { halign: "left", cellWidth: 19 },
-      1: { halign: "right", cellWidth: 21 },
-      2: { halign: "right", cellWidth: 22 },
-      3: { halign: "right", cellWidth: 18 },
-      4: { halign: "right", cellWidth: 19 },
-      5: { halign: "right", cellWidth: 19 },
-      6: { halign: "right", cellWidth: 13 },
-      7: { halign: "right", cellWidth: 15 },
-      8: { halign: "right", cellWidth: 20 },
-      9: { halign: "right", cellWidth: 20 },
+      0: { halign: "left" },
+      1: { halign: "left" },
+      2: { halign: "left" },
+      3: { halign: "left" },
+      4: { halign: "left" },
+      5: { halign: "left" },
+      6: { halign: "left" },
+      7: { halign: "left" },
+      8: { halign: "left" },
+      9: { halign: "left" },
     }, decoratePage),
     startY: 96,
     head: [["Data", "Receita bruta", "Receita líquida", "Taxas", "Custos", "Lucro", "Km", "Horas", "Lucro/km", "Lucro/h"]],
@@ -297,24 +303,24 @@ export function createReportPdf(days: DaySummary[], from: string, to: string): j
 
   const revenueRows = days.flatMap((day) => day.revenueItems.map((item) => [formatDateBR(day.date), appName(item.app, item.nomeAppPersonalizado), formatBRL(item.bruto), percent(item.taxa), formatBRL(item.taxaValor), formatBRL(item.liquido)]));
   addTable("Receitas por aplicativo", "revenue", ["Data", "Aplicativo", "Bruta", "Taxa %", "Taxa R$", "Líquida"], revenueRows, ["TOTAL", "Não informado", formatBRL(totals.revenueGross), percent(totals.revenueGross > 0 ? totals.fees * 100 / totals.revenueGross : 0), formatBRL(totals.fees), formatBRL(totals.revenueNet)], {
-    0: { halign: "left", cellWidth: 20 }, 1: { halign: "left", cellWidth: 45 }, 2: { halign: "right", cellWidth: 29 }, 3: { halign: "right", cellWidth: 21 }, 4: { halign: "right", cellWidth: 35 }, 5: { halign: "right", cellWidth: 36 },
+    0: { halign: "left" }, 1: { halign: "left" }, 2: { halign: "left" }, 3: { halign: "left" }, 4: { halign: "left" }, 5: { halign: "left" },
   });
 
   const fuelRows = days.flatMap((day) => day.fuelPurchases.map((item) => [formatDateBR(day.date), item.type === "alcohol" ? "Etanol" : "Gasolina", `${number(item.pricePerLiter > 0 ? item.amount / item.pricePerLiter : 0, 3)} L`, formatBRL(item.amount)]));
   addTable("Combustível abastecido", "fuel", ["Data", "Tipo", "Litros abastecidos", "Valor"], fuelRows, ["Combustível abastecido", "Não informado", `${number(totals.fuelPurchasedLiters, 3)} L`, formatBRL(totals.fuelPurchasedAmount)], {
-    0: { halign: "left", cellWidth: 33.1 }, 1: { halign: "left", cellWidth: 34 }, 2: { halign: "right", cellWidth: 62 }, 3: { halign: "right", cellWidth: 57 },
+    0: { halign: "left" }, 1: { halign: "left" }, 2: { halign: "left" }, 3: { halign: "left" },
   });
   addTable("Combustível consumido estimado", "fuel", ["Período", "Descrição", "Litros", "Valor"], [[periodLabel(from, to), "Consumo estimado da rodagem", `${number(totals.fuelConsumedLiters, 3)} L`, formatBRL(totals.fuelConsumedCost)]], ["TOTAL", "Não informado", `${number(totals.fuelConsumedLiters, 3)} L`, formatBRL(totals.fuelConsumedCost)], {
-    0: { halign: "left", cellWidth: 48 }, 1: { halign: "left", cellWidth: 68 }, 2: { halign: "right", cellWidth: 32 }, 3: { halign: "right", cellWidth: 38 },
+    0: { halign: "left" }, 1: { halign: "left" }, 2: { halign: "left" }, 3: { halign: "left" },
   });
 
   const maintenanceRows = days.flatMap((day) => day.maintenanceItems.map((item) => [formatDateBR(day.date), valueOrNotInformed(item.description), formatBRL(item.value)]));
   addTable("Manutenção", "maintenance", ["Data", "Descrição", "Valor"], maintenanceRows, ["Não informado", "TOTAL", formatBRL(totals.maintenance)], {
-    0: { halign: "left", cellWidth: 28 }, 1: { halign: "left", cellWidth: 112 }, 2: { halign: "right", cellWidth: 46 },
+    0: { halign: "left" }, 1: { halign: "left" }, 2: { halign: "left" },
   });
   const extraRows = days.flatMap((day) => day.extraItems.map((item) => [formatDateBR(day.date), valueOrNotInformed(item.name), formatBRL(item.value)]));
   addTable("Gastos extras", "extra", ["Data", "Descrição", "Valor"], extraRows, ["Não informado", "TOTAL", formatBRL(totals.extras)], {
-    0: { halign: "left", cellWidth: 28 }, 1: { halign: "left", cellWidth: 112 }, 2: { halign: "right", cellWidth: 46 },
+    0: { halign: "left" }, 1: { halign: "left" }, 2: { halign: "left" },
   });
 
   // AutoTable invokes didDrawPage for every generated page. A token keeps the
