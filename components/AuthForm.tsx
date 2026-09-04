@@ -154,7 +154,7 @@ export default function AuthForm({ mode, oauthError }: Props) {
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]">Senha</label>
             <PasswordField value={password} onChange={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} autoComplete="new-password" />
-            <p className="mt-1 text-xs leading-5 text-slate-500">A senha deve ter no mínimo 4 caracteres, incluindo 1 letra maiúscula, 1 número e 1 caractere especial.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">A senha deve ter no mínimo 6 caracteres, incluindo 1 letra maiúscula, 1 número e 1 caractere especial.</p>
           </div>
           <button type="submit" className="btn btn-primary w-full">Criar conta</button>
         </form>

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClientBrowser } from "@/lib/supabase";
 
 function validPassword(password: string) {
-  return password.length >= 4 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
+  return password.length >= 6 && /[A-Z]/.test(password) && /[0-9]/.test(password) && /[^A-Za-z0-9]/.test(password);
 }
 
 export default function ResetPasswordPage() {
@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!validPassword(password)) {
-      setStatus("A senha precisa ter no mínimo 4 caracteres, uma letra maiúscula, um número e um caractere especial.");
+      setStatus("A senha precisa ter no mínimo 6 caracteres, uma letra maiúscula, um número e um caractere especial.");
       return;
     }
     if (password !== confirmation) {
