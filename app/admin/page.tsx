@@ -6,7 +6,8 @@ import { hojeBrasilia } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage({ searchParams }: { searchParams: { from?: string; to?: string } }) {
+export default async function AdminPage(props: { searchParams: Promise<{ from?: string; to?: string }> }) {
+  const searchParams = await props.searchParams;
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") redirect("/");
 

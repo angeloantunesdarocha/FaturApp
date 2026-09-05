@@ -65,9 +65,9 @@ create index if not exists app_sessions_expires_at_idx on public.app_sessions(ex
 -- As funções abaixo devem ser executadas como SECURITY DEFINER e expostas apenas via RPC.
 -- A implementação de autenticação fica no banco para que senhas nunca sejam armazenadas em texto puro.
 
--- IMPORTANTE: o cadastro do primeiro usuário com o login "Angelo Antunes" recebe role admin
--- e assume os lançamentos antigos que ainda estiverem com user_id = 'default'.
-
-alter table public.daily_entries disable row level security;
-alter table public.app_users disable row level security;
-alter table public.app_sessions disable row level security;
+-- A identidade administrativa deve ser provisionada explicitamente e verificada.
+-- Nunca conceder admin por nome de login ou ordem de cadastro.
+alter table public.daily_entries enable row level security;
+alter table public.app_users enable row level security;
+alter table public.app_sessions enable row level security;
+revoke all on public.daily_entries, public.app_users, public.app_sessions from public, anon, authenticated;

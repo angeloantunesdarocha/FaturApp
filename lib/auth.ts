@@ -11,7 +11,7 @@ export type AppUser = {
 };
 
 export async function getCurrentUser(): Promise<AppUser | null> {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (!token) return null;
 
   const supabase = createClientServer();
@@ -29,8 +29,8 @@ export async function requireUser(): Promise<AppUser> {
   return user;
 }
 
-export function setSessionCookie(token: string) {
-  cookies().set(COOKIE_NAME, token, {
+export async function setSessionCookie(token: string) {
+  (await cookies()).set(COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -39,8 +39,8 @@ export function setSessionCookie(token: string) {
   });
 }
 
-export function clearSessionCookie() {
-  cookies().set(COOKIE_NAME, "", {
+export async function clearSessionCookie() {
+  (await cookies()).set(COOKIE_NAME, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

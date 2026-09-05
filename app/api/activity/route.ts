@@ -5,7 +5,7 @@ import { createClientServer } from "@/lib/supabase";
 const ALLOWED_EVENTS = new Set(["report_pdf", "report_excel", "report_shared", "contribution_started", "contribution_active"]);
 
 export async function POST(request: NextRequest) {
-  const token = cookies().get("faturapp_session")?.value;
+  const token = (await cookies()).get("faturapp_session")?.value;
   if (!token) return NextResponse.json({ ok: false }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));

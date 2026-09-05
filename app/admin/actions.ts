@@ -7,14 +7,14 @@ import { createClientServer } from "@/lib/supabase";
 import { getCurrentUser } from "@/lib/auth";
 import { hojeBrasilia } from "@/lib/utils";
 
-function sessionToken() {
-  return cookies().get("faturapp_session")?.value ?? null;
+async function sessionToken() {
+  return (await cookies()).get("faturapp_session")?.value ?? null;
 }
 
 async function requireAdmin() {
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") redirect("/");
-  const token = sessionToken();
+  const token = await sessionToken();
   if (!token) redirect("/login");
   return token;
 }

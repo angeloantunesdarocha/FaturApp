@@ -5,7 +5,7 @@ import { createClientServer } from "@/lib/supabase";
 const COOKIE_NAME = "faturapp_session";
 
 export async function POST(request: NextRequest) {
-  const token = cookies().get(COOKIE_NAME)?.value;
+  const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (!token) return NextResponse.json({ ok: false }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));

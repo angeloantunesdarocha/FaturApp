@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { trustedAppOrigin, safeAuthPath } from "@/lib/auth-redirect";
 import { configuredSupabaseUrl, configuredSupabaseKey } from "@/lib/supabase";
 
 /**
@@ -13,16 +14,8 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const requestedNext = requestUrl.searchParams.get("next") ?? "/";
 
-  // Nunca usa NEXT_PUBLIC_APP_URL para o callback: em produção/preview ele
-  // pode apontar para outro deployment e fazer o usuário perder o cookie.
-  const forwardedProto = request.headers.get("x-forwarded-proto") ?? requestUrl.protocol.replace(":", "");
-  const forwardedHost = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? requestUrl.host;
-  const origin = `${forwardedProto}://${forwardedHost}`;
-
-  // Aceita somente caminhos internos para evitar redirecionamento externo.
-  const next = requestedNext.startsWith("/") && !requestedNext.startsWith("//")
-    ? requestedNext
-    : "/";
+  const origin = trustedAppOrigin(request.url);
+  const next = safeAuthPath(requestedNext, origin);
 
   const loginError = (error: string, detail?: string) => {
     const url = new URL("/login", origin);
@@ -36,7 +29,7 @@ export async function GET(request: Request) {
   if (!code) return loginError("oauth_missing_code");
 
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const response = NextResponse.redirect(new URL(next, origin));
     const supabase = createServerClient(
       configuredSupabaseUrl,

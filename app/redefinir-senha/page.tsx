@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { finishPasswordRecovery } from "@/app/actions";
 import { createClientBrowser } from "@/lib/supabase";
 
 function validPassword(password: string) {
@@ -22,7 +23,11 @@ export default function ResetPasswordPage() {
         setStatus("Este link expirou ou já foi utilizado. Solicite um novo link de recuperação.");
         return;
       }
-      const { data: identity } = await supabase.rpc("app_get_recovery_identity");
+      const { data: identity, error } = await supabase.rpc("app_get_recovery_identity");
+      if (error || !identity?.[0]) {
+        setStatus("Não foi possível confirmar sua conta. Solicite um novo link de recuperação.");
+        return;
+      }
       setLogin(identity?.[0]?.login ?? "");
       setReady(true);
       setStatus("");
@@ -47,12 +52,19 @@ export default function ResetPasswordPage() {
       setStatus("Não foi possível atualizar a senha. Solicite um novo link e tente novamente.");
       return;
     }
-    const { error } = await supabase.rpc("app_sync_recovered_password", { p_password: password });
+    const { data: sessionToken, error } = await supabase.rpc("app_complete_password_recovery", { p_password: password });
     setLoading(false);
     if (error) {
       setStatus("O link foi aceito, mas não encontramos uma conta do FaturApp vinculada a este e-mail.");
       return;
     }
+    if (typeof sessionToken !== "string") {
+      setStatus("Não foi possível concluir sua sessão. Entre novamente com a nova senha.");
+      return;
+    }
+    const result = await finishPasswordRecovery(sessionToken);
+    if (!result.success) { setStatus(result.error || "Entre novamente com a nova senha."); return; }
+    await supabase.auth.signOut({ scope: "others" });
     window.location.href = "/?recovered=1";
   }
 

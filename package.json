@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test:financial": "node --experimental-strip-types scripts/test-financial-engine.mjs",
-    "test:reports": "node --experimental-strip-types scripts/test-report-export.mjs"
+    "test:reports": "node --experimental-strip-types scripts/test-report-export.mjs",
+    "test:security": "node --experimental-strip-types scripts/test-security.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -18,18 +19,21 @@
     "file-saver": "^2.0.5",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
-    "next": "14.2.15",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "xlsx": "^0.18.5"
+    "next": "15.5.25",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@types/node": "^22.7.5",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.47",
+    "postcss": "8.5.28",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2"
+  },
+  "overrides": {
+    "postcss": "$postcss"
   }
 }
