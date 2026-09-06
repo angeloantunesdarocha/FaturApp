@@ -4,6 +4,7 @@ import FeatureGrid from "@/components/FeatureGrid";
 import FaqSection from "@/components/FaqSection";
 import HeroLiveSimulator from "@/components/HeroLiveSimulator";
 import RevealOnScroll from "@/components/RevealOnScroll";
+import DriverScenarios from "@/components/DriverScenarios";
 
 export default function StartPage() {
   return (
@@ -29,6 +30,7 @@ export default function StartPage() {
         </div>
       </section>
 
+      <DriverScenarios />
       <section className="bg-white px-4 py-14 text-[#123B63] sm:px-8 lg:px-16" aria-labelledby="example-title">
         <div className="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-2">
           <div><p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Veja o resultado na prática</p><h2 id="example-title" className="mt-3 text-3xl font-black">Seu faturamento é só o começo da conta.</h2><p className="mt-4 leading-7 text-slate-600">Neste exemplo, R$ 280 viram R$ 135 depois dos custos. Em 10 horas de trabalho, isso representa R$ 13,50 por hora. Você sabia quanto estava sobrando?</p><p className="mt-3 text-sm text-slate-500">Valores ilustrativos. Ajuste a simulação acima para o seu dia.</p></div>
