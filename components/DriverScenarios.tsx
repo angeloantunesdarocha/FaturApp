@@ -48,7 +48,7 @@ export default function DriverScenarios() {
                   width={72}
                   height={72}
                   loading="lazy"
-                  className="h-18 w-18 h-[72px] w-[72px] shrink-0 rounded-2xl border border-slate-200 object-cover object-center shadow-sm"
+                  className="h-[72px] w-[72px] shrink-0 rounded-2xl border border-slate-200 object-cover object-center shadow-sm"
                 />
                 <div>
                   <p className="text-lg font-bold">{scenario.name}</p>
