@@ -23,7 +23,7 @@ const scenarios = [
   {
     name: "Rafael",
     city: "Janaúba · MG",
-    apps: "inDrive e entregas",
+    apps: "Entregador Shopee e Mercado Livre",
     photo: "https://images.pexels.com/photos/4320869/pexels-photo-4320869.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop",
     title: "Mais quilômetros, mais atenção aos custos",
     story: "Rafael recebe R$ 240 após taxas e percorre 100 km. Com R$ 90 de custos registrados, sobram R$ 150. Olhar o resultado por quilômetro ajuda a comparar os dias.",
