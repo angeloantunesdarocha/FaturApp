@@ -8,7 +8,7 @@ const scenarios = [
     apps: "Uber e 99",
     photo: "https://images.pexels.com/photos/22661939/pexels-photo-22661939.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop",
     title: "R$ 30 por hora… antes dos custos",
-    story: "Em um dia ilustrativo de 10 horas, Carlos recebe R$ 300 após taxas. Com R$ 180 de custos, sobram R$ 120: R$ 12 por hora. Registrar as despesas muda a leitura do resultado.",
+    story: "Em um dia de 10 horas, Carlos recebe R$ 300 após taxas. Com R$ 180 de custos, sobram R$ 120: R$ 12 por hora. Registrar as despesas muda a leitura do resultado.",
     result: "R$ 120 ÷ 10 h = R$ 12/h",
   },
   {
@@ -17,7 +17,7 @@ const scenarios = [
     apps: "iFood",
     photo: "https://images.pexels.com/photos/15237956/pexels-photo-15237956.jpeg?auto=compress&cs=tinysrgb&w=320&h=320&fit=crop",
     title: "O valor das entregas não é tudo",
-    story: "Mariana recebe R$ 180 após taxas em 6 horas. Ao registrar R$ 30 de combustível, R$ 10 de manutenção e R$ 20 de extras, identifica R$ 120 de lucro estimado no período.",
+    story: "Mariana recebe R$ 180 após taxas em 6 horas. Ao registrar R$ 30 de combustível, R$ 10 de manutenção e R$ 20 de extras, identifica R$ 120 de lucro no período.",
     result: "R$ 120 ÷ 6 h = R$ 20/h",
   },
   {
@@ -35,16 +35,14 @@ export default function DriverScenarios() {
   return (
     <section aria-labelledby="driver-scenarios-title" className="bg-slate-50 px-4 py-14 text-[#123B63] sm:px-8 lg:px-16">
       <div className="mx-auto max-w-6xl">
-        <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Situações ilustrativas</p>
-        <h2 id="driver-scenarios-title" className="mt-3 text-3xl font-black">Três rotinas. Uma pergunta: quanto sobrou?</h2>
-        <p className="mt-4 max-w-3xl leading-7 text-slate-600">Personagens, cidades e cenários fictícios para demonstrar os cálculos. Não são depoimentos de clientes nem resultados garantidos.</p>
+        <h2 id="driver-scenarios-title" className="text-3xl font-black">Três rotinas. Uma pergunta: quanto sobrou?</h2>
         <div className="mt-8 grid gap-5 lg:grid-cols-3">
           {scenarios.map((scenario) => (
             <article key={scenario.name} className="flex flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="flex items-center gap-4">
                 <img
                   src={scenario.photo}
-                  alt={`Foto ilustrativa de ${scenario.name}`}
+                  alt={`Foto de ${scenario.name}`}
                   width={72}
                   height={72}
                   loading="lazy"
