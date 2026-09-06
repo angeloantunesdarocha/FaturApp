@@ -11,6 +11,7 @@ function FaturAppMark() {
 const baseNav = "rounded-full px-4 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2";
 const activeNav = "bg-[#10B981] text-white shadow-sm hover:bg-[#059669] focus:ring-[#10B981]/30";
 const inactiveNav = "border border-slate-200 bg-white text-[#123B63] hover:border-[#123B63] hover:bg-slate-50 focus:ring-[#123B63]/20";
+const publicRoutes = ["/sobre", "/privacidade", "/termos", "/contato"];
 
 export default function Header({ isAuthenticated, isAdmin = false }: { isAuthenticated: boolean; isAdmin?: boolean }) {
   const pathname = usePathname();
@@ -18,18 +19,27 @@ export default function Header({ isAuthenticated, isAdmin = false }: { isAuthent
   const isSupport = pathname === "/apoie";
   const isLanding = pathname === "/comece";
   const isAdminPage = pathname === "/admin";
+  const isGuides = pathname.startsWith("/guias");
+  const isPublicContent = isLanding || isGuides || publicRoutes.includes(pathname);
 
   return <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"><div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-3 py-3 sm:flex-nowrap sm:px-4">
-    <Link href="/" aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
-    {isLanding && <nav aria-label="Navegação da apresentação" className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
+    <Link href={isAuthenticated ? "/" : "/comece"} aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
+    {isPublicContent && <nav aria-label="Navegação pública" className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
       <div className="hidden items-center gap-1 lg:flex">
-        <Link href="/comece#como-funciona" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Como funciona</Link>
-        <Link href="/comece#beneficios" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Benefícios</Link>
+        <Link href="/comece" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Como funciona</Link>
+        <Link href="/guias" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Guias</Link>
+        <Link href="/sobre" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Sobre</Link>
       </div>
-      <Link href="/login" className="hidden rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#123B63] transition-colors hover:border-[#123B63] hover:bg-slate-50 sm:inline-flex">Entrar</Link>
-      <Link href="/cadastro" className="rounded-full bg-[#10B981] px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#059669] focus:outline-none focus:ring-2 focus:ring-[#10B981]/30">Começar grátis</Link>
+      {isAuthenticated ? (
+        <Link href="/" className="rounded-full bg-[#10B981] px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#059669] focus:outline-none focus:ring-2 focus:ring-[#10B981]/30">Abrir app</Link>
+      ) : (
+        <>
+          <Link href="/login" className="hidden rounded-full border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-[#123B63] transition-colors hover:border-[#123B63] hover:bg-slate-50 sm:inline-flex">Entrar</Link>
+          <Link href="/cadastro" className="rounded-full bg-[#10B981] px-4 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-[#059669] focus:outline-none focus:ring-2 focus:ring-[#10B981]/30">Começar grátis</Link>
+        </>
+      )}
     </nav>}
-    {isAuthenticated && !isLanding && <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
+    {isAuthenticated && !isPublicContent && <nav aria-label="Navegação principal" className="flex w-full shrink-0 items-center justify-end gap-2 sm:w-auto sm:gap-3">
       <Link href="/" aria-current={!isReports && !isSupport ? "page" : undefined} className={baseNav + " " + (!isReports && !isSupport ? activeNav : inactiveNav)}>Lançar dia</Link>
       <Link href="/relatorios" aria-current={isReports ? "page" : undefined} className={baseNav + " " + (isReports ? activeNav : inactiveNav)}>Relatórios</Link>
       <Link href="/apoie" aria-current={isSupport ? "page" : undefined} className={baseNav + " " + (isSupport ? activeNav : inactiveNav)}>Apoiar</Link>

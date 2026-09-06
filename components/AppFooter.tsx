@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const COPYRIGHT = "© 2026 FaturApp. Visibilidade total sobre o seu lucro real. Desenvolvido por Ângelo Antunes. Todos os direitos reservados.";
 const INSTAGRAM_URL = "https://www.instagram.com/faturappbrasil/";
 const FACEBOOK_URL = "https://www.facebook.com/share/1DCMkxEp7E/";
+const publicRoutes = ["/comece", "/sobre", "/privacidade", "/termos", "/contato"];
 
 function InstagramIcon() {
   return (
@@ -49,21 +51,29 @@ export default function AppFooter() {
     );
   }
 
-  if (pathname !== "/comece") return null;
+  const isPublicContent = publicRoutes.includes(pathname) || pathname.startsWith("/guias");
+  if (!isPublicContent) return null;
 
   return (
     <footer className="shrink-0 border-t border-white/10 bg-[#071c31] text-slate-300">
-      <div className="mx-auto flex w-full max-w-6xl flex-col-reverse items-center justify-center gap-4 px-4 py-6 md:flex-row md:justify-between md:gap-8 md:px-6">
-        <p className="max-w-3xl text-center text-xs leading-relaxed text-slate-400 md:text-left">
-          {COPYRIGHT}
-        </p>
-        <nav aria-label="Redes sociais do Fatur APP Brasil" className="flex shrink-0 items-center gap-4">
-          <SocialLink href={INSTAGRAM_URL} label="Instagram do Fatur APP Brasil">
-            <InstagramIcon />
-          </SocialLink>
-          <SocialLink href={FACEBOOK_URL} label="Facebook do Fatur APP Brasil">
-            <FacebookIcon />
-          </SocialLink>
+      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-8 md:grid-cols-[1.3fr_1fr_auto] md:px-6">
+        <div>
+          <p className="font-extrabold text-white">Fatur<span className="text-emerald-400">App</span></p>
+          <p className="mt-3 max-w-xl text-xs leading-relaxed text-slate-400">{COPYRIGHT}</p>
+        </div>
+
+        <nav aria-label="Links institucionais" className="grid grid-cols-2 gap-x-5 gap-y-2 text-sm">
+          <Link href="/comece" className="hover:text-white">Como funciona</Link>
+          <Link href="/guias" className="hover:text-white">Guias</Link>
+          <Link href="/sobre" className="hover:text-white">Sobre</Link>
+          <Link href="/contato" className="hover:text-white">Contato</Link>
+          <Link href="/privacidade" className="hover:text-white">Privacidade</Link>
+          <Link href="/termos" className="hover:text-white">Termos de uso</Link>
+        </nav>
+
+        <nav aria-label="Redes sociais do FaturApp Brasil" className="flex items-start gap-3">
+          <SocialLink href={INSTAGRAM_URL} label="Instagram do FaturApp Brasil"><InstagramIcon /></SocialLink>
+          <SocialLink href={FACEBOOK_URL} label="Facebook do FaturApp Brasil"><FacebookIcon /></SocialLink>
         </nav>
       </div>
     </footer>
