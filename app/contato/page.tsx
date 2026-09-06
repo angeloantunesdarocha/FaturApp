@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Contato | FaturApp",
+  title: "Contato",
   description: "Canais oficiais para falar com o FaturApp e encontrar ajuda sobre acesso, uso da plataforma e conteúdo.",
   alternates: { canonical: "https://fatur-app.vercel.app/contato" },
 };

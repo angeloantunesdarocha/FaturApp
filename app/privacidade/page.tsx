@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import TrustPage from "@/components/TrustPage";
 
 export const metadata: Metadata = {
-  title: "Política de Privacidade | FaturApp",
+  title: "Política de Privacidade",
   description: "Entenda de forma clara quais dados o FaturApp usa para autenticação, funcionamento e melhoria da plataforma.",
   alternates: { canonical: "https://fatur-app.vercel.app/privacidade" },
 };

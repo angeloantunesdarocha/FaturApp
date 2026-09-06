@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!category) return {};
 
   return {
-    title: `${category.label} | Guias FaturApp`,
+    title: `${category.label} | Guias`,
     description: category.description,
     alternates: { canonical: `https://fatur-app.vercel.app/guias/categoria/${category.slug}` },
   };
