@@ -134,7 +134,7 @@ export default function BeforeAfterSection() {
         <div className="relative mt-10 grid gap-4 lg:grid-cols-2">
           <RevealOnScroll direction="left">
             <Panel
-              eyebrow="Antes"
+              eyebrow="Sem FaturApp"
               title="No escuro sobre o dia"
               description="Quando os custos não estão organizados, o faturamento bruto pode esconder o resultado real."
               items={beforeItems}
@@ -144,7 +144,7 @@ export default function BeforeAfterSection() {
 
           <RevealOnScroll direction="right" delay={120}>
             <Panel
-              eyebrow="Depois"
+              eyebrow="Com FaturApp"
               title="Mais clareza para decidir"
               description="Com os dados do seu lançamento reunidos, você entende melhor o resultado do seu trabalho."
               items={afterItems}

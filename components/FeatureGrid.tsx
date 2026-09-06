@@ -24,7 +24,7 @@ const features: Feature[] = [
   },
   {
     title: "Resultados compartilháveis",
-    body: "Escolha um lançamento, gere um card com seu resultado e compartilhe pelo celular.",
+    body: "Feche o dia, gere um card com seu resultado consolidado e compartilhe pelo celular.",
     icon: "share",
   },
 ];
@@ -93,7 +93,6 @@ export default function FeatureGrid() {
                   <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#123B63] text-emerald-300 transition duration-300 group-hover:bg-emerald-500 group-hover:text-white">
                     <FeatureIcon icon={feature.icon} />
                   </span>
-                  <span className="text-xs font-bold text-slate-400">0{index + 1}</span>
                 </div>
                 <h3 className="mt-6 text-xl font-extrabold text-[#123B63]">{feature.title}</h3>
                 <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">{feature.body}</p>
