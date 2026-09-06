@@ -3,7 +3,7 @@ import Link from "next/link";
 import { guideCategories, guides } from "@/lib/guides";
 
 export const metadata: Metadata = {
-  title: "Guias para motoristas de aplicativo | FaturApp",
+  title: "Guias para motoristas de aplicativo",
   description: "Guias práticos sobre lucro real, combustível, custos, produtividade e organização para motoristas de aplicativo.",
   alternates: { canonical: "https://fatur-app.vercel.app/guias" },
   openGraph: {
