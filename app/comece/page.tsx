@@ -18,7 +18,7 @@ export default function StartPage() {
             <h1 className="text-4xl font-black leading-[1.1] tracking-tight sm:text-5xl xl:text-6xl">Você ganhou R$ 280 hoje.<span className="mt-3 block text-emerald-300">Mas quanto realmente sobrou no seu bolso?</span></h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200 sm:text-xl">Taxas dos apps, combustível, manutenção e despesas reduzem o que fica para você. O FaturApp mostra seu lucro real por dia, por km e por hora — comece em 1 minuto.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link href="/cadastro" className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-emerald-400 px-7 text-base font-extrabold text-[#07334a] shadow-lg shadow-emerald-950/30 transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-400">Descobrir meu lucro real <span className="ml-2">→</span></Link>
+              <Link href="/cadastro" className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-emerald-400 px-7 text-base font-extrabold text-[#07334a] shadow-lg shadow-emerald-950/30 transition duration-300 hover:-translate-y-0.5 hover:bg-emerald-300">Descobrir meu lucro real <span className="ml-2">→</span></Link>
               <Link href="/login" className="inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/20 bg-white/10 px-7 text-base font-bold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-white/15">Já tenho acesso</Link>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300"><span>✓ Grátis</span><span>✓ Sem pedir cartão</span><span>✓ Leva 1 minuto</span></div>
@@ -37,7 +37,7 @@ export default function StartPage() {
           <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8">
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Exemplo de balanço diário</p>
             <dl className="mt-5 space-y-3 text-sm">
-              {[['Receita bruta', 'R$ 280,00'], ['Taxas dos apps (25%)', '− R$ 70,00'], ['Receita após taxas', 'R$ 210,00'], ['Combustível', '− R$ 45,00'], ['Manutenção e extras', '− R$ 30,00']].map(([label, amount]) => <div key={label} className="flex justify-between gap-4"><dt>{label}</dt><dd className="font-bold">{amount}</dd></div>)}
+              {[["Receita bruta", "R$ 280,00"], ["Taxas dos apps (25%)", "− R$ 70,00"], ["Receita após taxas", "R$ 210,00"], ["Combustível", "− R$ 45,00"], ["Manutenção e extras", "− R$ 30,00"]].map(([label, amount]) => <div key={label} className="flex justify-between gap-4"><dt>{label}</dt><dd className="font-bold">{amount}</dd></div>)}
             </dl>
             <div className="mt-5 border-t border-emerald-200 pt-5"><p className="text-sm font-semibold">Lucro estimado do dia</p><p className="mt-1 text-4xl font-black text-emerald-700">R$ 135,00</p><p className="mt-2 font-bold">10 h de trabalho · R$ 13,50/h</p></div>
           </div>
