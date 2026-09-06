@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import TrustPage from "@/components/TrustPage";
 
 export const metadata: Metadata = {
-  title: "Termos de Uso | FaturApp",
+  title: "Termos de Uso",
   description: "Regras básicas de uso do FaturApp, limitações dos cálculos e responsabilidades do usuário.",
   alternates: { canonical: "https://fatur-app.vercel.app/termos" },
 };
