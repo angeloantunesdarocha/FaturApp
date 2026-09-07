@@ -22,7 +22,7 @@ const faqItems = [
   {
     question: "Meus dados ficam seguros?",
     answer:
-      "O acesso é feito por conta autenticada e os registros ficam associados ao seu usuário no Supabase. Como em qualquer serviço online, proteja sua senha e evite compartilhá-la.",
+      "O acesso é feito por conta autenticada e os registros ficam associados ao seu usuário no banco de dados. Como em qualquer serviço online, proteja sua senha e evite compartilhá-la.",
   },
   {
     question: "Funciona offline?",
