@@ -26,7 +26,7 @@ export default function Header({ isAuthenticated, isAdmin = false }: { isAuthent
     <Link href={isAuthenticated ? "/" : "/comece"} aria-label="FaturApp - Lucro real por dia, km e hora" className="group flex min-w-0 items-center gap-2.5"><FaturAppMark /><span className="min-w-0"><span className="block truncate font-sans text-[20px] font-extrabold leading-none tracking-[-0.04em] text-[#123B63] sm:text-[21px]">Fatur<span className="text-[#168A4A]">App</span></span><span className="hidden text-[11px] font-medium leading-tight text-slate-500 sm:block">Lucro real por dia, km e hora</span></span></Link>
     {isPublicContent && <nav aria-label="Navegação pública" className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
       <div className="hidden items-center gap-1 lg:flex">
-        <Link href="/comece" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Como funciona</Link>
+        <Link href="/comece#como-funciona" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Como funciona</Link>
         <Link href="/guias" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Guias</Link>
         <Link href="/sobre" className="rounded-full px-3 py-2 text-sm font-semibold text-[#123B63] transition-colors hover:bg-slate-100">Sobre</Link>
       </div>

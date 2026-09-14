@@ -43,8 +43,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Informe um e-mail válido para o pagamento." }, { status: 400 });
     }
 
-    const externalReference = "faturapp:" + user.user_id + ":" + crypto.randomUUID();
     const admin = createAdminClient();
+    const { data: existingContribution, error: existingError } = await admin
+      .from("contributions")
+      .select("id, status")
+      .eq("user_id", user.user_id)
+      .in("status", ["pending", "past_due", "paused", "active"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existingContribution) {
+      const error = existingContribution.status === "active"
+        ? "Você já possui uma contribuição mensal ativa."
+        : "Você já possui uma contribuição em aberto. Consulte o status antes de iniciar outra.";
+      return NextResponse.json({ error }, { status: 409 });
+    }
+
+    const externalReference = "faturapp:" + user.user_id + ":" + crypto.randomUUID();
     const { data: contribution, error: insertError } = await admin
       .from("contributions")
       .insert({

@@ -14,7 +14,7 @@ export default function StartPage() {
         <div className="pointer-events-none absolute -right-24 top-12 -z-10 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
         <div className="mx-auto grid min-w-0 max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
           <RevealOnScroll direction="left" className="min-w-0">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.16em] text-emerald-200">FaturApp · feito para motoristas</div>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[.16em] text-emerald-200">Feito para motoristas e entregadores</div>
             <h1 className="text-4xl font-black leading-[1.1] tracking-tight sm:text-5xl xl:text-6xl">Você ganhou R$ 280 hoje.<span className="mt-3 block text-emerald-300">Mas quanto realmente sobrou no seu bolso?</span></h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-200 sm:text-xl">Taxas dos apps, combustível, manutenção e despesas reduzem o que fica para você. O FaturApp mostra seu lucro real por dia, por km e por hora — comece em 1 minuto.</p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">

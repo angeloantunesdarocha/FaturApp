@@ -54,6 +54,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
   const [notice, setNotice] = useState<{ tone: NoticeTone; message: string } | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const previousStatusRef = useRef<string | null>(null);
+  const checkoutLockRef = useRef(false);
 
   const showNotice = useCallback((tone: NoticeTone, message: string) => {
     setNotice({ tone, message });
@@ -125,7 +126,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
   async function startCheckout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (loading) return;
+    if (loading || checkoutLockRef.current) return;
 
     const normalizedAmount = Number(amount);
     const normalizedEmail = payerEmail.trim().toLowerCase();
@@ -140,6 +141,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
       return;
     }
 
+    checkoutLockRef.current = true;
     setLoading(true);
     setStatus("");
 
@@ -153,12 +155,14 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
 
       if (!response.ok) {
         setStatus(payload.error || "Não foi possível iniciar o pagamento.");
+        checkoutLockRef.current = false;
         setLoading(false);
         return;
       }
 
       if (typeof payload.checkoutUrl !== "string" || !payload.checkoutUrl) {
         setStatus("Não foi possível obter o link de pagamento. Tente novamente.");
+        checkoutLockRef.current = false;
         setLoading(false);
         return;
       }
@@ -168,6 +172,7 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
       window.location.assign(payload.checkoutUrl);
     } catch {
       setStatus("Não foi possível conectar ao pagamento. Tente novamente.");
+      checkoutLockRef.current = false;
       setLoading(false);
     }
   }
@@ -303,8 +308,9 @@ export default function ContributionForm({ returned }: { returned: boolean }) {
             </div>
 
             <button type="submit" disabled={loading} className="w-full rounded-2xl bg-emerald-500 px-5 py-4 text-base font-extrabold text-white shadow-lg shadow-emerald-900/10 transition hover:-translate-y-0.5 hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:cursor-wait disabled:opacity-60">
-              {loading ? "Abrindo pagamento seguro…" : "Continuar para Confirmar"}
+              {loading ? "Abrindo pagamento seguro…" : "Ir para o pagamento seguro"}
             </button>
+            <p className="text-center text-xs font-semibold leading-5 text-slate-600">Você será direcionado ao Mercado Pago.</p>
             <p className="text-center text-xs leading-5 text-slate-500">A contribuição é opcional, recorrente e cancelável quando quiser. O FaturApp continua gratuito sem ela.</p>
           </form>
         )}

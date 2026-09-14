@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { loginUser, registerUser } from "@/app/actions";
 import { useRouter } from "next/navigation";
 import { createClientBrowser } from "@/lib/supabase";
@@ -35,22 +35,28 @@ function PasswordField({
   showPassword,
   setShowPassword,
   autoComplete,
+  id,
+  describedBy,
 }: {
   value: string;
   onChange: (value: string) => void;
   showPassword: boolean;
   setShowPassword: (value: boolean) => void;
   autoComplete: string;
+  id: string;
+  describedBy?: string;
 }) {
   return (
     <div className="relative">
       <input
+        id={id}
         type={showPassword ? "text" : "password"}
         className="input border-slate-400 py-3 pr-12 text-slate-900 placeholder:text-slate-400"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required
         autoComplete={autoComplete}
+        aria-describedby={describedBy}
       />
       <button
         type="button"
@@ -71,33 +77,53 @@ export default function AuthForm({ mode, oauthError }: Props) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState("");
+  const [formLoading, setFormLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const formLoadingRef = useRef(false);
   const isRegister = mode === "register";
+  const passwordRequirements = [
+    { label: "No mínimo 6 caracteres", met: password.length >= 6 },
+    { label: "Uma letra maiúscula", met: /[A-Z]/.test(password) },
+    { label: "Um número", met: /[0-9]/.test(password) },
+    { label: "Um caractere especial", met: /[^A-Za-z0-9]/.test(password) },
+  ];
   const oauthMessage = oauthError
     ? "Não foi possível concluir o login com Google. Verifique a configuração OAuth e tente novamente."
     : "";
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    setStatus("Processando...");
-    const result = isRegister
-      ? await registerUser(login, password, email)
-      : await loginUser(login, password);
+    if (formLoadingRef.current || googleLoading) return;
 
-    if (!result.success) {
-      setStatus("❌ " + result.error);
-      return;
+    formLoadingRef.current = true;
+    setFormLoading(true);
+    setStatus("");
+
+    try {
+      const result = isRegister
+        ? await registerUser(login, password, email)
+        : await loginUser(login, password);
+
+      if (!result.success) {
+        setStatus("❌ " + result.error);
+        return;
+      }
+
+      if (isRegister) {
+        const fbq = (window as typeof window & {
+          fbq?: (...args: unknown[]) => void;
+        }).fbq;
+        fbq?.("track", "CompleteRegistration");
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setStatus("❌ Erro inesperado. Tente novamente.");
+    } finally {
+      formLoadingRef.current = false;
+      setFormLoading(false);
     }
-
-    if (isRegister) {
-      const fbq = (window as typeof window & {
-        fbq?: (...args: unknown[]) => void;
-      }).fbq;
-      fbq?.("track", "CompleteRegistration");
-    }
-
-    router.push("/");
-    router.refresh();
   }
 
   async function handleGoogleLogin() {
@@ -134,7 +160,7 @@ export default function AuthForm({ mode, oauthError }: Props) {
           <p className="mt-3 text-base leading-7 text-slate-700">Cadastre seu próprio login para descobrir seu lucro de verdade.</p>
         </div>
 
-        <button type="button" onClick={handleGoogleLogin} disabled={googleLoading} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="button" onClick={handleGoogleLogin} disabled={googleLoading || formLoading} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
           <GoogleIcon />{googleLoading ? "Redirecionando…" : "Continuar com Google"}
         </button>
 
@@ -142,9 +168,9 @@ export default function AuthForm({ mode, oauthError }: Props) {
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]" htmlFor="login">Login</label>
-            <input id="login" className="input border-slate-400 py-3 text-slate-900 placeholder:text-slate-400" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Nome ou endereço de e-mail" required maxLength={120} />
-            <p className="mt-1 text-xs leading-5 text-slate-500">Pode usar nome, nomes com espaços ou e-mail.</p>
+            <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]" htmlFor="login">Crie seu nome de acesso</label>
+            <input id="login" className="input border-slate-400 py-3 text-slate-900 placeholder:text-slate-400" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="angelo.motorista" required maxLength={120} autoComplete="username" />
+            <p className="mt-1 text-xs leading-5 text-slate-500">Você usará esse nome para entrar no FaturApp.</p>
           </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]" htmlFor="recovery-email">E-mail de recuperação</label>
@@ -152,11 +178,20 @@ export default function AuthForm({ mode, oauthError }: Props) {
             <p className="mt-1 text-xs leading-5 text-slate-500">Usaremos este e-mail somente para recuperar seu acesso.</p>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]">Senha</label>
-            <PasswordField value={password} onChange={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} autoComplete="new-password" />
-            <p className="mt-1 text-xs leading-5 text-slate-500">A senha deve ter no mínimo 6 caracteres, incluindo 1 letra maiúscula, 1 número e 1 caractere especial.</p>
+            <label className="mb-1 block text-sm font-semibold text-[#0f2d4a]" htmlFor="register-password">Senha</label>
+            <PasswordField id="register-password" describedBy="password-requirements" value={password} onChange={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} autoComplete="new-password" />
+            <ul id="password-requirements" className="mt-2 grid gap-1 text-xs" aria-label="Requisitos da senha">
+              {passwordRequirements.map((requirement) => (
+                <li key={requirement.label} className={requirement.met ? "font-semibold text-emerald-700" : "text-slate-500"}>
+                  <span aria-hidden="true">{requirement.met ? "✓" : "○"}</span> {requirement.label}
+                </li>
+              ))}
+            </ul>
           </div>
-          <button type="submit" className="btn btn-primary w-full">Criar conta</button>
+          <button type="submit" disabled={formLoading || googleLoading} className="btn btn-primary flex w-full items-center justify-center gap-2 disabled:cursor-wait disabled:opacity-60">
+            {formLoading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />}
+            {formLoading ? "Processando…" : "Criar conta"}
+          </button>
         </form>
 
         {(status || oauthMessage) && <p className="text-center text-sm text-slate-600" role="status">{status || oauthMessage}</p>}
@@ -189,7 +224,7 @@ export default function AuthForm({ mode, oauthError }: Props) {
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">Continue de onde parou e veja quanto sobrou de verdade no seu dia.</p>
           </div>
 
-          <button type="button" onClick={handleGoogleLogin} disabled={googleLoading} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4285F4]/40 disabled:cursor-not-allowed disabled:opacity-60">
+          <button type="button" onClick={handleGoogleLogin} disabled={googleLoading || formLoading} className="flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-[#4285F4]/40 disabled:cursor-not-allowed disabled:opacity-60">
             {googleLoading ? <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" /> : <GoogleIcon />}
             {googleLoading ? "Redirecionando para o Google…" : "Continuar com Google"}
           </button>
@@ -199,14 +234,17 @@ export default function AuthForm({ mode, oauthError }: Props) {
           <form onSubmit={submit} className="space-y-5">
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-[#0f2d4a]" htmlFor="login">Login</label>
-              <input id="login" className="input border-slate-400 py-3 text-slate-900 placeholder:text-slate-400" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Nome ou endereço de e-mail" required maxLength={120} />
+              <input id="login" className="input border-slate-400 py-3 text-slate-900 placeholder:text-slate-400" value={login} onChange={(event) => setLogin(event.target.value)} placeholder="Seu nome de acesso ou e-mail" required maxLength={120} autoComplete="username" />
               <p className="mt-1 text-xs leading-5 text-slate-500">Pode usar nome, nomes com espaços ou e-mail.</p>
             </div>
             <div>
               <label className="mb-1.5 block text-sm font-semibold text-[#0f2d4a]" htmlFor="password">Senha</label>
-              <PasswordField value={password} onChange={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} autoComplete="current-password" />
+              <PasswordField id="password" value={password} onChange={setPassword} showPassword={showPassword} setShowPassword={setShowPassword} autoComplete="current-password" />
             </div>
-            <button type="submit" className="btn btn-primary w-full transition-transform duration-200 hover:scale-[1.01]">Descobrir meu lucro real</button>
+            <button type="submit" disabled={formLoading || googleLoading} className="btn btn-primary flex w-full items-center justify-center gap-2 transition-transform duration-200 hover:scale-[1.01] disabled:cursor-wait disabled:opacity-60">
+              {formLoading && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />}
+              {formLoading ? "Processando…" : "Descobrir meu lucro real"}
+            </button>
           </form>
 
           {(status || oauthMessage) && <p className="mt-4 text-center text-sm text-slate-600" role="status">{status || oauthMessage}</p>}
