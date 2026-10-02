@@ -1,6 +1,8 @@
 # FaturApp
 
-Aplicação web para motoristas e entregadores acompanharem receitas, despesas e lucro líquido do trabalho.
+Aplicação de estudo para motoristas e entregadores acompanharem receitas, despesas e lucro líquido do trabalho.
+
+> **Transparência:** este projeto foi desenvolvido com auxílio de ferramentas de inteligência artificial. Faz parte do meu portfólio de aprendizagem, não de experiência profissional. Estou estudando as tecnologias e decisões usadas no projeto; não afirmo autoria independente de todo o código.
 
 **Demonstração:** [fatur-app.vercel.app/comece](https://fatur-app.vercel.app/comece)
 
@@ -23,7 +25,7 @@ O faturamento recebido nos aplicativos não representa o valor que sobra para o 
 - Modos de cálculo de consumo por tanque cheio, média de perfil e estimativa inicial.
 - Testes de regressão para o motor financeiro, geração de relatórios e controles de segurança.
 
-## Tecnologias
+## Tecnologias presentes no projeto
 
 - Next.js 15.5.25 e React 19.2.8
 - TypeScript
@@ -71,4 +73,4 @@ Os testes de segurança usam identidades e senhas sintéticas em banco local em 
 
 ---
 
-Projeto de portfólio de Ângelo Antunes da Rocha, estudante de Sistemas de Informação no IFNMG.
+Projeto de portfólio de Ângelo Antunes da Rocha, estudante do 2º período de Sistemas de Informação no IFNMG.
