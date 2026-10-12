@@ -1,8 +1,8 @@
 # FaturApp
 
-Aplicação de estudo para motoristas e entregadores acompanharem receitas, despesas e lucro líquido do trabalho.
+Aplicação web em produção que calcula o lucro líquido real de motoristas e entregadores de aplicativo, descontando combustível, taxas e custos operacionais.
 
-> **Transparência:** este projeto foi desenvolvido com auxílio de ferramentas de inteligência artificial. Faz parte do meu portfólio de aprendizagem, não de experiência profissional. Estou estudando as tecnologias e decisões usadas no projeto; não afirmo autoria independente de todo o código.
+> **Como este projeto foi construído:** uso IA como ferramenta de produtividade. Eu defino o problema, desenho a solução e as regras de negócio, oriento a geração do código, reviso, testo, corrijo bugs e publico. A responsabilidade pelas decisões de arquitetura e pelos testes é minha.
 
 **Demonstração:** [fatur-app.vercel.app/comece](https://fatur-app.vercel.app/comece)
 
@@ -73,4 +73,4 @@ Os testes de segurança usam identidades e senhas sintéticas em banco local em 
 
 ---
 
-Projeto de portfólio de Ângelo Antunes da Rocha, estudante do 2º período de Sistemas de Informação no IFNMG.
+Desenvolvido e mantido por Ângelo Antunes da Rocha — desenvolvedor full-stack e estudante de Sistemas de Informação no IFNMG. [LinkedIn](https://www.linkedin.com/in/angeloantunesdarocha/)
